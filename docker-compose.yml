@@ -1,0 +1,3 @@
+# Local Postgres + Redis for AROS. Same stack as docker/docker-compose.yml.
+include:
+  - path: docker/docker-compose.yml

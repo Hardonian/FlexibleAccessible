@@ -29,6 +29,9 @@ packages/db/prisma/migrations/
 
 # Testing
 coverage/
+test-results/
+playwright-report/
+*.tsbuildinfo
 
 # Misc
 *.log

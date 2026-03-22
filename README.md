@@ -29,7 +29,7 @@ AROS is a browser-rendered accessibility remediation operating system that:
 
 - Node.js >= 20
 - Docker (for PostgreSQL and Redis)
-- npm
+- npm (workspaces monorepo)
 
 ### Setup
 
@@ -38,7 +38,8 @@ AROS is a browser-rendered accessibility remediation operating system that:
 ./scripts/setup.sh
 
 # Or manually:
-docker compose -f docker/docker-compose.yml up -d
+docker compose up -d
+# (equivalent: docker compose -f docker/docker-compose.yml up -d)
 npm install
 cp .env.example .env  # Edit with your values
 npm run db:generate
@@ -65,7 +66,9 @@ Open http://localhost:3000
 ### Testing
 
 ```bash
-npm run test          # Run all unit tests
+npm run verify        # lint + typecheck + unit tests + production build
+npm run test          # Run all unit tests (Vitest)
+npm run test:e2e      # Playwright smoke (install browsers: cd apps/web && npx playwright install chromium)
 npm run typecheck     # TypeScript type checking
 npm run lint          # ESLint
 ```
