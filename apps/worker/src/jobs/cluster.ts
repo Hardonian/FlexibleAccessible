@@ -78,29 +78,47 @@ export async function handleClusterJob(job: Job<ClusterJobData>) {
         ? createDomFingerprint(firstOccurrence.elementHtml)
         : null;
 
-      // Upsert cluster
-      const dbCluster = await prisma.issueCluster.upsert({
-        where: {
-          id: cluster.existingClusterId ?? 'new-' + Math.random(),
-        },
-        create: {
-          siteId,
-          name: clusterName,
-          description: `${ruleId}: Affects ${allPages.size} pages with similar component structure.`,
-          componentSignature: cluster.signature,
-          selectorPattern,
-          domFingerprint,
-          pageCount: allPages.size,
-          findingCount: cluster.members.length,
-          severity,
-        },
-        update: {
-          name: clusterName,
-          pageCount: allPages.size,
-          findingCount: cluster.members.length,
-          severity,
-        },
-      });
+      const clusterDescription = `${ruleId}: Affects ${allPages.size} pages with similar component structure.`;
+      const updatePayload = {
+        name: clusterName,
+        description: clusterDescription,
+        componentSignature: cluster.signature,
+        selectorPattern,
+        domFingerprint: domFingerprint ?? undefined,
+        pageCount: allPages.size,
+        findingCount: cluster.members.length,
+        severity,
+      };
+
+      let dbCluster;
+      if (cluster.existingClusterId) {
+        dbCluster = await prisma.issueCluster.update({
+          where: { id: cluster.existingClusterId },
+          data: updatePayload,
+        });
+      } else if (domFingerprint) {
+        const existing = await prisma.issueCluster.findFirst({
+          where: { siteId, domFingerprint },
+        });
+        dbCluster = existing
+          ? await prisma.issueCluster.update({
+              where: { id: existing.id },
+              data: updatePayload,
+            })
+          : await prisma.issueCluster.create({
+              data: {
+                siteId,
+                ...updatePayload,
+              },
+            });
+      } else {
+        dbCluster = await prisma.issueCluster.create({
+          data: {
+            siteId,
+            ...updatePayload,
+          },
+        });
+      }
 
       // Link findings to cluster
       await prisma.canonicalFinding.updateMany({
@@ -167,7 +185,7 @@ function clusterByStructure(findings: FindingWithOccurrences[]): ClusterResult[]
         cluster.members.push(findings[j]);
         assigned.add(findings[j].id);
         if (!cluster.existingClusterId && findings[j].clusterId) {
-          cluster.existingClusterId = findings[j].clusterId;
+          cluster.existingClusterId = findings[j].clusterId ?? undefined;
         }
       }
     }

@@ -42,7 +42,18 @@ export function createDomFingerprint(htmlSnippet: string): string {
     const attrs = match[2];
     const role = attrs.match(/role="([^"]*)"/)?.[1] ?? '';
     const type = attrs.match(/type="([^"]*)"/)?.[1] ?? '';
-    tags.push(`${tag}${role ? `[role=${role}]` : ''}${type ? `[type=${type}]` : ''}`);
+    const classAttr = attrs.match(/class="([^"]*)"/)?.[1]?.trim() ?? '';
+    const classes = classAttr
+      ? classAttr
+          .split(/\s+/)
+          .filter(Boolean)
+          .sort()
+          .join(',')
+      : '';
+    const width = attrs.match(/width="([^"]*)"/)?.[1] ?? '';
+    tags.push(
+      `${tag}${role ? `[role=${role}]` : ''}${type ? `[type=${type}]` : ''}${classes ? `[c=${classes}]` : ''}${width ? `[w=${width}]` : ''}`
+    );
   }
   const structure = tags.join('>');
   return createHash('sha256').update(structure).digest('hex').slice(0, 24);

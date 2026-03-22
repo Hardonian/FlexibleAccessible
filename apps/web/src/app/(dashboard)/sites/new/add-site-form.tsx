@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
+import Link from 'next/link';
 import { addSiteAction } from './actions';
 
 export function AddSiteForm() {
@@ -121,9 +122,9 @@ export function AddSiteForm() {
       </fieldset>
 
       <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
-        <a href="/sites" className="btn-secondary">
+        <Link href="/sites" className="btn-secondary">
           Cancel
-        </a>
+        </Link>
         <button type="submit" disabled={pending} className="btn-primary">
           {pending ? 'Adding site...' : 'Add Site & Start Crawl'}
         </button>

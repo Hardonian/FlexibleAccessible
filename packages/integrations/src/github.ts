@@ -36,8 +36,11 @@ export async function createGitHubPR(input: PRInput): Promise<PRResult> {
     if (!refResponse.ok) {
       return { success: false, error: `Failed to get base branch: ${refResponse.status}` };
     }
-    const refData = await refResponse.json();
-    const baseSha = refData.object.sha;
+    const refData = (await refResponse.json()) as { object?: { sha?: string } };
+    const baseSha = refData.object?.sha;
+    if (!baseSha) {
+      return { success: false, error: 'Invalid ref response from GitHub' };
+    }
 
     // 2. Create blobs for each file
     const blobs = [];
@@ -47,7 +50,10 @@ export async function createGitHubPR(input: PRInput): Promise<PRResult> {
         headers,
         body: JSON.stringify({ content: file.content, encoding: 'utf-8' }),
       });
-      const blobData = await blobResponse.json();
+      const blobData = (await blobResponse.json()) as { sha?: string };
+      if (!blobData.sha) {
+        return { success: false, error: `Failed to create blob for ${file.path}` };
+      }
       blobs.push({ path: file.path, sha: blobData.sha, mode: '100644', type: 'blob' });
     }
 
@@ -57,7 +63,10 @@ export async function createGitHubPR(input: PRInput): Promise<PRResult> {
       headers,
       body: JSON.stringify({ base_tree: baseSha, tree: blobs }),
     });
-    const treeData = await treeResponse.json();
+    const treeData = (await treeResponse.json()) as { sha?: string };
+    if (!treeData.sha) {
+      return { success: false, error: 'Failed to create git tree' };
+    }
 
     // 4. Create commit
     const branchName = `aros/fix-${Date.now()}`;
@@ -70,7 +79,10 @@ export async function createGitHubPR(input: PRInput): Promise<PRResult> {
         parents: [baseSha],
       }),
     });
-    const commitData = await commitResponse.json();
+    const commitData = (await commitResponse.json()) as { sha?: string };
+    if (!commitData.sha) {
+      return { success: false, error: 'Failed to create commit' };
+    }
 
     // 5. Create branch
     await fetch(`${apiBase}/git/refs`, {
@@ -90,7 +102,10 @@ export async function createGitHubPR(input: PRInput): Promise<PRResult> {
         base: baseBranch,
       }),
     });
-    const prData = await prResponse.json();
+    const prData = (await prResponse.json()) as { html_url?: string };
+    if (!prData.html_url) {
+      return { success: false, error: 'Pull request created but response missing URL' };
+    }
 
     return { success: true, prUrl: prData.html_url };
   } catch (error) {

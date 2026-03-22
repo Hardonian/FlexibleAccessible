@@ -171,6 +171,56 @@ export default async function SiteDetailPage({ params }: { params: Promise<{ sit
         )}
       </div>
 
+      {/* Recent Scans */}
+      <div className="card">
+        <h2 className="text-lg font-semibold text-slate-900 mb-4">Recent Scans</h2>
+        {recentScans.length === 0 ? (
+          <p className="text-sm text-slate-500">No scans yet.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200">
+                  <th className="pb-2 text-left font-medium text-slate-500">Status</th>
+                  <th className="pb-2 text-right font-medium text-slate-500">Pages scanned</th>
+                  <th className="pb-2 text-right font-medium text-slate-500">Violations</th>
+                  <th className="pb-2 text-right font-medium text-slate-500">Started</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentScans.map((scan) => (
+                  <tr key={scan.id} className="border-b border-slate-100">
+                    <td className="py-2">
+                      <span
+                        className={`badge ${
+                          scan.status === 'COMPLETED'
+                            ? 'bg-green-100 text-green-800'
+                            : scan.status === 'RUNNING'
+                            ? 'bg-blue-100 text-blue-800'
+                            : scan.status === 'FAILED'
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-slate-100 text-slate-800'
+                        }`}
+                      >
+                        {scan.status.toLowerCase()}
+                      </span>
+                    </td>
+                    <td className="py-2 text-right text-slate-600">
+                      {scan.pagesScanned}
+                      {scan.totalPages > 0 ? ` / ${scan.totalPages}` : ''}
+                    </td>
+                    <td className="py-2 text-right text-slate-600">{scan.violationsFound}</td>
+                    <td className="py-2 text-right text-slate-500">
+                      {scan.startedAt?.toLocaleString() ?? '-'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
       {/* Open Findings */}
       <div className="card">
         <h2 className="text-lg font-semibold text-slate-900 mb-4">
