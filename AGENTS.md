@@ -48,7 +48,7 @@ npm run verify        # lint + typecheck + test + build
 npm run lint
 npm run typecheck
 npm run test
-npm run test:e2e      # Playwright (apps/web); starts dev server unless CI
+npm run test:e2e      # Playwright (apps/web); global setup runs db:push + db:seed (needs DATABASE_URL)
 npm run build
 npm run build:worker  # tsc for worker (production worker uses tsx src/index.ts)
 ```
@@ -57,6 +57,10 @@ npm run build:worker  # tsc for worker (production worker uses tsx src/index.ts)
 
 `@aros/shared` and `@aros/db` resolve to TypeScript sources via workspace `main`. Production worker entry is `tsx src/index.ts` so Node does not need precompiled package `.js` files.
 
+### Stripe webhook tests
+
+With `DATABASE_URL` set, `npm run test --workspace=apps/web` runs integration tests against `handleStripeWebhookRequest` (subscription updated/deleted, idempotency, signature verification). Set `STRIPE_WEBHOOK_SECRET` in CI to match the test secret.
+
 ### CI
 
-GitHub Actions runs install, Prisma generate, `db push`, unit tests, Playwright Chromium install, production build, and E2E smoke against Postgres + Redis services.
+GitHub Actions runs install, Prisma generate, `db push`, **db seed**, unit tests (including Stripe webhook integration when DB is up), Playwright Chromium install, production build, and E2E (marketing + **auth flows** using seeded `demo@aros.dev`) against Postgres + Redis services.

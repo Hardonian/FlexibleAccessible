@@ -68,10 +68,12 @@ Open http://localhost:3000
 ```bash
 npm run verify        # lint + typecheck + unit tests + production build
 npm run test          # Run all unit tests (Vitest)
-npm run test:e2e      # Playwright smoke (install browsers: cd apps/web && npx playwright install chromium)
+npm run test:e2e      # Playwright (requires DATABASE_URL; global setup runs db:push + db:seed)
 npm run typecheck     # TypeScript type checking
 npm run lint          # ESLint
 ```
+
+With Postgres available, `npm run test --workspace=apps/web` also runs **Stripe webhook integration tests** (subscription upsert, delete, idempotency, HMAC verification). CI sets `STRIPE_WEBHOOK_SECRET` for those tests. The webhook handler stores each Stripe `event.id` in `stripe_webhook_events` so retries are idempotent.
 
 ## Architecture
 
