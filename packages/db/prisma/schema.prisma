@@ -1,0 +1,606 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── AUTH & TENANCY ──────────────────────────────────────────
+
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  name           String?
+  passwordHash   String
+  emailVerified  Boolean  @default(false)
+  avatarUrl      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  memberships    Membership[]
+  reviewTasks    ReviewTask[]    @relation("assignee")
+  auditLogs      AuditLog[]
+  sessions       Session[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  logoUrl   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships       Membership[]
+  workspaces        Workspace[]
+  billingCustomer   BillingCustomer?
+  subscription      Subscription?
+  auditLogs         AuditLog[]
+  integrationConnections IntegrationConnection[]
+
+  @@map("organizations")
+}
+
+model Workspace {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  slug           String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  sites        Site[]
+
+  @@unique([organizationId, slug])
+  @@index([organizationId])
+  @@map("workspaces")
+}
+
+enum MemberRole {
+  OWNER
+  ADMIN
+  DEVELOPER
+  CONTENT_EDITOR
+  AUDITOR
+  REVIEWER
+}
+
+model Membership {
+  id             String     @id @default(cuid())
+  userId         String
+  organizationId String
+  role           MemberRole @default(DEVELOPER)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+  @@map("memberships")
+}
+
+// ─── SITES & CRAWLING ────────────────────────────────────────
+
+enum SiteEnvironment {
+  PRODUCTION
+  STAGING
+  DEVELOPMENT
+}
+
+model Site {
+  id          String          @id @default(cuid())
+  workspaceId String
+  name        String
+  domain      String
+  environment SiteEnvironment @default(PRODUCTION)
+  verified    Boolean         @default(false)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  workspace    Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  crawlConfig  CrawlConfig?
+  crawlRuns    CrawlRun[]
+  pages        Page[]
+  scanRuns     ScanRun[]
+  issueClusters IssueCluster[]
+  githubRepoMapping GitHubRepoMapping?
+
+  @@index([workspaceId])
+  @@map("sites")
+}
+
+model CrawlConfig {
+  id                String   @id @default(cuid())
+  siteId            String   @unique
+  sitemapUrl        String?
+  maxDepth          Int      @default(5)
+  maxPages          Int      @default(500)
+  includePatterns   String[] @default([])
+  excludePatterns   String[] @default([])
+  respectRobots     Boolean  @default(true)
+  renderJavaScript  Boolean  @default(true)
+  viewports         Json     @default("[{\"width\":1280,\"height\":720},{\"width\":375,\"height\":812}]")
+  scheduleCron      String?
+  authConfig        Json?
+  customHeaders     Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@map("crawl_configs")
+}
+
+enum CrawlStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model CrawlRun {
+  id            String      @id @default(cuid())
+  siteId        String
+  status        CrawlStatus @default(PENDING)
+  pagesFound    Int         @default(0)
+  pagesCrawled  Int         @default(0)
+  pagesFailed   Int         @default(0)
+  startedAt     DateTime?
+  completedAt   DateTime?
+  errorMessage  String?
+  metadata      Json?
+  createdAt     DateTime    @default(now())
+
+  site      Site       @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  scanRuns  ScanRun[]
+
+  @@index([siteId])
+  @@index([status])
+  @@map("crawl_runs")
+}
+
+model Page {
+  id            String   @id @default(cuid())
+  siteId        String
+  url           String
+  path          String
+  title         String?
+  statusCode    Int?
+  contentHash   String?
+  lastCrawledAt DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  site       Site           @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  snapshots  PageSnapshot[]
+  violations RawViolation[]
+  findings   FindingOccurrence[]
+
+  @@unique([siteId, url])
+  @@index([siteId])
+  @@map("pages")
+}
+
+model PageSnapshot {
+  id            String   @id @default(cuid())
+  pageId        String
+  crawlRunId    String?
+  domSnapshot   String?
+  screenshotKey String?
+  accessibilityTree Json?
+  consoleErrors Json?
+  networkErrors Json?
+  viewport      Json?
+  capturedAt    DateTime @default(now())
+
+  page Page @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@index([pageId])
+  @@index([crawlRunId])
+  @@map("page_snapshots")
+}
+
+// ─── SCANNING & FINDINGS ─────────────────────────────────────
+
+enum ScanStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+model ScanRun {
+  id            String     @id @default(cuid())
+  siteId        String
+  crawlRunId    String?
+  status        ScanStatus @default(PENDING)
+  totalPages    Int        @default(0)
+  pagesScanned  Int        @default(0)
+  violationsFound Int      @default(0)
+  startedAt     DateTime?
+  completedAt   DateTime?
+  errorMessage  String?
+  createdAt     DateTime   @default(now())
+
+  site      Site           @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  crawlRun  CrawlRun?      @relation(fields: [crawlRunId], references: [id])
+  violations RawViolation[]
+
+  @@index([siteId])
+  @@index([crawlRunId])
+  @@map("scan_runs")
+}
+
+enum Severity {
+  CRITICAL
+  SERIOUS
+  MODERATE
+  MINOR
+}
+
+model RawViolation {
+  id              String   @id @default(cuid())
+  scanRunId       String
+  pageId          String
+  ruleId          String
+  impact          Severity
+  description     String
+  helpUrl         String?
+  wcagTags        String[] @default([])
+  selector        String
+  elementHtml     String
+  elementContext  String?
+  screenshotRef   String?
+  fingerprint     String
+  createdAt       DateTime @default(now())
+
+  scanRun  ScanRun @relation(fields: [scanRunId], references: [id], onDelete: Cascade)
+  page     Page    @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@index([scanRunId])
+  @@index([pageId])
+  @@index([fingerprint])
+  @@index([ruleId])
+  @@map("raw_violations")
+}
+
+enum FindingStatus {
+  OPEN
+  IN_PROGRESS
+  FIXED
+  WONT_FIX
+  FALSE_POSITIVE
+}
+
+model CanonicalFinding {
+  id              String        @id @default(cuid())
+  siteId          String
+  ruleId          String
+  impact          Severity
+  description     String
+  helpUrl         String?
+  wcagTags        String[]      @default([])
+  fingerprint     String        @unique
+  status          FindingStatus @default(OPEN)
+  firstSeenAt     DateTime      @default(now())
+  lastSeenAt      DateTime      @default(now())
+  occurrenceCount Int           @default(1)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  occurrences   FindingOccurrence[]
+  cluster       IssueCluster?       @relation(fields: [clusterId], references: [id])
+  clusterId     String?
+  suggestions   RemediationSuggestion[]
+
+  @@index([siteId])
+  @@index([ruleId])
+  @@index([status])
+  @@index([impact])
+  @@index([clusterId])
+  @@map("canonical_findings")
+}
+
+model FindingOccurrence {
+  id                String   @id @default(cuid())
+  canonicalFindingId String
+  pageId            String
+  selector          String
+  elementHtml       String
+  screenshotRef     String?
+  firstSeenAt       DateTime @default(now())
+  lastSeenAt        DateTime @default(now())
+  resolved          Boolean  @default(false)
+
+  finding CanonicalFinding @relation(fields: [canonicalFindingId], references: [id], onDelete: Cascade)
+  page    Page             @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@index([canonicalFindingId])
+  @@index([pageId])
+  @@map("finding_occurrences")
+}
+
+// ─── CLUSTERING ──────────────────────────────────────────────
+
+model IssueCluster {
+  id              String   @id @default(cuid())
+  siteId          String
+  name            String
+  description     String?
+  componentSignature String?
+  selectorPattern String?
+  domFingerprint  String?
+  pageCount       Int      @default(0)
+  findingCount    Int      @default(0)
+  severity        Severity
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  site     Site               @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  findings CanonicalFinding[]
+  suggestions RemediationSuggestion[]
+
+  @@index([siteId])
+  @@index([severity])
+  @@map("issue_clusters")
+}
+
+// ─── REMEDIATION ─────────────────────────────────────────────
+
+enum SuggestionType {
+  ALT_TEXT
+  BUTTON_LABEL
+  LINK_TEXT
+  FORM_LABEL
+  HEADING_FIX
+  SEMANTIC_HTML
+  ARIA_CLEANUP
+  COLOR_CONTRAST
+  CUSTOM_SNIPPET
+}
+
+enum SuggestionStatus {
+  DRAFT
+  VALIDATED
+  FAILED_VALIDATION
+  APPROVED
+  EXPORTED
+  APPLIED
+  REJECTED
+}
+
+model RemediationSuggestion {
+  id                String           @id @default(cuid())
+  canonicalFindingId String?
+  clusterId         String?
+  type              SuggestionType
+  status            SuggestionStatus @default(DRAFT)
+  originalCode      String
+  suggestedCode     String
+  rationale         String
+  confidence        Float            @default(0)
+  validationResult  Json?
+  appliedBy         String?
+  appliedAt         DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  finding  CanonicalFinding? @relation(fields: [canonicalFindingId], references: [id])
+  cluster  IssueCluster?     @relation(fields: [clusterId], references: [id])
+  reviewTask ReviewTask?
+
+  @@index([canonicalFindingId])
+  @@index([clusterId])
+  @@index([status])
+  @@map("remediation_suggestions")
+}
+
+// ─── REVIEW ──────────────────────────────────────────────────
+
+enum ReviewType {
+  ALT_TEXT_REVIEW
+  CONTENT_CLARITY
+  KEYBOARD_FLOW
+  SCREEN_READER
+  SUGGESTION_REVIEW
+  MANUAL_AUDIT
+}
+
+enum ReviewStatus {
+  PENDING
+  IN_PROGRESS
+  APPROVED
+  REJECTED
+  NEEDS_CHANGES
+}
+
+model ReviewTask {
+  id              String       @id @default(cuid())
+  suggestionId    String?      @unique
+  type            ReviewType
+  status          ReviewStatus @default(PENDING)
+  title           String
+  description     String?
+  assigneeId      String?
+  notes           String?
+  reviewedAt      DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  suggestion RemediationSuggestion? @relation(fields: [suggestionId], references: [id])
+  assignee   User?                  @relation("assignee", fields: [assigneeId], references: [id])
+  evidence   EvidenceArtifact[]
+
+  @@index([status])
+  @@index([assigneeId])
+  @@index([type])
+  @@map("review_tasks")
+}
+
+model EvidenceArtifact {
+  id            String   @id @default(cuid())
+  reviewTaskId  String
+  type          String
+  label         String
+  storageKey    String
+  metadata      Json?
+  createdAt     DateTime @default(now())
+
+  reviewTask ReviewTask @relation(fields: [reviewTaskId], references: [id], onDelete: Cascade)
+
+  @@index([reviewTaskId])
+  @@map("evidence_artifacts")
+}
+
+// ─── INTEGRATIONS ────────────────────────────────────────────
+
+enum IntegrationType {
+  GITHUB
+  JIRA
+  SLACK
+  WEBHOOK
+}
+
+model IntegrationConnection {
+  id             String          @id @default(cuid())
+  organizationId String
+  type           IntegrationType
+  name           String
+  config         Json
+  encryptedToken String?
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([type])
+  @@map("integration_connections")
+}
+
+model GitHubRepoMapping {
+  id           String @id @default(cuid())
+  siteId       String @unique
+  repoOwner    String
+  repoName     String
+  defaultBranch String @default("main")
+  basePath     String @default("/")
+  connectionId String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@map("github_repo_mappings")
+}
+
+// ─── BILLING ─────────────────────────────────────────────────
+
+model BillingCustomer {
+  id             String @id @default(cuid())
+  organizationId String @unique
+  stripeCustomerId String @unique
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("billing_customers")
+}
+
+enum PlanTier {
+  FREE
+  STARTER
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  TRIALING
+}
+
+model Subscription {
+  id                  String             @id @default(cuid())
+  organizationId      String             @unique
+  stripeSubscriptionId String?           @unique
+  plan                PlanTier           @default(FREE)
+  status              SubscriptionStatus @default(ACTIVE)
+  maxDomains          Int                @default(1)
+  maxPagesPerCrawl    Int                @default(100)
+  maxScansPerMonth    Int                @default(5)
+  maxSeats            Int                @default(2)
+  currentPeriodStart  DateTime?
+  currentPeriodEnd    DateTime?
+  cancelAtPeriodEnd   Boolean            @default(false)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  usageRecords UsageRecord[]
+
+  @@map("subscriptions")
+}
+
+model UsageRecord {
+  id             String   @id @default(cuid())
+  subscriptionId String
+  metric         String
+  quantity       Int
+  periodStart    DateTime
+  periodEnd      DateTime
+  createdAt      DateTime @default(now())
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([subscriptionId])
+  @@index([metric, periodStart])
+  @@map("usage_records")
+}
+
+// ─── AUDIT ───────────────────────────────────────────────────
+
+model AuditLog {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String?
+  action         String
+  entityType     String?
+  entityId       String?
+  metadata       Json?
+  ipAddress      String?
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User?        @relation(fields: [userId], references: [id])
+
+  @@index([organizationId])
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}

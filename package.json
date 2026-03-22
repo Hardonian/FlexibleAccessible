@@ -1,0 +1,32 @@
+{
+  "name": "accessibility-remediation-os",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=apps/web",
+    "dev:worker": "npm run dev --workspace=apps/worker",
+    "build": "npm run build --workspace=apps/web",
+    "build:worker": "npm run build --workspace=apps/worker",
+    "db:generate": "npm run generate --workspace=packages/db",
+    "db:push": "npm run push --workspace=packages/db",
+    "db:migrate": "npm run migrate --workspace=packages/db",
+    "db:seed": "npm run seed --workspace=packages/db",
+    "db:studio": "npx prisma studio --schema=packages/db/prisma/schema.prisma",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:e2e": "npm run test:e2e --workspace=apps/web",
+    "clean": "rm -rf node_modules apps/*/node_modules packages/*/node_modules"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "prettier": "^3.4.0",
+    "@types/node": "^22.10.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
