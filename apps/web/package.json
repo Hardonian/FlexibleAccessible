@@ -16,6 +16,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "@aros/db": "*",
+    "@aros/core-services": "*",
     "@aros/config": "*",
     "@aros/shared": "*",
     "zod": "^3.24.0",

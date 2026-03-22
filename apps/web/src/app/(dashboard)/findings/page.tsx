@@ -1,7 +1,14 @@
 import { requireSession } from '@/lib/session';
 import { prisma } from '@/lib/db';
 import Link from 'next/link';
-import type { Severity, FindingStatus } from '@aros/db';
+import type { Prisma, Severity, FindingStatus } from '@aros/db';
+
+type FindingListRow = Prisma.CanonicalFindingGetPayload<{
+  include: {
+    _count: { select: { occurrences: true } };
+    cluster: { select: { id: true; name: true } };
+  };
+}>;
 
 export const metadata = { title: 'Findings - AROS' };
 
@@ -21,10 +28,31 @@ export default async function FindingsPage({
   const user = await requireSession();
   const params = await searchParams;
 
-  const membership = await prisma.membership.findFirst({
-    where: { userId: user.id },
-  });
-  if (!membership) return null;
+  let membership: { organizationId: string } | null = null;
+  let loadError: string | null = null;
+  try {
+    membership = await prisma.membership.findFirst({
+      where: { userId: user.id },
+    });
+  } catch (e) {
+    loadError = e instanceof Error ? e.message : 'Database error';
+    console.error('[findings] membership load failed', e);
+  }
+
+  if (!membership) {
+    return (
+      <div className="card text-center py-12 space-y-3">
+        <h1 className="text-lg font-semibold text-slate-900">Findings unavailable</h1>
+        {loadError ? (
+          <p className="text-sm text-slate-600">
+            Could not verify your organization ({loadError}). Check database connectivity.
+          </p>
+        ) : (
+          <p className="text-sm text-slate-600">No organization membership for this account.</p>
+        )}
+      </div>
+    );
+  }
 
   const page = parseInt(params.page ?? '1');
   const limit = 20;
@@ -51,28 +79,44 @@ export default async function FindingsPage({
     where.ruleId = params.ruleId;
   }
 
-  const [findings, total] = await Promise.all([
-    prisma.canonicalFinding.findMany({
-      where,
-      orderBy: [{ impact: 'asc' }, { occurrenceCount: 'desc' }],
-      skip,
-      take: limit,
-      include: {
-        _count: { select: { occurrences: true } },
-        cluster: { select: { id: true, name: true } },
-      },
-    }),
-    prisma.canonicalFinding.count({ where }),
-  ]);
+  let findings: FindingListRow[] = [];
+  let total = 0;
+  try {
+    [findings, total] = await Promise.all([
+      prisma.canonicalFinding.findMany({
+        where,
+        orderBy: [{ impact: 'asc' }, { occurrenceCount: 'desc' }],
+        skip,
+        take: limit,
+        include: {
+          _count: { select: { occurrences: true } },
+          cluster: { select: { id: true, name: true } },
+        },
+      }),
+      prisma.canonicalFinding.count({ where }),
+    ]);
+  } catch (e) {
+    loadError = e instanceof Error ? e.message : 'Database error';
+    console.error('[findings] query failed', e);
+  }
 
   const totalPages = Math.ceil(total / limit);
 
   return (
     <div className="space-y-6">
+      {loadError && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950" role="status">
+          <p className="font-medium">Findings list unavailable</p>
+          <p className="mt-1">Could not load findings from the database. Filters still work after recovery.</p>
+          <p className="mt-1 text-amber-900/90">Detail: {loadError}</p>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Findings</h1>
-          <p className="text-slate-500 mt-1">{total} accessibility issues found</p>
+          <p className="text-slate-500 mt-1">
+            {loadError ? '—' : total} accessibility issues found
+          </p>
         </div>
       </div>
 

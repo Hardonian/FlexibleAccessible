@@ -1,5 +1,7 @@
 import { Worker } from 'bullmq';
 import IORedis from 'ioredis';
+import { prisma } from '@aros/db';
+import { recordWorkerHeartbeat } from '@aros/core-services';
 import { bullmqConnectionOptions } from '@aros/shared';
 import { handleCrawlJob } from './jobs/crawl';
 import { handleScanJob } from './jobs/scan';
@@ -54,14 +56,29 @@ setupWorkerEvents(scanWorker, 'Scan');
 setupWorkerEvents(clusterWorker, 'Cluster');
 setupWorkerEvents(remediationWorker, 'Remediation');
 
+const HEARTBEAT_MS = 30_000;
+async function heartbeatTick() {
+  try {
+    await recordWorkerHeartbeat(prisma);
+  } catch (e) {
+    console.error('[Worker] Platform heartbeat failed:', e instanceof Error ? e.message : e);
+  }
+}
+void heartbeatTick();
+const heartbeatInterval = setInterval(() => {
+  void heartbeatTick();
+}, HEARTBEAT_MS);
+
 async function shutdown() {
   console.log('[Worker] Shutting down...');
+  clearInterval(heartbeatInterval);
   await Promise.all([
     crawlWorker.close(),
     scanWorker.close(),
     clusterWorker.close(),
     remediationWorker.close(),
   ]);
+  await prisma.$disconnect().catch(() => undefined);
   await redisForShutdown.quit();
   process.exit(0);
 }

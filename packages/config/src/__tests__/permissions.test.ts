@@ -2,6 +2,12 @@ import { describe, it, expect } from 'vitest';
 import { hasPermission } from '../permissions';
 
 describe('hasPermission', () => {
+  it('OWNER and ADMIN can view org system status', () => {
+    expect(hasPermission('OWNER', 'org:system:view')).toBe(true);
+    expect(hasPermission('ADMIN', 'org:system:view')).toBe(true);
+    expect(hasPermission('DEVELOPER', 'org:system:view')).toBe(false);
+  });
+
   it('OWNER has all permissions', () => {
     expect(hasPermission('OWNER', 'org:manage')).toBe(true);
     expect(hasPermission('OWNER', 'org:billing')).toBe(true);

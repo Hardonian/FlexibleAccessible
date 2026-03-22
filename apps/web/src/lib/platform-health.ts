@@ -1,0 +1,24 @@
+import { collectPlatformHealth } from '@aros/core-services';
+import { parseEnvDiagnostics } from '@aros/config';
+import { prisma } from './db';
+import type { PlatformHealthReport } from '@aros/core-services';
+
+export interface PlatformHealthApiPayload {
+  report: PlatformHealthReport;
+  envDiagnostics: {
+    valid: boolean;
+    invalidKeys: string[];
+  };
+}
+
+export async function getPlatformHealthPayload(): Promise<PlatformHealthApiPayload> {
+  const diag = parseEnvDiagnostics(process.env);
+  const invalidKeys = Object.keys(diag.fieldErrors).filter(
+    (k) => (diag.fieldErrors[k]?.length ?? 0) > 0
+  );
+  const report = await collectPlatformHealth(prisma);
+  return {
+    report,
+    envDiagnostics: { valid: diag.valid, invalidKeys },
+  };
+}

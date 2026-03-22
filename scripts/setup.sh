@@ -25,18 +25,27 @@ fi
 echo "5. Generating Prisma client..."
 npm run db:generate
 
-echo "6. Pushing database schema..."
-npm run db:push
+echo "6. Applying database schema..."
+if [ "${AROS_USE_MIGRATE:-}" = "1" ]; then
+  npm run db:migrate
+else
+  npm run db:push
+fi
 
 echo "7. Seeding database..."
 npm run db:seed
+
+echo "8. Ensuring platform bootstrap row..."
+npm run bootstrap
 
 echo ""
 echo "=== Setup Complete ==="
 echo ""
 echo "To start development:"
 echo "  npm run dev          # Start web app on http://localhost:3000"
-echo "  npm run dev:worker   # Start background workers"
+echo "  npm run dev:worker   # Start background workers (required for live worker status)"
+echo ""
+echo "Production-style schema: set AROS_USE_MIGRATE=1 before running this script to use db:migrate instead of db:push."
 echo ""
 echo "Demo credentials:"
 echo "  Email: demo@aros.dev"
