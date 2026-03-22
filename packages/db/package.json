@@ -9,6 +9,7 @@
     "push": "prisma db push --schema=prisma/schema.prisma",
     "migrate": "prisma migrate dev --schema=prisma/schema.prisma",
     "seed": "tsx prisma/seed.ts",
+    "bootstrap": "tsx scripts/ensure-platform.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

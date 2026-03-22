@@ -12,6 +12,16 @@ async function hashPassword(password: string): Promise<string> {
 async function main() {
   console.log('Seeding database...');
 
+  await prisma.platformState.upsert({
+    where: { id: 'platform' },
+    create: {
+      id: 'platform',
+      bootstrapVersion: 1,
+      productFlags: {},
+    },
+    update: {},
+  });
+
   // Create demo user
   const passwordHash = await hashPassword('demo1234');
   const user = await prisma.user.upsert({

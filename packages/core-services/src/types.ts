@@ -1,0 +1,75 @@
+export type ServiceCriticality = 'critical' | 'optional';
+
+export type ServiceCategory =
+  | 'data'
+  | 'queue'
+  | 'auth'
+  | 'billing'
+  | 'integration'
+  | 'ai'
+  | 'storage';
+
+export type ServiceScope = 'deployment' | 'organization';
+
+/** Unified runtime + config posture for a registered service */
+export type ServiceHealthState =
+  | 'unavailable'
+  | 'disabled'
+  | 'misconfigured'
+  | 'ready'
+  | 'running'
+  | 'degraded'
+  | 'failed';
+
+export interface CoreServiceDefinition {
+  id: string;
+  name: string;
+  purpose: string;
+  category: ServiceCategory;
+  criticality: ServiceCriticality;
+  scope: ServiceScope;
+  /** When false, service is deployment-gated (not merely misconfigured) */
+  userVisibleWhenDown: boolean;
+}
+
+export interface DependencyCheckResult {
+  ok: boolean;
+  message?: string;
+  checkedAt: string;
+}
+
+export interface CoreServiceRuntimeView extends CoreServiceDefinition {
+  enabled: boolean;
+  configState: 'valid' | 'invalid' | 'partial';
+  configIssues: string[];
+  /** Non-sensitive summary only */
+  configSummary: Record<string, string | boolean | number>;
+  healthState: ServiceHealthState;
+  lastCheckAt: string | null;
+  lastActivityAt: string | null;
+  failureReason: string | null;
+  nextStep: string;
+  dependencies: Record<string, DependencyCheckResult>;
+}
+
+export type PlatformReadiness = 'not_installed' | 'blocked' | 'degraded' | 'ready';
+
+export interface PlatformBootstrapStatus {
+  installed: boolean;
+  installedAt: string | null;
+  bootstrapVersion: number;
+  readiness: PlatformReadiness;
+  blockers: string[];
+  warnings: string[];
+}
+
+export interface PlatformHealthReport {
+  checkedAt: string;
+  bootstrap: PlatformBootstrapStatus;
+  dependencies: {
+    database: DependencyCheckResult;
+    redis: DependencyCheckResult;
+    sessionStore: DependencyCheckResult;
+  };
+  services: CoreServiceRuntimeView[];
+}

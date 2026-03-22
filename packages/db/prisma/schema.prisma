@@ -591,6 +591,19 @@ model UsageRecord {
   @@map("usage_records")
 }
 
+// ─── PLATFORM / INSTALL ───────────────────────────────────────
+
+/// Singleton row: installation marker, worker liveness, optional product flags (non-secret).
+model PlatformState {
+  id                    String    @id @default("platform")
+  installedAt           DateTime  @default(now())
+  bootstrapVersion      Int       @default(1)
+  workerLastHeartbeatAt DateTime?
+  productFlags          Json      @default("{}")
+
+  @@map("platform_state")
+}
+
 // ─── AUDIT ───────────────────────────────────────────────────
 
 model AuditLog {

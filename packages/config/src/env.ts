@@ -37,13 +37,61 @@ export const envSchema = z.object({
 
 export type Env = z.infer<typeof envSchema>;
 
+export type EnvDiagnostics = {
+  valid: boolean;
+  fieldErrors: Record<string, string[] | undefined>;
+  issues: string[];
+};
+
+export function tryParseEnv(
+  env: NodeJS.ProcessEnv
+): { ok: true; data: Env } | { ok: false; error: z.ZodError } {
+  const result = envSchema.safeParse(env);
+  if (result.success) {
+    return { ok: true, data: result.data };
+  }
+  return { ok: false, error: result.error };
+}
+
+let cachedEnv: Env | null = null;
+
 function loadEnv(): Env {
-  const result = envSchema.safeParse(process.env);
-  if (!result.success) {
+  const result = tryParseEnv(process.env);
+  if (!result.ok) {
     console.error('Invalid environment variables:', result.error.flatten().fieldErrors);
     throw new Error('Invalid environment variables');
   }
   return result.data;
 }
 
-export const env = loadEnv();
+/**
+ * Validated process env. Lazily parsed on first access so diagnostics can run first in tooling.
+ */
+export function getEnv(): Env {
+  if (!cachedEnv) {
+    cachedEnv = loadEnv();
+  }
+  return cachedEnv;
+}
+
+/** @deprecated Prefer getEnv() for clarity; kept for backward compatibility */
+export const env = new Proxy({} as Env, {
+  get(_, prop: keyof Env) {
+    return getEnv()[prop];
+  },
+});
+
+/**
+ * Safe parse for health/diagnostics — never throws; never includes secret values.
+ */
+export function parseEnvDiagnostics(processEnv: NodeJS.ProcessEnv): EnvDiagnostics {
+  const result = tryParseEnv(processEnv);
+  if (result.ok) {
+    return { valid: true, fieldErrors: {}, issues: [] };
+  }
+  const flat = result.error.flatten();
+  const issues = Object.entries(flat.fieldErrors).flatMap(([key, messages]) =>
+    (messages ?? []).map((msg) => `${key}: ${msg}`)
+  );
+  return { valid: false, fieldErrors: flat.fieldErrors, issues };
+}
