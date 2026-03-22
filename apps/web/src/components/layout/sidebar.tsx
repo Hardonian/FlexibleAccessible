@@ -16,6 +16,7 @@ interface OrgInfo {
 interface SidebarProps {
   orgs: OrgInfo[];
   user: { id: string; email: string; name: string | null };
+  canViewSystem?: boolean;
 }
 
 const navItems = [
@@ -29,7 +30,7 @@ const navItems = [
   { href: '/settings', label: 'Settings', icon: 'Settings' },
 ];
 
-export function Sidebar({ orgs, user }: SidebarProps) {
+export function Sidebar({ orgs, user, canViewSystem }: SidebarProps) {
   const pathname = usePathname();
   const [currentOrg, setCurrentOrg] = useState(orgs[0]);
 
@@ -85,6 +86,24 @@ export function Sidebar({ orgs, user }: SidebarProps) {
               </li>
             );
           })}
+          {canViewSystem && (
+            <li>
+              <Link
+                href="/system"
+                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  pathname === '/system' || pathname.startsWith('/system/')
+                    ? 'bg-brand-50 text-brand-700'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+                aria-current={pathname.startsWith('/system') ? 'page' : undefined}
+              >
+                <span className="w-5 text-center" aria-hidden="true">
+                  {iconMap.Server}
+                </span>
+                System
+              </Link>
+            </li>
+          )}
         </ul>
       </nav>
 
@@ -115,4 +134,5 @@ const iconMap: Record<string, string> = {
   CheckSquare: '\u2611',
   FileText: '\u2637',
   Settings: '\u2699',
+  Server: '\u229E',
 };

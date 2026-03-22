@@ -7,24 +7,63 @@ export const metadata = { title: 'Dashboard - AROS' };
 export default async function DashboardPage() {
   const user = await requireSession();
 
-  const membership = await prisma.membership.findFirst({
-    where: { userId: user.id },
-    include: { organization: true },
-  });
+  let membership: {
+    organizationId: string;
+    organization: { id: string; name: string; slug: string };
+  } | null = null;
+  let dataError: string | null = null;
+
+  try {
+    membership = await prisma.membership.findFirst({
+      where: { userId: user.id },
+      include: { organization: true },
+    });
+  } catch (e) {
+    dataError = e instanceof Error ? e.message : 'Database error';
+    console.error('[dashboard] membership load failed', e);
+  }
 
   if (!membership) {
     return (
-      <div className="text-center py-12">
-        <h2 className="text-lg font-semibold text-slate-900">No organization found</h2>
-        <p className="text-slate-500 mt-2">Please contact support.</p>
+      <div className="space-y-6">
+        {dataError && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950" role="status">
+            <p className="font-medium">Data temporarily unavailable</p>
+            <p className="mt-1">
+              The dashboard could not load your organization. Check database connectivity and migrations.{' '}
+              {dataError && <span className="block mt-1 text-amber-900/90">Detail: {dataError}</span>}
+            </p>
+            <p className="mt-2">
+              Operators: see <Link href="/system" className="text-brand-700 underline">System &amp; core services</Link>{' '}
+              (requires admin/owner).
+            </p>
+          </div>
+        )}
+        <div className="text-center py-12">
+          <h2 className="text-lg font-semibold text-slate-900">No organization found</h2>
+          <p className="text-slate-500 mt-2">Please contact support.</p>
+        </div>
       </div>
     );
   }
 
   const orgId = membership.organizationId;
 
-  const [sitesCount, openFindings, clustersCount, pendingReviews, recentCrawls] =
-    await Promise.all([
+  let sitesCount = 0;
+  let openFindings = 0;
+  let clustersCount = 0;
+  let pendingReviews = 0;
+  let recentCrawls: Array<{
+    id: string;
+    status: string;
+    pagesCrawled: number;
+    pagesFound: number;
+    createdAt: Date;
+    site: { name: string; domain: string };
+  }> = [];
+
+  try {
+    [sitesCount, openFindings, clustersCount, pendingReviews, recentCrawls] = await Promise.all([
       prisma.site.count({
         where: { workspace: { organizationId: orgId } },
       }),
@@ -49,6 +88,10 @@ export default async function DashboardPage() {
         include: { site: { select: { name: true, domain: true } } },
       }),
     ]);
+  } catch (e) {
+    dataError = e instanceof Error ? e.message : 'Database error';
+    console.error('[dashboard] stats load failed', e);
+  }
 
   return (
     <div className="space-y-8">
@@ -58,6 +101,16 @@ export default async function DashboardPage() {
           Overview for {membership.organization.name}
         </p>
       </div>
+
+      {dataError && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950" role="status">
+          <p className="font-medium">Partial data</p>
+          <p className="mt-1">
+            Some dashboard metrics could not be loaded. Counts below may be zero until the database is healthy.{' '}
+            <span className="block mt-1 text-amber-900/90">Detail: {dataError}</span>
+          </p>
+        </div>
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

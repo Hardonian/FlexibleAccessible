@@ -14,6 +14,7 @@
     "db:push": "npm run push --workspace=packages/db",
     "db:migrate": "npm run migrate --workspace=packages/db",
     "db:seed": "npm run seed --workspace=packages/db",
+    "bootstrap": "npm run bootstrap --workspace=packages/db",
     "db:studio": "npx prisma studio --schema=packages/db/prisma/schema.prisma",
     "lint": "npm run lint --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
