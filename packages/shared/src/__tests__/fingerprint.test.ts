@@ -62,6 +62,12 @@ describe('createDomFingerprint', () => {
     expect(a).not.toBe(b);
   });
 
+  it('differentiates by class on the same tag', () => {
+    const a = createDomFingerprint('<img class="logo" src="/logo.png">');
+    const b = createDomFingerprint('<img src="/photo.jpg" width="800">');
+    expect(a).not.toBe(b);
+  });
+
   it('returns a 24-character hex string', () => {
     const fp = createDomFingerprint('<div><span></span></div>');
     expect(fp).toMatch(/^[a-f0-9]{24}$/);

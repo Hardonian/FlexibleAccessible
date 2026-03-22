@@ -53,6 +53,11 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/aros_test
 
+      - name: Seed database
+        run: npm run db:seed
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/aros_test
+
       - name: Run Tests
         run: npm run test
         env:
@@ -60,6 +65,11 @@ jobs:
           REDIS_URL: redis://localhost:6379
           NEXTAUTH_SECRET: test-secret-at-least-32-characters-long
           NEXTAUTH_URL: http://localhost:3000
+          STRIPE_WEBHOOK_SECRET: whsec_ci_test_secret_for_stripe_webhook_tests
+
+      - name: Install Playwright (Chromium)
+        run: npx playwright install chromium --with-deps
+        working-directory: apps/web
 
       - name: Build
         run: npm run build
@@ -68,3 +78,12 @@ jobs:
           REDIS_URL: redis://localhost:6379
           NEXTAUTH_SECRET: test-secret-at-least-32-characters-long
           NEXTAUTH_URL: http://localhost:3000
+
+      - name: E2E smoke
+        run: npm run test:e2e --workspace=apps/web
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/aros_test
+          REDIS_URL: redis://localhost:6379
+          NEXTAUTH_SECRET: test-secret-at-least-32-characters-long
+          NEXTAUTH_URL: http://localhost:3000
+          CI: true

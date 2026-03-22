@@ -1,8 +1,7 @@
 import { Job, Queue } from 'bullmq';
-import IORedis from 'ioredis';
 import { prisma } from '@aros/db';
 import { chromium, type Browser } from 'playwright';
-import { createFingerprint } from '@aros/shared';
+import { bullmqConnectionOptions, createFingerprint } from '@aros/shared';
 
 interface ScanJobData {
   scanRunId: string;
@@ -11,11 +10,7 @@ interface ScanJobData {
   pageUrl?: string;
 }
 
-const connection = new IORedis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
-  maxRetriesPerRequest: null,
-});
-
-const clusterQueue = new Queue('cluster', { connection });
+const clusterQueue = new Queue('cluster', { connection: bullmqConnectionOptions() });
 
 export async function handleScanJob(job: Job<ScanJobData>) {
   const { scanRunId, siteId } = job.data;

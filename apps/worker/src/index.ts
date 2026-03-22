@@ -1,11 +1,13 @@
 import { Worker } from 'bullmq';
 import IORedis from 'ioredis';
+import { bullmqConnectionOptions } from '@aros/shared';
 import { handleCrawlJob } from './jobs/crawl';
 import { handleScanJob } from './jobs/scan';
 import { handleClusterJob } from './jobs/cluster';
 import { handleRemediationJob } from './jobs/remediation';
 
-const connection = new IORedis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
+const connection = bullmqConnectionOptions();
+const redisForShutdown = new IORedis(connection.url, {
   maxRetriesPerRequest: null,
 });
 
@@ -60,7 +62,7 @@ async function shutdown() {
     clusterWorker.close(),
     remediationWorker.close(),
   ]);
-  await connection.quit();
+  await redisForShutdown.quit();
   process.exit(0);
 }
 

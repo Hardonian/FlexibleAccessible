@@ -266,8 +266,10 @@ async function discoverLinks(page: Page, baseUrl: string): Promise<string[]> {
 
 async function getAccessibilityTree(page: Page): Promise<unknown> {
   try {
-    const snapshot = await page.accessibility.snapshot();
-    return snapshot;
+    const withA11y = page as Page & {
+      accessibility: { snapshot: (options?: { interestingOnly?: boolean }) => Promise<unknown> };
+    };
+    return await withA11y.accessibility.snapshot();
   } catch {
     return null;
   }

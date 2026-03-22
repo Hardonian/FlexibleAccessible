@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import { requireSession } from '@/lib/session';
 import { prisma } from '@/lib/db';
 import Link from 'next/link';
-import { updateFindingStatusAction } from './actions';
+import { FindingStatusForm } from './finding-status-form';
 
 export default async function FindingDetailPage({
   params,
@@ -73,23 +73,7 @@ export default async function FindingDetailPage({
         </div>
         <div>
           <p className="text-xs text-slate-500 uppercase tracking-wide">Status</p>
-          <form action={updateFindingStatusAction} className="mt-1">
-            <input type="hidden" name="findingId" value={findingId} />
-            <label htmlFor="status-select" className="sr-only">Finding status</label>
-            <select
-              id="status-select"
-              name="status"
-              defaultValue={finding.status}
-              className="input text-sm"
-              onChange="this.form.submit()"
-            >
-              <option value="OPEN">Open</option>
-              <option value="IN_PROGRESS">In Progress</option>
-              <option value="FIXED">Fixed</option>
-              <option value="WONT_FIX">Won&apos;t Fix</option>
-              <option value="FALSE_POSITIVE">False Positive</option>
-            </select>
-          </form>
+          <FindingStatusForm findingId={findingId} defaultValue={finding.status} />
         </div>
       </div>
 
