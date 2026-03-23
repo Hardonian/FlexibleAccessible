@@ -5,6 +5,7 @@ import { getRoutePlatformTruth } from '@/lib/platform-truth-cache';
 import { resolveDashboardOrgMembership, runOrgScopedQuery } from '@/lib/route-data-boundary';
 import { RouteReliabilityNotice } from '@/components/reliability/route-reliability-notice';
 import { hasPermission } from '@aros/config';
+import { buildFindingsOperationalSummary } from '@/lib/findings/reporting-summary';
 
 export const metadata = { title: 'Reports - AROS' };
 
@@ -52,35 +53,14 @@ export default async function ReportsPage() {
   }
 
   const statsResult = await runOrgScopedQuery(orgRes, async (orgId) => {
-    const [totalFindings, openFindings, fixedFindings, criticalFindings, sites] = await Promise.all([
-      prisma.canonicalFinding.count({
-        where: { occurrences: { some: { page: { site: { workspace: { organizationId: orgId } } } } } },
-      }),
-      prisma.canonicalFinding.count({
-        where: {
-          status: 'OPEN',
-          occurrences: { some: { page: { site: { workspace: { organizationId: orgId } } } } },
-        },
-      }),
-      prisma.canonicalFinding.count({
-        where: {
-          status: 'FIXED',
-          occurrences: { some: { page: { site: { workspace: { organizationId: orgId } } } } },
-        },
-      }),
-      prisma.canonicalFinding.count({
-        where: {
-          impact: 'CRITICAL',
-          status: 'OPEN',
-          occurrences: { some: { page: { site: { workspace: { organizationId: orgId } } } } },
-        },
-      }),
+    const [sites, opSummary] = await Promise.all([
       prisma.site.findMany({
         where: { workspace: { organizationId: orgId } },
         select: { id: true, name: true, domain: true },
       }),
+      buildFindingsOperationalSummary(prisma, orgId, platformTruth.flags.jobPipelinesHealthy),
     ]);
-    return { totalFindings, openFindings, fixedFindings, criticalFindings, sites };
+    return { opSummary, sites };
   });
 
   if (!statsResult.ok) {
@@ -94,7 +74,7 @@ export default async function ReportsPage() {
     );
   }
 
-  const { totalFindings, openFindings, fixedFindings, criticalFindings, sites } = statsResult.data;
+  const { opSummary, sites } = statsResult.data;
 
   return (
     <div className="space-y-6">
@@ -109,23 +89,60 @@ export default async function ReportsPage() {
         automated.
       </div>
 
+      {!platformTruth.flags.jobPipelinesHealthy && (
+        <RouteReliabilityNotice variant="warning" title="Background pipelines degraded" showSystemLink={canViewSystem}>
+          <p>
+            Scan queues or workers may be unavailable. Counts below still reflect stored data; automated evidence may be
+            stale until pipelines recover.
+          </p>
+        </RouteReliabilityNotice>
+      )}
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="card">
-          <p className="text-sm text-slate-500">Total Findings</p>
-          <p className="text-2xl font-bold text-slate-900">{totalFindings}</p>
+          <p className="text-sm text-slate-500">Total findings (org)</p>
+          <p className="text-2xl font-bold text-slate-900">{opSummary.totals.findings}</p>
         </div>
         <div className="card">
           <p className="text-sm text-slate-500">Open</p>
-          <p className="text-2xl font-bold text-red-600">{openFindings}</p>
+          <p className="text-2xl font-bold text-red-600">{opSummary.totals.open}</p>
         </div>
         <div className="card">
-          <p className="text-sm text-slate-500">Fixed</p>
-          <p className="text-2xl font-bold text-green-600">{fixedFindings}</p>
+          <p className="text-sm text-slate-500">Resolved</p>
+          <p className="text-2xl font-bold text-green-600">{opSummary.totals.resolved}</p>
         </div>
         <div className="card">
-          <p className="text-sm text-slate-500">Critical Open</p>
-          <p className="text-2xl font-bold text-red-700">{criticalFindings}</p>
+          <p className="text-sm text-slate-500">Critical open</p>
+          <p className="text-2xl font-bold text-red-700">{opSummary.totals.criticalOpen}</p>
         </div>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="card">
+          <p className="text-sm text-slate-500">Acknowledged</p>
+          <p className="text-2xl font-bold text-slate-900">{opSummary.totals.acknowledged}</p>
+        </div>
+        <div className="card">
+          <p className="text-sm text-slate-500">In progress</p>
+          <p className="text-2xl font-bold text-blue-600">{opSummary.totals.inProgress}</p>
+        </div>
+        <div className="card">
+          <p className="text-sm text-slate-500">Mitigated</p>
+          <p className="text-2xl font-bold text-emerald-700">{opSummary.totals.mitigated}</p>
+        </div>
+        <div className="card">
+          <p className="text-sm text-slate-500">Stale automated evidence</p>
+          <p className="text-2xl font-bold text-amber-700">{opSummary.staleAutomationCount}</p>
+        </div>
+      </div>
+
+      <div className="card text-sm text-slate-600 space-y-2">
+        <p className="font-medium text-slate-900">Evidence source mix</p>
+        <p>
+          Automated (axe): {opSummary.evidenceSourceMix.automatedAxe} · Manual review:{' '}
+          {opSummary.evidenceSourceMix.manualReview} · Imported: {opSummary.evidenceSourceMix.imported}
+        </p>
+        <p className="text-slate-500">{opSummary.automationFreshnessNote}</p>
       </div>
 
       <div className="card">
