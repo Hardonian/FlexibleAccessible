@@ -1,47 +1,99 @@
 import { requireSession } from '@/lib/session';
 import { prisma } from '@/lib/db';
 import Link from 'next/link';
+import { getRoutePlatformTruth } from '@/lib/platform-truth-cache';
+import { resolveDashboardOrgMembership, runOrgScopedQuery } from '@/lib/route-data-boundary';
+import { RouteReliabilityNotice } from '@/components/reliability/route-reliability-notice';
+import { hasPermission } from '@aros/config';
 
 export const metadata = { title: 'Remediation - AROS' };
 
 export default async function RemediationPage() {
   const user = await requireSession();
+  const platformTruth = await getRoutePlatformTruth();
+  const canViewSystem = await prisma.membership
+    .findMany({ where: { userId: user.id }, select: { role: true } })
+    .then((rows) => rows.some((m) => hasPermission(m.role, 'org:system:view')))
+    .catch(() => false);
 
-  const membership = await prisma.membership.findFirst({
-    where: { userId: user.id },
-  });
-  if (!membership) return null;
+  const orgRes = await resolveDashboardOrgMembership(user.id, platformTruth);
 
-  const suggestions = await prisma.remediationSuggestion.findMany({
-    where: {
-      OR: [
-        {
-          finding: {
-            occurrences: {
-              some: { page: { site: { workspace: { organizationId: membership.organizationId } } } },
+  if (orgRes.kind === 'platform_blocked') {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-slate-900">Remediation Suggestions</h1>
+        <RouteReliabilityNotice variant="error" title="Remediation data requires a working database" showSystemLink={canViewSystem}>
+          <p>Suggestions cannot be loaded until core data services are healthy.</p>
+        </RouteReliabilityNotice>
+      </div>
+    );
+  }
+
+  if (orgRes.kind === 'error') {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-slate-900">Remediation Suggestions</h1>
+        <RouteReliabilityNotice variant="error" title="Could not verify organization" showSystemLink={canViewSystem}>
+          <p>{orgRes.message}</p>
+        </RouteReliabilityNotice>
+      </div>
+    );
+  }
+
+  if (orgRes.kind === 'none') {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-slate-900">Remediation Suggestions</h1>
+        <RouteReliabilityNotice variant="info" title="No organization membership">
+          <p>You need an organization to view remediation suggestions.</p>
+        </RouteReliabilityNotice>
+      </div>
+    );
+  }
+
+  const suggestionsResult = await runOrgScopedQuery(orgRes, (orgId) =>
+    prisma.remediationSuggestion.findMany({
+      where: {
+        OR: [
+          {
+            finding: {
+              occurrences: {
+                some: { page: { site: { workspace: { organizationId: orgId } } } },
+              },
             },
           },
-        },
-        {
-          cluster: { site: { workspace: { organizationId: membership.organizationId } } },
-        },
-      ],
-    },
-    orderBy: [{ status: 'asc' }, { confidence: 'desc' }],
-    include: {
-      finding: { select: { description: true, ruleId: true, impact: true } },
-      cluster: { select: { name: true } },
-    },
-    take: 50,
-  });
+          {
+            cluster: { site: { workspace: { organizationId: orgId } } },
+          },
+        ],
+      },
+      orderBy: [{ status: 'asc' }, { confidence: 'desc' }],
+      include: {
+        finding: { select: { description: true, ruleId: true, impact: true } },
+        cluster: { select: { name: true } },
+      },
+      take: 50,
+    })
+  );
+
+  if (!suggestionsResult.ok) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-slate-900">Remediation Suggestions</h1>
+        <RouteReliabilityNotice variant="error" title="Could not load suggestions" showSystemLink={canViewSystem}>
+          <p>{suggestionsResult.message}</p>
+        </RouteReliabilityNotice>
+      </div>
+    );
+  }
+
+  const suggestions = suggestionsResult.data;
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Remediation Suggestions</h1>
-        <p className="text-slate-500 mt-1">
-          AI-generated fix suggestions. Review before applying.
-        </p>
+        <p className="text-slate-500 mt-1">AI-generated fix suggestions. Review before applying.</p>
       </div>
 
       <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
@@ -64,13 +116,9 @@ export default async function RemediationPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="badge bg-blue-100 text-blue-800">
-                      {s.type.toLowerCase().replace('_', ' ')}
-                    </span>
+                    <span className="badge bg-blue-100 text-blue-800">{s.type.toLowerCase().replace('_', ' ')}</span>
                     <StatusBadge status={s.status} />
-                    {s.cluster && (
-                      <span className="text-xs text-purple-600">{s.cluster.name}</span>
-                    )}
+                    {s.cluster && <span className="text-xs text-purple-600">{s.cluster.name}</span>}
                   </div>
                   <p className="text-sm font-medium text-slate-900">
                     {s.finding?.description ?? s.rationale.slice(0, 100)}
@@ -78,9 +126,7 @@ export default async function RemediationPage() {
                   <p className="text-xs text-slate-500 mt-1 line-clamp-2">{s.rationale}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-medium text-slate-900">
-                    {Math.round(s.confidence * 100)}%
-                  </p>
+                  <p className="text-sm font-medium text-slate-900">{Math.round(s.confidence * 100)}%</p>
                   <p className="text-xs text-slate-500">confidence</p>
                 </div>
               </div>
@@ -103,8 +149,6 @@ function StatusBadge({ status }: { status: string }) {
     REJECTED: 'bg-red-100 text-red-800',
   };
   return (
-    <span className={`badge ${styles[status] ?? ''}`}>
-      {status.toLowerCase().replace('_', ' ')}
-    </span>
+    <span className={`badge ${styles[status] ?? ''}`}>{status.toLowerCase().replace('_', ' ')}</span>
   );
 }

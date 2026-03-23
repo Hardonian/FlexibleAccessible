@@ -1,7 +1,7 @@
-import { collectPlatformHealth } from '@aros/core-services';
+import { collectPlatformHealth, buildRoutePlatformTruth } from '@aros/core-services';
 import { parseEnvDiagnostics } from '@aros/config';
 import { prisma } from './db';
-import type { PlatformHealthReport } from '@aros/core-services';
+import type { PlatformHealthReport, RoutePlatformTruth } from '@aros/core-services';
 
 export interface PlatformHealthApiPayload {
   report: PlatformHealthReport;
@@ -9,6 +9,8 @@ export interface PlatformHealthApiPayload {
     valid: boolean;
     invalidKeys: string[];
   };
+  /** Same projection as dashboard shell — safe for JSON (no secrets). */
+  routePlatformTruth: RoutePlatformTruth;
 }
 
 export async function getPlatformHealthPayload(): Promise<PlatformHealthApiPayload> {
@@ -20,5 +22,6 @@ export async function getPlatformHealthPayload(): Promise<PlatformHealthApiPaylo
   return {
     report,
     envDiagnostics: { valid: diag.valid, invalidKeys },
+    routePlatformTruth: buildRoutePlatformTruth(report),
   };
 }

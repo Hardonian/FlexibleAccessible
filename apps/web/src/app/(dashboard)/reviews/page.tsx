@@ -1,24 +1,66 @@
 import { requireSession } from '@/lib/session';
 import { prisma } from '@/lib/db';
+import type { Prisma } from '@aros/db';
 import Link from 'next/link';
 import { updateReviewAction } from './actions';
+import { getRoutePlatformTruth } from '@/lib/platform-truth-cache';
+import { RouteReliabilityNotice } from '@/components/reliability/route-reliability-notice';
+import { hasPermission } from '@aros/config';
 
 export const metadata = { title: 'Reviews - AROS' };
 
 export default async function ReviewsPage() {
-  await requireSession();
+  const user = await requireSession();
+  const platformTruth = await getRoutePlatformTruth();
+  const canViewSystem = await prisma.membership
+    .findMany({ where: { userId: user.id }, select: { role: true } })
+    .then((rows) => rows.some((m) => hasPermission(m.role, 'org:system:view')))
+    .catch(() => false);
 
-  const tasks = await prisma.reviewTask.findMany({
-    orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
-    include: {
-      assignee: { select: { name: true, email: true } },
-      suggestion: {
-        select: { type: true, originalCode: true, suggestedCode: true },
-      },
-      _count: { select: { evidence: true } },
+  if (!platformTruth.allowOrgScopedDbReads) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-slate-900">Review Queue</h1>
+        <RouteReliabilityNotice variant="error" title="Reviews require a working database" showSystemLink={canViewSystem}>
+          <p>The review queue cannot be loaded until core data services are healthy.</p>
+        </RouteReliabilityNotice>
+      </div>
+    );
+  }
+
+  const reviewListInclude = {
+    assignee: { select: { name: true, email: true } },
+    suggestion: {
+      select: { type: true, originalCode: true, suggestedCode: true },
     },
-    take: 50,
-  });
+    _count: { select: { evidence: true } },
+  } satisfies Prisma.ReviewTaskInclude;
+
+  type ReviewListRow = Prisma.ReviewTaskGetPayload<{ include: typeof reviewListInclude }>;
+
+  let tasks: ReviewListRow[] = [];
+  let loadError: string | null = null;
+  try {
+    tasks = await prisma.reviewTask.findMany({
+      orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
+      include: reviewListInclude,
+      take: 50,
+    });
+  } catch (e) {
+    loadError = e instanceof Error ? e.message : 'Database error';
+    console.error('[reviews] query failed', e);
+  }
+
+  if (loadError) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-slate-900">Review Queue</h1>
+        <RouteReliabilityNotice variant="error" title="Review queue unavailable" showSystemLink={canViewSystem}>
+          <p>Could not load review tasks ({loadError}).</p>
+        </RouteReliabilityNotice>
+      </div>
+    );
+  }
 
   const pendingCount = tasks.filter((t) => t.status === 'PENDING').length;
   const inProgressCount = tasks.filter((t) => t.status === 'IN_PROGRESS').length;
@@ -33,8 +75,8 @@ export default async function ReviewsPage() {
       </div>
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
-        Some accessibility criteria cannot be verified by automated scanning alone.
-        These tasks require human review for accurate conformance assessment.
+        Some accessibility criteria cannot be verified by automated scanning alone. These tasks require human review for
+        accurate conformance assessment.
       </div>
 
       {tasks.length === 0 ? (
@@ -54,9 +96,7 @@ export default async function ReviewsPage() {
                     </span>
                   </div>
                   <h3 className="text-sm font-semibold text-slate-900">{task.title}</h3>
-                  {task.description && (
-                    <p className="text-sm text-slate-500 mt-1">{task.description}</p>
-                  )}
+                  {task.description && <p className="text-sm text-slate-500 mt-1">{task.description}</p>}
                   <div className="flex items-center gap-4 mt-2 text-xs text-slate-400">
                     {task.assignee && (
                       <span>Assigned to: {task.assignee.name ?? task.assignee.email}</span>
@@ -93,11 +133,8 @@ export default async function ReviewsPage() {
                       </form>
                     </>
                   )}
-                  {task.suggestion && (
-                    <Link
-                      href={`/remediation/${task.suggestionId}`}
-                      className="btn-ghost text-xs"
-                    >
+                  {task.suggestion && task.suggestionId && (
+                    <Link href={`/remediation/${task.suggestionId}`} className="btn-ghost text-xs">
                       View Suggestion
                     </Link>
                   )}
@@ -120,8 +157,6 @@ function ReviewStatusBadge({ status }: { status: string }) {
     NEEDS_CHANGES: 'bg-orange-100 text-orange-800',
   };
   return (
-    <span className={`badge ${styles[status] ?? ''}`}>
-      {status.toLowerCase().replace('_', ' ')}
-    </span>
+    <span className={`badge ${styles[status] ?? ''}`}>{status.toLowerCase().replace('_', ' ')}</span>
   );
 }

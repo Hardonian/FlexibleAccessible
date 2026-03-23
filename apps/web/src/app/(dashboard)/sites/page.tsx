@@ -1,32 +1,84 @@
 import { requireSession } from '@/lib/session';
 import { prisma } from '@/lib/db';
 import Link from 'next/link';
+import { getRoutePlatformTruth } from '@/lib/platform-truth-cache';
+import { resolveDashboardOrgMembership, runOrgScopedQuery } from '@/lib/route-data-boundary';
+import { RouteReliabilityNotice } from '@/components/reliability/route-reliability-notice';
+import { hasPermission } from '@aros/config';
 
 export const metadata = { title: 'Sites - AROS' };
 
 export default async function SitesPage() {
   const user = await requireSession();
+  const platformTruth = await getRoutePlatformTruth();
+  const canViewSystem = await prisma.membership
+    .findMany({ where: { userId: user.id }, select: { role: true } })
+    .then((rows) => rows.some((m) => hasPermission(m.role, 'org:system:view')))
+    .catch(() => false);
 
-  const membership = await prisma.membership.findFirst({
-    where: { userId: user.id },
-    include: { organization: true },
-  });
+  const orgRes = await resolveDashboardOrgMembership(user.id, platformTruth);
 
-  if (!membership) return null;
+  if (orgRes.kind === 'platform_blocked') {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-slate-900">Sites</h1>
+        <RouteReliabilityNotice variant="error" title="Sites require a working database" showSystemLink={canViewSystem}>
+          <p>Site data cannot be loaded until core data services are healthy.</p>
+        </RouteReliabilityNotice>
+      </div>
+    );
+  }
 
-  const sites = await prisma.site.findMany({
-    where: { workspace: { organizationId: membership.organizationId } },
-    include: {
-      workspace: { select: { name: true } },
-      _count: {
-        select: {
-          crawlRuns: true,
-          pages: true,
+  if (orgRes.kind === 'error') {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-slate-900">Sites</h1>
+        <RouteReliabilityNotice variant="error" title="Could not verify organization" showSystemLink={canViewSystem}>
+          <p>{orgRes.message}</p>
+        </RouteReliabilityNotice>
+      </div>
+    );
+  }
+
+  if (orgRes.kind === 'none') {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-slate-900">Sites</h1>
+        <RouteReliabilityNotice variant="info" title="No organization membership">
+          <p>You need an organization to manage sites.</p>
+        </RouteReliabilityNotice>
+      </div>
+    );
+  }
+
+  const sitesResult = await runOrgScopedQuery(orgRes, (orgId) =>
+    prisma.site.findMany({
+      where: { workspace: { organizationId: orgId } },
+      include: {
+        workspace: { select: { name: true } },
+        _count: {
+          select: {
+            crawlRuns: true,
+            pages: true,
+          },
         },
       },
-    },
-    orderBy: { createdAt: 'desc' },
-  });
+      orderBy: { createdAt: 'desc' },
+    })
+  );
+
+  if (!sitesResult.ok) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-slate-900">Sites</h1>
+        <RouteReliabilityNotice variant="error" title="Could not load sites" showSystemLink={canViewSystem}>
+          <p>{sitesResult.message}</p>
+        </RouteReliabilityNotice>
+      </div>
+    );
+  }
+
+  const sites = sitesResult.data;
 
   return (
     <div className="space-y-6">
@@ -43,9 +95,7 @@ export default async function SitesPage() {
       {sites.length === 0 ? (
         <div className="card text-center py-12">
           <h3 className="text-lg font-medium text-slate-900">No sites yet</h3>
-          <p className="text-slate-500 mt-2">
-            Add your first website to start scanning for accessibility issues.
-          </p>
+          <p className="text-slate-500 mt-2">Add your first website to start scanning for accessibility issues.</p>
           <Link href="/sites/new" className="btn-primary mt-4 inline-flex">
             Add Your First Site
           </Link>

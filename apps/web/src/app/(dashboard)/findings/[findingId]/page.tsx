@@ -1,8 +1,13 @@
 import { notFound } from 'next/navigation';
 import { requireSession } from '@/lib/session';
 import { prisma } from '@/lib/db';
+import type { Prisma } from '@aros/db';
 import Link from 'next/link';
 import { FindingStatusForm } from './finding-status-form';
+import { getRoutePlatformTruth } from '@/lib/platform-truth-cache';
+import { resolveDashboardOrgMembership } from '@/lib/route-data-boundary';
+import { RouteReliabilityNotice } from '@/components/reliability/route-reliability-notice';
+import { hasPermission } from '@aros/config';
 
 export default async function FindingDetailPage({
   params,
@@ -10,23 +15,84 @@ export default async function FindingDetailPage({
   params: Promise<{ findingId: string }>;
 }) {
   const { findingId } = await params;
-  await requireSession();
+  const user = await requireSession();
+  const platformTruth = await getRoutePlatformTruth();
+  const canViewSystem = await prisma.membership
+    .findMany({ where: { userId: user.id }, select: { role: true } })
+    .then((rows) => rows.some((m) => hasPermission(m.role, 'org:system:view')))
+    .catch(() => false);
 
-  const finding = await prisma.canonicalFinding.findUnique({
-    where: { id: findingId },
+  const orgRes = await resolveDashboardOrgMembership(user.id, platformTruth);
+
+  if (orgRes.kind === 'platform_blocked') {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-slate-900">Finding</h1>
+        <RouteReliabilityNotice variant="error" title="Finding unavailable" showSystemLink={canViewSystem}>
+          <p>This finding cannot be loaded while core data services are down.</p>
+        </RouteReliabilityNotice>
+      </div>
+    );
+  }
+
+  if (orgRes.kind === 'error' || orgRes.kind === 'none') {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-slate-900">Finding</h1>
+        <RouteReliabilityNotice variant="info" title="Access not available" showSystemLink={canViewSystem}>
+          <p>
+            {orgRes.kind === 'none'
+              ? 'You need an organization membership to view findings.'
+              : `Could not verify organization (${orgRes.message}).`}
+          </p>
+        </RouteReliabilityNotice>
+      </div>
+    );
+  }
+
+  type FindingDetail = Prisma.CanonicalFindingGetPayload<{
     include: {
-      occurrences: {
-        include: { page: { select: { id: true, url: true, title: true } } },
-        take: 50,
-        orderBy: { lastSeenAt: 'desc' },
+      occurrences: { include: { page: { select: { id: true; url: true; title: true } } } };
+      cluster: true;
+      suggestions: true;
+    };
+  }>;
+
+  let finding: FindingDetail | null = null;
+
+  try {
+    finding = await prisma.canonicalFinding.findFirst({
+      where: {
+        id: findingId,
+        occurrences: {
+          some: { page: { site: { workspace: { organizationId: orgRes.organizationId } } } },
+        },
       },
-      cluster: true,
-      suggestions: {
-        orderBy: { confidence: 'desc' },
-        take: 5,
+      include: {
+        occurrences: {
+          include: { page: { select: { id: true, url: true, title: true } } },
+          take: 50,
+          orderBy: { lastSeenAt: 'desc' },
+        },
+        cluster: true,
+        suggestions: {
+          orderBy: { confidence: 'desc' },
+          take: 5,
+        },
       },
-    },
-  });
+    });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : 'Database error';
+    console.error('[finding detail] query failed', e);
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-slate-900">Finding</h1>
+        <RouteReliabilityNotice variant="error" title="Could not load finding" showSystemLink={canViewSystem}>
+          <p>{message}</p>
+        </RouteReliabilityNotice>
+      </div>
+    );
+  }
 
   if (!finding) notFound();
 
@@ -34,7 +100,9 @@ export default async function FindingDetailPage({
     <div className="space-y-6">
       <div>
         <div className="flex items-center gap-2 text-sm text-slate-500 mb-1">
-          <Link href="/findings" className="hover:text-brand-600">Findings</Link>
+          <Link href="/findings" className="hover:text-brand-600">
+            Findings
+          </Link>
           <span>/</span>
         </div>
         <div className="flex items-center gap-3">
@@ -43,10 +111,10 @@ export default async function FindingDetailPage({
               finding.impact === 'CRITICAL'
                 ? 'badge-critical'
                 : finding.impact === 'SERIOUS'
-                ? 'badge-serious'
-                : finding.impact === 'MODERATE'
-                ? 'badge-moderate'
-                : 'badge-minor'
+                  ? 'badge-serious'
+                  : finding.impact === 'MODERATE'
+                    ? 'badge-moderate'
+                    : 'badge-minor'
             }`}
           >
             {finding.impact.toLowerCase()}
@@ -55,7 +123,6 @@ export default async function FindingDetailPage({
         </div>
       </div>
 
-      {/* Metadata */}
       <div className="card grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div>
           <p className="text-xs text-slate-500 uppercase tracking-wide">Rule</p>
@@ -63,9 +130,7 @@ export default async function FindingDetailPage({
         </div>
         <div>
           <p className="text-xs text-slate-500 uppercase tracking-wide">WCAG</p>
-          <p className="text-sm font-medium text-slate-900 mt-1">
-            {finding.wcagTags.join(', ') || 'N/A'}
-          </p>
+          <p className="text-sm font-medium text-slate-900 mt-1">{finding.wcagTags.join(', ') || 'N/A'}</p>
         </div>
         <div>
           <p className="text-xs text-slate-500 uppercase tracking-wide">Occurrences</p>
@@ -87,21 +152,16 @@ export default async function FindingDetailPage({
         </div>
       )}
 
-      {/* Cluster Info */}
       {finding.cluster && (
         <div className="card">
           <h2 className="text-lg font-semibold text-slate-900 mb-2">Component Cluster</h2>
-          <Link
-            href={`/clusters/${finding.cluster.id}`}
-            className="text-brand-600 hover:text-brand-700 font-medium"
-          >
+          <Link href={`/clusters/${finding.cluster.id}`} className="text-brand-600 hover:text-brand-700 font-medium">
             {finding.cluster.name}
           </Link>
           <p className="text-sm text-slate-500 mt-1">{finding.cluster.description}</p>
         </div>
       )}
 
-      {/* Remediation Suggestions */}
       {finding.suggestions.length > 0 && (
         <div className="card">
           <h2 className="text-lg font-semibold text-slate-900 mb-4">Remediation Suggestions</h2>
@@ -110,9 +170,7 @@ export default async function FindingDetailPage({
               <div key={suggestion.id} className="border border-slate-200 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-3">
                   <span className="badge bg-blue-100 text-blue-800">{suggestion.type.toLowerCase().replace('_', ' ')}</span>
-                  <span className="text-sm text-slate-500">
-                    Confidence: {Math.round(suggestion.confidence * 100)}%
-                  </span>
+                  <span className="text-sm text-slate-500">Confidence: {Math.round(suggestion.confidence * 100)}%</span>
                 </div>
                 <p className="text-sm text-slate-600 mb-3">{suggestion.rationale}</p>
                 <div className="grid grid-cols-2 gap-3">
@@ -130,10 +188,7 @@ export default async function FindingDetailPage({
                   </div>
                 </div>
                 <div className="mt-3 flex gap-2">
-                  <Link
-                    href={`/remediation/${suggestion.id}`}
-                    className="btn-secondary text-xs"
-                  >
+                  <Link href={`/remediation/${suggestion.id}`} className="btn-secondary text-xs">
                     Review & Export
                   </Link>
                 </div>
@@ -143,11 +198,8 @@ export default async function FindingDetailPage({
         </div>
       )}
 
-      {/* Occurrences */}
       <div className="card">
-        <h2 className="text-lg font-semibold text-slate-900 mb-4">
-          Affected Pages ({finding.occurrences.length})
-        </h2>
+        <h2 className="text-lg font-semibold text-slate-900 mb-4">Affected Pages ({finding.occurrences.length})</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -169,9 +221,7 @@ export default async function FindingDetailPage({
                       {occ.selector.length > 60 ? occ.selector.slice(0, 60) + '...' : occ.selector}
                     </code>
                   </td>
-                  <td className="py-2 text-right text-slate-500">
-                    {occ.lastSeenAt.toLocaleDateString()}
-                  </td>
+                  <td className="py-2 text-right text-slate-500">{occ.lastSeenAt.toLocaleDateString()}</td>
                 </tr>
               ))}
             </tbody>
