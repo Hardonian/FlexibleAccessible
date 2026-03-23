@@ -1,8 +1,8 @@
 import { Queue } from 'bullmq';
 import type { PrismaClient, ScanStatus } from '@aros/db';
-import { bullmqConnectionOptions } from '@aros/shared';
+import { getSharedScanQueue, SCAN_QUEUE_NAME } from '@aros/shared';
 
-export const SCAN_QUEUE_NAME = 'scan' as const;
+export { SCAN_QUEUE_NAME };
 
 export type ScanEnqueueTrigger = 'crawl.completed' | 'operator' | 'api';
 
@@ -54,7 +54,7 @@ export type EnqueueSiteScanResult =
 const ACTIVE_STATUSES: ScanStatus[] = ['PENDING', 'RUNNING'];
 
 function scanQueue() {
-  return new Queue(SCAN_QUEUE_NAME, { connection: bullmqConnectionOptions() });
+  return getSharedScanQueue();
 }
 
 export interface EnqueueSiteScanDeps {
