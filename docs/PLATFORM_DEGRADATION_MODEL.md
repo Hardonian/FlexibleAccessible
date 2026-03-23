@@ -26,7 +26,7 @@
 
 ## API
 
-`GET /api/org/:organizationId/platform/health` returns `getPlatformHealthPayload()` including `routePlatformTruth` alongside the full report (authorized operators only).
+`GET /api/org/:organizationId/platform/health` returns `getPlatformHealthPayload()` including `routePlatformTruth`, **`diagnostics`** (`derivePlatformDiagnostics`), **`operatorActions`**, and **`recentPlatformActions`** alongside the full report (requires `org:system:view`). Mutation routes require `org:system:manage` — see `docs/PLATFORM_ACTIONS_AND_AUDIT.md`.
 
 ## Local degraded testing
 
