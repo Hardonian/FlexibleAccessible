@@ -7,6 +7,11 @@ import { redirect } from 'next/navigation';
 import { getPlatformHealthPayload } from '@/lib/platform-health';
 import { getRoutePlatformTruth } from '@/lib/platform-truth-cache';
 import { RouteReliabilityNotice } from '@/components/reliability/route-reliability-notice';
+import {
+  IssueAcknowledgeButton,
+  OperatorControlPlaneClient,
+} from '@/components/system/operator-control-plane-client';
+import { parseOperatorPlatformFlags, type PlatformDiagnosticIssue } from '@aros/core-services';
 
 export const metadata = { title: 'System & services - AROS' };
 
@@ -64,18 +69,19 @@ export default async function SystemPage() {
     redirect('/dashboard');
   }
 
+  const orgId = membership.organizationId;
+  const canRunOperatorActions = hasPermission(membership.role as MemberRole, 'org:system:manage');
+
   const platformTruth = await getRoutePlatformTruth().catch(() => null);
 
   let payload: Awaited<ReturnType<typeof getPlatformHealthPayload>> | null = null;
   let loadError: string | null = null;
   try {
-    payload = await getPlatformHealthPayload();
+    payload = await getPlatformHealthPayload(orgId);
   } catch (e) {
     loadError = e instanceof Error ? e.message : 'Failed to load platform health';
     console.error('[system] platform health failed', e);
   }
-
-  const orgId = membership.organizationId;
 
   return (
     <div className="space-y-8">
@@ -84,6 +90,13 @@ export default async function SystemPage() {
         <p className="text-slate-500 mt-1">
           Live deployment status for {membership.organization.name}. Values are derived from connectivity checks, queue
           metrics, and worker heartbeats — not static placeholders.
+        </p>
+        <p className="mt-3 text-sm text-slate-600 max-w-3xl">
+          <span className="font-medium text-slate-800">Deployment-managed</span> settings (secrets, DATABASE_URL,
+          REDIS_URL, integration keys) are never editable here — only validated and summarized.{' '}
+          <span className="font-medium text-slate-800">In-product</span> actions (recheck, acknowledgements, optional banner
+          suppression) require the <span className="font-mono text-xs">org:system:manage</span> permission (owners and
+          admins) and persist to platform audit logs for this organization.
         </p>
       </div>
 
@@ -110,6 +123,91 @@ export default async function SystemPage() {
 
       {payload && (
         <>
+          <section className="card space-y-4" aria-labelledby="setup-heading">
+            <h2 id="setup-heading" className="text-lg font-semibold text-slate-900">
+              First-run &amp; setup checklist
+            </h2>
+            <p className="text-sm text-slate-600">
+              Blocking steps must pass before the deployment is ready for normal operator use. Optional steps improve
+              integrations but do not gate core scanning.
+            </p>
+            <ol className="mt-2 space-y-2">
+              {payload.diagnostics.setupChecklist.map((step) => (
+                <li
+                  key={step.id}
+                  className={`flex flex-wrap items-start gap-2 rounded-md border p-3 text-sm ${
+                    step.done ? 'border-emerald-200 bg-emerald-50/50' : 'border-amber-200 bg-amber-50/40'
+                  }`}
+                >
+                  <span className="font-mono text-xs text-slate-500 shrink-0" aria-hidden>
+                    {step.done ? '✓' : '○'}
+                  </span>
+                  <div>
+                    <p className="font-medium text-slate-900">{step.title}</p>
+                    <p className="text-slate-600 mt-0.5">{step.detail}</p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {step.blocking ? 'Blocking' : 'Non-blocking'} ·{' '}
+                      {step.fixInProduct ? 'Fix in product where applicable' : 'Fix in deployment / infrastructure'}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </section>
+
+          <section className="card space-y-4" aria-labelledby="operator-actions-heading">
+            <h2 id="operator-actions-heading" className="text-lg font-semibold text-slate-900">
+              Operator actions
+            </h2>
+            <ul className="text-sm text-slate-600 space-y-1 list-disc list-inside">
+              {payload.operatorActions.map((a) => (
+                <li key={a.id}>
+                  <span className="font-medium text-slate-800">{a.label}</span> — {a.description}
+                </li>
+              ))}
+            </ul>
+            {canRunOperatorActions ? (
+              <OperatorControlPlaneClient
+                organizationId={orgId}
+                optionalIssueIds={optionalDiagnosticIds(payload)}
+                initialSuppressedIds={
+                  parseOperatorPlatformFlags(payload.report.operatorPlatformFlags).prefs.suppressedOptionalDiagnosticIds
+                }
+              />
+            ) : (
+              <p className="text-sm text-slate-600" role="status">
+                Your role can view diagnostics but cannot run in-product platform actions. Ask an organization owner or
+                admin.
+              </p>
+            )}
+          </section>
+
+          <DiagnosticBucketsSection orgId={orgId} payload={payload} canAcknowledge={canRunOperatorActions} />
+
+          <section className="card space-y-3" aria-labelledby="audit-heading">
+            <h2 id="audit-heading" className="text-lg font-semibold text-slate-900">
+              Recent platform actions (audit)
+            </h2>
+            <p className="text-sm text-slate-600">
+              Organization-scoped audit entries for rechecks, acknowledgements, and operator preferences. No secrets are
+              stored in metadata.
+            </p>
+            {payload.recentPlatformActions.length === 0 ? (
+              <p className="text-sm text-slate-500">No platform actions recorded yet for this organization.</p>
+            ) : (
+              <ul className="divide-y divide-slate-100 text-sm">
+                {payload.recentPlatformActions.map((row: (typeof payload.recentPlatformActions)[number]) => (
+                  <li key={row.id} className="py-2 flex flex-wrap gap-2 justify-between">
+                    <span className="font-mono text-xs text-slate-700">{row.action}</span>
+                    <time className="text-slate-500 text-xs" dateTime={row.createdAt.toISOString()}>
+                      {row.createdAt.toISOString()}
+                    </time>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
           <section className="card space-y-4" aria-labelledby="readiness-heading">
             <h2 id="readiness-heading" className="text-lg font-semibold text-slate-900">
               Platform readiness
@@ -187,7 +285,9 @@ export default async function SystemPage() {
               </Link>
             </div>
             <div className="space-y-3" data-testid="core-services-list">
-              {payload.report.services.map((svc) => (
+              {payload.report.services.map((svc) => {
+                const diag = diagnosticForService(payload.diagnostics.issues, svc.id);
+                return (
                 <article
                   key={svc.id}
                   className="card border border-slate-200"
@@ -210,6 +310,72 @@ export default async function SystemPage() {
                       {svc.healthState}
                     </span>
                   </div>
+                  {diag && (
+                    <div
+                      className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm space-y-2"
+                      data-testid={`service-diagnostic-${svc.id}`}
+                    >
+                      <p className="font-medium text-slate-900">Operator diagnostic</p>
+                      <dl className="grid gap-1 text-xs sm:grid-cols-2 text-slate-700">
+                        <div>
+                          <dt className="text-slate-500">Severity</dt>
+                          <dd className="font-mono">{diag.severity}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-slate-500">Blocks readiness</dt>
+                          <dd>{diag.blocksReadiness ? 'Yes' : 'No'}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-slate-500">End-user impact</dt>
+                          <dd>{diag.appUsable ? 'App may still be usable' : 'App likely unusable for core flows'}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-slate-500">Fix location</dt>
+                          <dd>
+                            {diag.fixInProduct ? 'In-product / org settings' : 'Deployment or infrastructure'}
+                            {diag.requiresDeployOrInfra ? ' (env change required)' : ''}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-slate-500">Recheck safe</dt>
+                          <dd>{diag.retrySafe ? 'Yes' : 'No — may need infra change first'}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-slate-500">Who acts</dt>
+                          <dd className="font-mono text-[11px]">{diag.whoShouldAct}</dd>
+                        </div>
+                      </dl>
+                      <p className="text-slate-800">
+                        <span className="font-medium">Summary: </span>
+                        {diag.summary}
+                      </p>
+                      <p className="text-slate-700">
+                        <span className="font-medium">Impact: </span>
+                        {diag.impactUser}
+                      </p>
+                      <p className="text-slate-700">
+                        <span className="font-medium">Operator: </span>
+                        {diag.impactOperator}
+                      </p>
+                      <p className="text-slate-800">
+                        <span className="font-medium">Next step: </span>
+                        {diag.recommendedNextStep}
+                      </p>
+                      {diag.evidence.length > 0 && (
+                        <details>
+                          <summary className="cursor-pointer text-xs font-medium text-slate-600">Evidence</summary>
+                          <ul className="mt-1 list-inside list-disc text-xs text-slate-600">
+                            {diag.evidence.map((ev) => (
+                              <li key={ev}>{ev}</li>
+                            ))}
+                          </ul>
+                        </details>
+                      )}
+                      {canRunOperatorActions && (
+                        <IssueAcknowledgeButton organizationId={orgId} issue={diag} />
+                      )}
+                    </div>
+                  )}
                   <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
                     <div>
                       <dt className="text-slate-500">Enabled</dt>
@@ -256,11 +422,119 @@ export default async function SystemPage() {
                     </details>
                   )}
                 </article>
-              ))}
+              );
+              })}
             </div>
           </section>
         </>
       )}
+    </div>
+  );
+}
+
+function optionalDiagnosticIds(payload: NonNullable<Awaited<ReturnType<typeof getPlatformHealthPayload>>>) {
+  const optionalSvcIds = new Set(
+    payload.report.services.filter((s) => s.criticality === 'optional').map((s) => s.id)
+  );
+  return payload.diagnostics.issues
+    .filter((i) => i.target.kind === 'service' && optionalSvcIds.has(i.target.id))
+    .map((i) => i.id);
+}
+
+function diagnosticForService(issues: PlatformDiagnosticIssue[], serviceId: string) {
+  return issues.find((i) => i.target.kind === 'service' && i.target.id === serviceId) ?? null;
+}
+
+function DiagnosticBucketsSection({
+  orgId,
+  payload,
+  canAcknowledge,
+}: {
+  orgId: string;
+  payload: NonNullable<Awaited<ReturnType<typeof getPlatformHealthPayload>>>;
+  canAcknowledge: boolean;
+}) {
+  const s = payload.diagnostics.summary;
+  return (
+    <section className="card space-y-4" aria-labelledby="diagnostics-heading">
+      <h2 id="diagnostics-heading" className="text-lg font-semibold text-slate-900">
+        Control plane summary
+      </h2>
+      <p className="text-sm text-slate-600">
+        Derived from the same live report as core services. Acknowledgements and optional suppressions only change how
+        issues are highlighted — not underlying connectivity.
+      </p>
+      <BucketList
+        title="Critical blockers"
+        issues={s.criticalBlockers}
+        orgId={orgId}
+        tone="red"
+        canAcknowledge={canAcknowledge}
+      />
+      <BucketList
+        title="Recoverable / high severity"
+        issues={s.recoverableIssues}
+        orgId={orgId}
+        tone="amber"
+        canAcknowledge={canAcknowledge}
+      />
+      <BucketList title="Warnings" issues={s.warnings} orgId={orgId} tone="amber" canAcknowledge={canAcknowledge} />
+      <BucketList
+        title="Optional services affected"
+        issues={s.optionalUnavailable}
+        orgId={orgId}
+        tone="slate"
+        canAcknowledge={canAcknowledge}
+      />
+      {s.acknowledgedIssues.length > 0 && (
+        <BucketList
+          title="Acknowledged (informational)"
+          issues={s.acknowledgedIssues}
+          orgId={orgId}
+          tone="slate"
+          canAcknowledge={canAcknowledge}
+        />
+      )}
+    </section>
+  );
+}
+
+function BucketList({
+  title,
+  issues,
+  orgId,
+  tone,
+  canAcknowledge,
+}: {
+  title: string;
+  issues: PlatformDiagnosticIssue[];
+  orgId: string;
+  tone: 'red' | 'amber' | 'slate';
+  canAcknowledge: boolean;
+}) {
+  const border =
+    tone === 'red' ? 'border-red-200' : tone === 'amber' ? 'border-amber-200' : 'border-slate-200';
+  if (issues.length === 0) {
+    return (
+      <div className={`rounded-lg border ${border} p-3`}>
+        <h3 className="text-sm font-medium text-slate-800">{title}</h3>
+        <p className="text-sm text-slate-500 mt-1">None</p>
+      </div>
+    );
+  }
+  return (
+    <div className={`rounded-lg border ${border} p-3 space-y-2`}>
+      <h3 className="text-sm font-medium text-slate-900">{title}</h3>
+      <ul className="space-y-3">
+        {issues.map((issue) => (
+          <li key={issue.id} className="text-sm text-slate-700 border-t border-slate-100 pt-2 first:border-0 first:pt-0">
+            <p className="font-medium text-slate-900">{issue.summary}</p>
+            <p className="text-xs text-slate-500 mt-1 font-mono">{issue.id}</p>
+            <p className="mt-1">{issue.recommendedNextStep}</p>
+            {canAcknowledge && <IssueAcknowledgeButton organizationId={orgId} issue={issue} />}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

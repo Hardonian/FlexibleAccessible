@@ -16,6 +16,8 @@ test.describe('reliability surfaces', () => {
     await signInAsDemo(page);
     await page.goto('/system');
     await expect(page.getByRole('heading', { name: /system & core services/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /first-run/i })).toBeVisible();
+    await expect(page.getByTestId('platform-recheck-button')).toBeVisible();
 
     const list = page.getByTestId('core-services-list');
     await expect(list).toBeVisible();
