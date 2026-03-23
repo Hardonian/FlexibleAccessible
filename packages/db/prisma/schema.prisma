@@ -23,6 +23,8 @@ model User {
   reviewTasks    ReviewTask[]    @relation("assignee")
   auditLogs      AuditLog[]
   sessions       Session[]
+  findingStatusChanges CanonicalFinding[] @relation("findingStatusChangedBy")
+  findingStatusEvents  FindingStatusEvent[]
 
   @@map("users")
 }
@@ -125,6 +127,7 @@ model Site {
   scanRuns     ScanRun[]
   issueClusters IssueCluster[]
   githubRepoMapping GitHubRepoMapping?
+  canonicalFindings CanonicalFinding[]
 
   @@index([workspaceId])
   @@map("sites")
@@ -247,6 +250,7 @@ model ScanRun {
   site      Site           @relation(fields: [siteId], references: [id], onDelete: Cascade)
   crawlRun  CrawlRun?      @relation(fields: [crawlRunId], references: [id])
   violations RawViolation[]
+  findingsLastVerified CanonicalFinding[]
 
   @@index([siteId])
   @@index([crawlRunId])
@@ -278,6 +282,7 @@ model RawViolation {
 
   scanRun  ScanRun @relation(fields: [scanRunId], references: [id], onDelete: Cascade)
   page     Page    @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  occurrenceLinks FindingOccurrence[]
 
   @@index([scanRunId])
   @@index([pageId])
@@ -286,27 +291,43 @@ model RawViolation {
   @@map("raw_violations")
 }
 
+enum EvidenceSource {
+  AUTOMATED_AXE
+  MANUAL_REVIEW
+  IMPORTED
+}
+
 enum FindingStatus {
   OPEN
+  ACKNOWLEDGED
   IN_PROGRESS
-  FIXED
-  WONT_FIX
+  RESOLVED
+  MITIGATED
   FALSE_POSITIVE
+  WONT_FIX
 }
 
 model CanonicalFinding {
   id              String        @id @default(cuid())
   siteId          String
+  site            Site          @relation(fields: [siteId], references: [id], onDelete: Cascade)
   ruleId          String
   impact          Severity
   description     String
   helpUrl         String?
   wcagTags        String[]      @default([])
   fingerprint     String        @unique
+  evidenceSource  EvidenceSource @default(AUTOMATED_AXE)
   status          FindingStatus @default(OPEN)
   firstSeenAt     DateTime      @default(now())
   lastSeenAt      DateTime      @default(now())
+  lastVerifiedAt  DateTime?
+  lastScanRunId   String?
   occurrenceCount Int           @default(1)
+  reopenedCount   Int           @default(0)
+  statusChangedAt DateTime      @default(now())
+  statusChangedById String?
+  statusNote      String?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
@@ -314,12 +335,17 @@ model CanonicalFinding {
   cluster       IssueCluster?       @relation(fields: [clusterId], references: [id])
   clusterId     String?
   suggestions   RemediationSuggestion[]
+  lastScanRun   ScanRun?            @relation(fields: [lastScanRunId], references: [id])
+  statusChangedBy User?             @relation("findingStatusChangedBy", fields: [statusChangedById], references: [id])
+  statusEvents  FindingStatusEvent[]
 
   @@index([siteId])
   @@index([ruleId])
   @@index([status])
   @@index([impact])
   @@index([clusterId])
+  @@index([lastScanRunId])
+  @@index([evidenceSource])
   @@map("canonical_findings")
 }
 
@@ -333,13 +359,35 @@ model FindingOccurrence {
   firstSeenAt       DateTime @default(now())
   lastSeenAt        DateTime @default(now())
   resolved          Boolean  @default(false)
+  lastRawViolationId String?
 
   finding CanonicalFinding @relation(fields: [canonicalFindingId], references: [id], onDelete: Cascade)
   page    Page             @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  lastRawViolation RawViolation? @relation(fields: [lastRawViolationId], references: [id])
 
+  @@unique([canonicalFindingId, pageId])
   @@index([canonicalFindingId])
   @@index([pageId])
+  @@index([lastRawViolationId])
   @@map("finding_occurrences")
+}
+
+/// Append-only audit of remediation status transitions (operator workflow).
+model FindingStatusEvent {
+  id                 String         @id @default(cuid())
+  canonicalFindingId String
+  fromStatus         FindingStatus?
+  toStatus           FindingStatus
+  note               String?
+  userId             String?
+  createdAt          DateTime       @default(now())
+
+  finding CanonicalFinding @relation(fields: [canonicalFindingId], references: [id], onDelete: Cascade)
+  user    User?            @relation(fields: [userId], references: [id])
+
+  @@index([canonicalFindingId])
+  @@index([createdAt])
+  @@map("finding_status_events")
 }
 
 // ─── CLUSTERING ──────────────────────────────────────────────

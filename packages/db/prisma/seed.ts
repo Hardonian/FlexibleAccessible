@@ -220,18 +220,24 @@ async function main() {
         description: fd.description,
         wcagTags: fd.wcagTags,
         fingerprint,
+        evidenceSource: 'AUTOMATED_AXE',
         status: 'OPEN',
         occurrenceCount: fd.pageIndices.length,
+        lastScanRunId: scanRun.id,
+        lastVerifiedAt: scanRun.completedAt ?? new Date(),
       },
-      update: { occurrenceCount: fd.pageIndices.length },
+      update: {
+        occurrenceCount: fd.pageIndices.length,
+        lastScanRunId: scanRun.id,
+        lastVerifiedAt: scanRun.completedAt ?? new Date(),
+      },
     });
 
-    // Create raw violations and occurrences
     for (const idx of fd.pageIndices) {
       const page = pages[idx];
       if (!page) continue;
 
-      await prisma.rawViolation.create({
+      const raw = await prisma.rawViolation.create({
         data: {
           scanRunId: scanRun.id,
           pageId: page.id,
@@ -241,19 +247,25 @@ async function main() {
           wcagTags: fd.wcagTags,
           selector: fd.selector,
           elementHtml: fd.html,
+          elementContext: `Demo failure context for ${fd.ruleId} on ${page.path}`,
           fingerprint,
         },
       });
 
-      await prisma.findingOccurrence.create({
-        data: {
+      await prisma.findingOccurrence.upsert({
+        where: {
+          canonicalFindingId_pageId: { canonicalFindingId: finding.id, pageId: page.id },
+        },
+        create: {
           canonicalFindingId: finding.id,
           pageId: page.id,
           selector: fd.selector,
           elementHtml: fd.html,
+          lastRawViolationId: raw.id,
         },
-      }).catch(() => {
-        // Ignore duplicates
+        update: {
+          lastRawViolationId: raw.id,
+        },
       });
     }
   }
