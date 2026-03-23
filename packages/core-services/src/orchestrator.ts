@@ -88,13 +88,19 @@ export async function collectPlatformHealth(prisma: PrismaClient): Promise<Platf
     installedAt: Date;
     bootstrapVersion: number;
     workerLastHeartbeatAt: Date | null;
+    productFlags: unknown;
   } | null = null;
 
   if (dbCheck.ok) {
     try {
       platformRow = await prisma.platformState.findUnique({
         where: { id: PLATFORM_ID },
-        select: { installedAt: true, bootstrapVersion: true, workerLastHeartbeatAt: true },
+        select: {
+          installedAt: true,
+          bootstrapVersion: true,
+          workerLastHeartbeatAt: true,
+          productFlags: true,
+        },
       });
     } catch {
       platformRow = null;
@@ -442,6 +448,12 @@ export async function collectPlatformHealth(prisma: PrismaClient): Promise<Platf
         warnings: [] as string[],
       };
 
+  const rawFlags = platformRow?.productFlags;
+  const operatorPlatformFlags =
+    rawFlags && typeof rawFlags === 'object' && !Array.isArray(rawFlags)
+      ? (rawFlags as Record<string, unknown>)
+      : null;
+
   return {
     checkedAt,
     bootstrap,
@@ -455,5 +467,6 @@ export async function collectPlatformHealth(prisma: PrismaClient): Promise<Platf
       },
     },
     services,
+    operatorPlatformFlags,
   };
 }

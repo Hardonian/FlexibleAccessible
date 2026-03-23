@@ -41,6 +41,7 @@ describe('collectPlatformHealth', () => {
     const report = await collectPlatformHealth(prisma);
     expect(report.bootstrap.installed).toBe(false);
     expect(report.bootstrap.readiness).toBe('not_installed');
+    expect(report.operatorPlatformFlags).toBeNull();
   });
 
   it('marks worker running when heartbeat is fresh', async () => {
@@ -51,6 +52,7 @@ describe('collectPlatformHealth', () => {
           installedAt: new Date('2025-01-01T00:00:00.000Z'),
           bootstrapVersion: 1,
           workerLastHeartbeatAt: new Date('2025-03-22T11:59:30.000Z'),
+          productFlags: {},
         }),
       },
     } as unknown as PrismaClient;
@@ -58,5 +60,6 @@ describe('collectPlatformHealth', () => {
     const report = await collectPlatformHealth(prisma);
     const worker = report.services.find((s) => s.id === 'worker-runtime');
     expect(worker?.healthState).toBe('running');
+    expect(report.operatorPlatformFlags).toEqual({});
   });
 });

@@ -21,6 +21,7 @@ function baseReport(overrides: Partial<PlatformHealthReport> = {}): PlatformHeal
       sessionStore: { ok: true, checkedAt: '2025-01-01T00:00:00.000Z' },
       ...overrides.dependencies,
     },
+    operatorPlatformFlags: overrides.operatorPlatformFlags ?? {},
     services:
       services ??
       ([

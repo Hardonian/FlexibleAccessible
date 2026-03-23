@@ -18,3 +18,22 @@ export type {
   ServiceHealthState,
   ServiceCriticality,
 } from './types';
+export {
+  derivePlatformDiagnostics,
+  deriveSetupChecklist,
+  listOperatorActions,
+  parseOperatorPlatformFlags,
+  serializeOperatorPlatformFlags,
+} from './operator-diagnostics';
+export type {
+  ControlPlaneSummary,
+  OperatorActionDescriptor,
+  OperatorProductFlags,
+  OperatorAcknowledgements,
+  ParsedOperatorPlatformFlags,
+  PlatformDiagnosticIssue,
+  PlatformSetupStep,
+  DiagnosticSeverity,
+  RemediationType,
+  ActorResponsibility,
+} from './operator-diagnostics';

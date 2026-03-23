@@ -72,4 +72,9 @@ export interface PlatformHealthReport {
     sessionStore: DependencyCheckResult;
   };
   services: CoreServiceRuntimeView[];
+  /**
+   * Raw JSON from PlatformState.productFlags (non-secret operator prefs/acks).
+   * Null when platform row missing or database unreachable.
+   */
+  operatorPlatformFlags: Record<string, unknown> | null;
 }

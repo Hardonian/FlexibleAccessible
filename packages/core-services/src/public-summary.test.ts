@@ -60,6 +60,7 @@ function baseReport(overrides: Partial<PlatformHealthReport> = {}): PlatformHeal
       sessionStore: { ok: true, checkedAt: 't' },
     },
     services,
+    operatorPlatformFlags: overrides.operatorPlatformFlags ?? {},
     ...overrides,
   };
 }
