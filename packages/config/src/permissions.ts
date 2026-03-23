@@ -1,5 +1,6 @@
 export type Permission =
   | 'org:system:view'
+  | 'org:system:manage'
   | 'org:manage'
   | 'org:billing'
   | 'org:members:manage'
@@ -32,6 +33,7 @@ type Role = 'OWNER' | 'ADMIN' | 'DEVELOPER' | 'CONTENT_EDITOR' | 'AUDITOR' | 'RE
 const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   OWNER: [
     'org:system:view',
+    'org:system:manage',
     'org:manage', 'org:billing', 'org:members:manage', 'org:members:view',
     'workspace:create', 'workspace:manage',
     'site:create', 'site:manage', 'site:view',
@@ -46,6 +48,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   ],
   ADMIN: [
     'org:system:view',
+    'org:system:manage',
     'org:members:manage', 'org:members:view',
     'workspace:create', 'workspace:manage',
     'site:create', 'site:manage', 'site:view',

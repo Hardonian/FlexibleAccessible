@@ -8,6 +8,12 @@ describe('hasPermission', () => {
     expect(hasPermission('DEVELOPER', 'org:system:view')).toBe(false);
   });
 
+  it('OWNER and ADMIN can run platform operator mutations', () => {
+    expect(hasPermission('OWNER', 'org:system:manage')).toBe(true);
+    expect(hasPermission('ADMIN', 'org:system:manage')).toBe(true);
+    expect(hasPermission('DEVELOPER', 'org:system:manage')).toBe(false);
+  });
+
   it('OWNER has all permissions', () => {
     expect(hasPermission('OWNER', 'org:manage')).toBe(true);
     expect(hasPermission('OWNER', 'org:billing')).toBe(true);
