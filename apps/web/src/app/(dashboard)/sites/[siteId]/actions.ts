@@ -74,8 +74,26 @@ export async function startCrawlAction(formData: FormData) {
       attempts: 3,
       backoff: { type: 'exponential', delay: 5000 },
     });
-  } catch {
-    // Will be picked up by worker polling
+  } catch (e) {
+    const message = e instanceof Error ? e.message : 'Queue add failed';
+    await prisma.crawlRun.update({
+      where: { id: crawlRun.id },
+      data: {
+        status: 'FAILED',
+        errorMessage: `Crawl queue unavailable: ${message}`,
+        completedAt: new Date(),
+      },
+    });
+    await prisma.auditLog.create({
+      data: {
+        organizationId: site.workspace.organizationId,
+        userId: user.id,
+        action: 'crawl.enqueue_failed',
+        entityType: 'CrawlRun',
+        entityId: crawlRun.id,
+        metadata: { siteId, message },
+      },
+    });
   }
 
   redirect(`/sites/${siteId}`);

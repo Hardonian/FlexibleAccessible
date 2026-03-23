@@ -4,6 +4,13 @@ export { toPublicHealthSummary } from './public-summary';
 export { buildRoutePlatformTruth } from './route-platform-truth';
 export type { RoutePlatformTruth, RoutePlatformShellBlocker } from './route-platform-truth';
 export { recordWorkerHeartbeat } from './heartbeat';
+export {
+  enqueueSiteScan,
+  SCAN_QUEUE_NAME,
+  type EnqueueSiteScanParams,
+  type EnqueueSiteScanResult,
+  type ScanEnqueueTrigger,
+} from './scan-enqueue';
 export { checkPostgres, checkRedisPing, getQueueDepths } from './checks';
 export {
   isWorkerHeartbeatStale,
