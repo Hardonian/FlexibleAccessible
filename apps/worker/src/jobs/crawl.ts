@@ -1,5 +1,6 @@
 import { Job } from 'bullmq';
 import { prisma } from '@aros/db';
+import { enqueueSiteScan } from '@aros/core-services';
 import { chromium, type Browser, type Page } from 'playwright';
 
 interface CrawlJobData {
@@ -29,7 +30,10 @@ export async function handleCrawlJob(job: Job<CrawlJobData>) {
     data: { status: 'RUNNING', startedAt: new Date() },
   });
 
-  const site = await prisma.site.findUnique({ where: { id: siteId } });
+  const site = await prisma.site.findUnique({
+    where: { id: siteId },
+    include: { workspace: { select: { organizationId: true } } },
+  });
   if (!site) {
     await prisma.crawlRun.update({
       where: { id: crawlRunId },
@@ -216,6 +220,56 @@ export async function handleCrawlJob(job: Job<CrawlJobData>) {
     });
 
     console.log(`[Crawl] Completed crawl ${crawlRunId}: ${pagesCrawled} pages crawled`);
+
+    if (pagesCrawled > 0 && site.workspace) {
+      const scanResult = await enqueueSiteScan(
+        { prisma },
+        {
+          siteId,
+          organizationId: site.workspace.organizationId,
+          crawlRunId,
+          trigger: 'crawl.completed',
+          userId: null,
+        }
+      );
+      if (scanResult.ok) {
+        if (scanResult.kind === 'queued') {
+          console.log(
+            `[Crawl] Post-crawl scan queued: scanRun=${scanResult.scanRunId} job=${scanResult.bullmqJobId}`
+          );
+        } else if (scanResult.kind === 'deduped') {
+          console.log(`[Crawl] Post-crawl scan skipped (already completed for crawl): ${scanResult.scanRunId}`);
+        } else {
+          console.log(
+            `[Crawl] Post-crawl scan coalesced: ${scanResult.scanRunId} status=${scanResult.status}`
+          );
+        }
+      } else if (scanResult.kind === 'queue_unavailable') {
+        console.error(
+          `[Crawl] Post-crawl scan enqueue failed (queue): scanRun=${scanResult.scanRunId} ${scanResult.message}`
+        );
+        await prisma.auditLog
+          .create({
+            data: {
+              organizationId: site.workspace.organizationId,
+              action: 'scan.enqueue_failed',
+              entityType: 'CrawlRun',
+              entityId: crawlRunId,
+              metadata: {
+                siteId,
+                scanRunId: scanResult.scanRunId,
+                reason: 'queue_unavailable',
+                message: scanResult.message,
+              },
+            },
+          })
+          .catch(() => undefined);
+      } else if (scanResult.kind === 'invalid_target') {
+        console.warn(`[Crawl] Post-crawl scan skipped: ${scanResult.reason}`);
+      } else {
+        console.error(`[Crawl] Post-crawl scan failed: ${scanResult.message}`);
+      }
+    }
   } catch (err) {
     console.error(`[Crawl] Crawl ${crawlRunId} failed:`, err);
     await prisma.crawlRun.update({

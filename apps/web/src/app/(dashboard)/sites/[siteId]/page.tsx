@@ -2,7 +2,11 @@ import { notFound } from 'next/navigation';
 import { requireSession } from '@/lib/session';
 import { prisma } from '@/lib/db';
 import Link from 'next/link';
+import { hasPermission } from '@aros/config';
 import { startCrawlAction } from './actions';
+import { ScanNowButton } from './scan-now-button';
+import { scanSiteInitialState } from './scan-action-state';
+import { startSiteScanAction } from './scan-actions';
 
 export async function generateMetadata({ params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = await params;
@@ -35,7 +39,10 @@ export default async function SiteDetailPage({ params }: { params: Promise<{ sit
     notFound();
   }
 
-  const [recentCrawls, recentScans, findings] = await Promise.all([
+  const membership = site.workspace.organization.memberships[0];
+  const canStartScan = hasPermission(membership.role, 'scan:start');
+
+  const [recentCrawls, recentScans, findings, activeScan, pageCountForScan] = await Promise.all([
     prisma.crawlRun.findMany({
       where: { siteId },
       orderBy: { createdAt: 'desc' },
@@ -54,6 +61,12 @@ export default async function SiteDetailPage({ params }: { params: Promise<{ sit
       orderBy: { impact: 'asc' },
       take: 20,
     }),
+    prisma.scanRun.findFirst({
+      where: { siteId, status: { in: ['PENDING', 'RUNNING'] } },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, status: true, createdAt: true },
+    }),
+    prisma.page.count({ where: { siteId } }),
   ]);
 
   const findingsBySeverity = {
@@ -76,13 +89,30 @@ export default async function SiteDetailPage({ params }: { params: Promise<{ sit
           <h1 className="text-2xl font-bold text-slate-900">{site.name}</h1>
           <p className="text-slate-500 mt-0.5">{site.domain}</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap items-start gap-3">
           <form action={startCrawlAction}>
             <input type="hidden" name="siteId" value={siteId} />
             <button type="submit" className="btn-primary">
               Start Crawl
             </button>
           </form>
+          {canStartScan ? (
+            <ScanNowButton
+              action={startSiteScanAction}
+              initialState={scanSiteInitialState}
+              siteId={siteId}
+              disabled={pageCountForScan === 0 || Boolean(activeScan)}
+              blockedHint={
+                activeScan
+                  ? activeScan.status === 'PENDING'
+                    ? 'Verification is already queued for this site.'
+                    : 'Verification is already running for this site.'
+                  : pageCountForScan === 0
+                    ? 'Run a crawl first so there are pages to verify.'
+                    : null
+              }
+            />
+          ) : null}
           <Link href={`/sites/${siteId}/settings`} className="btn-secondary">
             Settings
           </Link>
@@ -230,7 +260,9 @@ export default async function SiteDetailPage({ params }: { params: Promise<{ sit
           </Link>
         </h2>
         {findings.length === 0 ? (
-          <p className="text-sm text-slate-500">No open findings. Run a scan to discover issues.</p>
+          <p className="text-sm text-slate-500">
+            No open findings. Queue a verification scan (or wait for one after crawl) to discover issues.
+          </p>
         ) : (
           <ul className="space-y-2" role="list">
             {findings.slice(0, 10).map((finding) => (
