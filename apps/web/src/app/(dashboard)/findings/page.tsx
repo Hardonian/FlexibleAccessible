@@ -1,7 +1,7 @@
 import { requireSession } from '@/lib/session';
 import { prisma } from '@/lib/db';
 import Link from 'next/link';
-import type { Prisma, Severity, FindingStatus } from '@aros/db';
+import type { Prisma, Severity, FindingStatus, EvidenceSource } from '@aros/db';
 import { getRoutePlatformTruth } from '@/lib/platform-truth-cache';
 import { resolveDashboardOrgMembership, runOrgScopedQuery } from '@/lib/route-data-boundary';
 import { RouteReliabilityNotice } from '@/components/reliability/route-reliability-notice';
@@ -11,6 +11,7 @@ type FindingListRow = Prisma.CanonicalFindingGetPayload<{
   include: {
     _count: { select: { occurrences: true } };
     cluster: { select: { id: true; name: true } };
+    site: { select: { id: true; name: true; domain: true } };
   };
 }>;
 
@@ -22,6 +23,7 @@ interface SearchParams {
   status?: string;
   siteId?: string;
   ruleId?: string;
+  evidenceSource?: string;
 }
 
 export default async function FindingsPage({
@@ -96,6 +98,9 @@ export default async function FindingsPage({
   if (params.ruleId) {
     where.ruleId = params.ruleId;
   }
+  if (params.evidenceSource && ['AUTOMATED_AXE', 'MANUAL_REVIEW', 'IMPORTED'].includes(params.evidenceSource)) {
+    where.evidenceSource = params.evidenceSource as EvidenceSource;
+  }
 
   const listResult = await runOrgScopedQuery(orgRes, async () => {
     const [findings, total] = await Promise.all([
@@ -107,6 +112,7 @@ export default async function FindingsPage({
         include: {
           _count: { select: { occurrences: true } },
           cluster: { select: { id: true, name: true } },
+          site: { select: { id: true, name: true, domain: true } },
         },
       }),
       prisma.canonicalFinding.count({ where }),
@@ -133,7 +139,9 @@ export default async function FindingsPage({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Findings</h1>
-          <p className="text-slate-500 mt-1">{total} accessibility issues found</p>
+          <p className="text-slate-500 mt-1">
+            {total} deduplicated finding{total === 1 ? '' : 's'} in your organization (not a legal conformance score).
+          </p>
         </div>
       </div>
 
@@ -158,10 +166,28 @@ export default async function FindingsPage({
             <select id="status-filter" name="status" className="input" defaultValue={params.status ?? ''}>
               <option value="">All</option>
               <option value="OPEN">Open</option>
-              <option value="IN_PROGRESS">In Progress</option>
-              <option value="FIXED">Fixed</option>
-              <option value="WONT_FIX">Won&apos;t Fix</option>
-              <option value="FALSE_POSITIVE">False Positive</option>
+              <option value="ACKNOWLEDGED">Acknowledged</option>
+              <option value="IN_PROGRESS">In progress</option>
+              <option value="RESOLVED">Resolved</option>
+              <option value="MITIGATED">Mitigated</option>
+              <option value="FALSE_POSITIVE">False positive</option>
+              <option value="WONT_FIX">Won&apos;t fix / accepted risk</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="source-filter" className="label">
+              Evidence source
+            </label>
+            <select
+              id="source-filter"
+              name="evidenceSource"
+              className="input"
+              defaultValue={params.evidenceSource ?? ''}
+            >
+              <option value="">All</option>
+              <option value="AUTOMATED_AXE">Automated (axe)</option>
+              <option value="MANUAL_REVIEW">Manual review</option>
+              <option value="IMPORTED">Imported</option>
             </select>
           </div>
           <div className="flex items-end">
@@ -193,7 +219,7 @@ export default async function FindingsPage({
         <nav className="flex items-center justify-center gap-2" aria-label="Pagination">
           {page > 1 && (
             <Link
-              href={`/findings?page=${page - 1}&severity=${params.severity ?? ''}&status=${params.status ?? ''}`}
+              href={`/findings?page=${page - 1}&severity=${params.severity ?? ''}&status=${params.status ?? ''}&evidenceSource=${params.evidenceSource ?? ''}`}
               className="btn-secondary text-sm"
             >
               Previous
@@ -204,7 +230,7 @@ export default async function FindingsPage({
           </span>
           {page < totalPages && (
             <Link
-              href={`/findings?page=${page + 1}&severity=${params.severity ?? ''}&status=${params.status ?? ''}`}
+              href={`/findings?page=${page + 1}&severity=${params.severity ?? ''}&status=${params.status ?? ''}&evidenceSource=${params.evidenceSource ?? ''}`}
               className="btn-secondary text-sm"
             >
               Next
@@ -236,6 +262,7 @@ function FindingRow({ finding }: { finding: FindingListRow }) {
               {finding.impact.toLowerCase()}
             </span>
             <span className="text-xs text-slate-400">{finding.ruleId}</span>
+            <EvidenceSourceBadge source={finding.evidenceSource} />
             {finding.cluster && (
               <span className="badge bg-purple-100 text-purple-800">{finding.cluster.name}</span>
             )}
@@ -243,6 +270,9 @@ function FindingRow({ finding }: { finding: FindingListRow }) {
           <p className="text-sm font-medium text-slate-900">{finding.description}</p>
           <div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
             <span>{finding._count.occurrences} occurrences</span>
+            <span>
+              Site: {finding.site.name}
+            </span>
             <span>First seen: {finding.firstSeenAt.toLocaleDateString()}</span>
             {finding.wcagTags.length > 0 && <span>WCAG: {finding.wcagTags.join(', ')}</span>}
           </div>
@@ -255,11 +285,23 @@ function FindingRow({ finding }: { finding: FindingListRow }) {
   );
 }
 
+function EvidenceSourceBadge({ source }: { source: string }) {
+  const label =
+    source === 'AUTOMATED_AXE' ? 'Automated' : source === 'MANUAL_REVIEW' ? 'Manual' : source === 'IMPORTED' ? 'Imported' : source;
+  return (
+    <span className="text-xs rounded px-1.5 py-0.5 bg-slate-100 text-slate-600" title="How this finding entered the system">
+      {label}
+    </span>
+  );
+}
+
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
     OPEN: 'bg-red-100 text-red-800',
+    ACKNOWLEDGED: 'bg-amber-100 text-amber-900',
     IN_PROGRESS: 'bg-blue-100 text-blue-800',
-    FIXED: 'bg-green-100 text-green-800',
+    RESOLVED: 'bg-green-100 text-green-800',
+    MITIGATED: 'bg-emerald-100 text-emerald-900',
     WONT_FIX: 'bg-slate-100 text-slate-600',
     FALSE_POSITIVE: 'bg-slate-100 text-slate-600',
   };

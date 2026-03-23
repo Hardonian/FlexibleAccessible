@@ -8,13 +8,17 @@ import { getRoutePlatformTruth } from '@/lib/platform-truth-cache';
 import { resolveDashboardOrgMembership } from '@/lib/route-data-boundary';
 import { RouteReliabilityNotice } from '@/components/reliability/route-reliability-notice';
 import { hasPermission } from '@aros/config';
+import { deriveAutomationEvidenceFreshness } from '@aros/shared';
 
 export default async function FindingDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ findingId: string }>;
+  searchParams: Promise<{ remediation?: string }>;
 }) {
   const { findingId } = await params;
+  const sp = await searchParams;
   const user = await requireSession();
   const platformTruth = await getRoutePlatformTruth();
   const canViewSystem = await prisma.membership
@@ -52,7 +56,26 @@ export default async function FindingDetailPage({
 
   type FindingDetail = Prisma.CanonicalFindingGetPayload<{
     include: {
-      occurrences: { include: { page: { select: { id: true; url: true; title: true } } } };
+      site: { select: { id: true; name: true; domain: true } };
+      lastScanRun: { select: { id: true; status: true; completedAt: true; createdAt: true; errorMessage: true } };
+      statusEvents: {
+        orderBy: { createdAt: 'desc' };
+        take: 25;
+        include: { user: { select: { email: true; name: true } } };
+      };
+      occurrences: {
+        include: {
+          page: { select: { id: true; url: true; title: true } };
+          lastRawViolation: {
+            select: {
+              id: true;
+              createdAt: true;
+              elementContext: true;
+              scanRun: { select: { id: true; status: true; completedAt: true } };
+            };
+          };
+        };
+      };
       cluster: true;
       suggestions: true;
     };
@@ -69,8 +92,27 @@ export default async function FindingDetailPage({
         },
       },
       include: {
+        site: { select: { id: true, name: true, domain: true } },
+        lastScanRun: {
+          select: { id: true, status: true, completedAt: true, createdAt: true, errorMessage: true },
+        },
+        statusEvents: {
+          orderBy: { createdAt: 'desc' },
+          take: 25,
+          include: { user: { select: { email: true, name: true } } },
+        },
         occurrences: {
-          include: { page: { select: { id: true, url: true, title: true } } },
+          include: {
+            page: { select: { id: true, url: true, title: true } },
+            lastRawViolation: {
+              select: {
+                id: true,
+                createdAt: true,
+                elementContext: true,
+                scanRun: { select: { id: true, status: true, completedAt: true } },
+              },
+            },
+          },
           take: 50,
           orderBy: { lastSeenAt: 'desc' },
         },
@@ -96,6 +138,38 @@ export default async function FindingDetailPage({
 
   if (!finding) notFound();
 
+  const canManageFindings = hasPermission(orgRes.role, 'findings:manage');
+
+  const latestCompleted = await prisma.scanRun.findFirst({
+    where: {
+      status: 'COMPLETED',
+      completedAt: { not: null },
+      site: { workspace: { organizationId: orgRes.organizationId } },
+    },
+    orderBy: { completedAt: 'desc' },
+    select: { completedAt: true },
+  });
+
+  const automationFreshness =
+    finding.evidenceSource === 'AUTOMATED_AXE'
+      ? deriveAutomationEvidenceFreshness({
+          lastVerifiedAt: finding.lastVerifiedAt,
+          latestCompletedScanCompletedAt: latestCompleted?.completedAt ?? null,
+          jobPipelinesHealthy: platformTruth.flags.jobPipelinesHealthy,
+        })
+      : null;
+
+  const remediationError =
+    sp.remediation === 'forbidden'
+      ? 'You do not have permission to change remediation status.'
+      : sp.remediation === 'invalid_transition'
+        ? 'That status change is not allowed from the current state.'
+        : sp.remediation === 'invalid_status'
+          ? 'Unknown remediation status.'
+          : sp.remediation === 'not_found'
+            ? 'Finding not found in your organization.'
+            : null;
+
   return (
     <div className="space-y-6">
       <div>
@@ -105,6 +179,12 @@ export default async function FindingDetailPage({
           </Link>
           <span>/</span>
         </div>
+        {remediationError && (
+          <RouteReliabilityNotice variant="warning" title="Remediation update not applied">
+            <p>{remediationError}</p>
+          </RouteReliabilityNotice>
+        )}
+
         <div className="flex items-center gap-3">
           <span
             className={`badge ${
@@ -129,17 +209,90 @@ export default async function FindingDetailPage({
           <p className="text-sm font-medium text-slate-900 mt-1">{finding.ruleId}</p>
         </div>
         <div>
-          <p className="text-xs text-slate-500 uppercase tracking-wide">WCAG</p>
-          <p className="text-sm font-medium text-slate-900 mt-1">{finding.wcagTags.join(', ') || 'N/A'}</p>
+          <p className="text-xs text-slate-500 uppercase tracking-wide">Site</p>
+          <p className="text-sm font-medium text-slate-900 mt-1">{finding.site.name}</p>
+          <p className="text-xs text-slate-500">{finding.site.domain}</p>
+        </div>
+        <div>
+          <p className="text-xs text-slate-500 uppercase tracking-wide">WCAG tags (from scanner)</p>
+          <p className="text-sm font-medium text-slate-900 mt-1">{finding.wcagTags.join(', ') || 'None reported'}</p>
         </div>
         <div>
           <p className="text-xs text-slate-500 uppercase tracking-wide">Occurrences</p>
           <p className="text-sm font-medium text-slate-900 mt-1">{finding.occurrenceCount}</p>
         </div>
         <div>
-          <p className="text-xs text-slate-500 uppercase tracking-wide">Status</p>
-          <FindingStatusForm findingId={findingId} defaultValue={finding.status} />
+          <p className="text-xs text-slate-500 uppercase tracking-wide">Evidence source</p>
+          <p className="text-sm font-medium text-slate-900 mt-1">
+            {finding.evidenceSource === 'AUTOMATED_AXE'
+              ? 'Automated (axe-core scan)'
+              : finding.evidenceSource === 'MANUAL_REVIEW'
+                ? 'Manual review'
+                : 'Imported'}
+          </p>
         </div>
+        <div>
+          <p className="text-xs text-slate-500 uppercase tracking-wide">Automation evidence</p>
+          <p className="text-sm text-slate-700 mt-1">
+            {finding.evidenceSource !== 'AUTOMATED_AXE' ? (
+              <>This finding is not tied to automated axe runs. Stale/current labels apply to automated evidence only.</>
+            ) : automationFreshness === 'current' ? (
+              <>Last verified by scan at {finding.lastVerifiedAt?.toLocaleString() ?? 'unknown'}.</>
+            ) : automationFreshness === 'stale_newer_scan_exists' ? (
+              <>
+                <span className="text-amber-800 font-medium">Stale:</span> a newer completed scan exists than{' '}
+                {finding.lastVerifiedAt?.toLocaleString() ?? 'last verified time'}. Results may have changed.
+              </>
+            ) : automationFreshness === 'never_autoverified' ? (
+              <>No automated verification timestamp on record.</>
+            ) : automationFreshness === 'no_completed_scan' ? (
+              <>No completed scan found for this organization yet.</>
+            ) : (
+              <>
+                Job pipelines are degraded; treat automated evidence as potentially stale until workers recover.
+              </>
+            )}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs text-slate-500 uppercase tracking-wide">Last scan run (stored link)</p>
+          <p className="text-sm text-slate-700 mt-1">
+            {finding.lastScanRun ? (
+              <>
+                {finding.lastScanRun.status}
+                {finding.lastScanRun.completedAt
+                  ? ` · completed ${finding.lastScanRun.completedAt.toLocaleString()}`
+                  : ''}
+                {finding.lastScanRun.errorMessage ? ` · ${finding.lastScanRun.errorMessage}` : ''}
+              </>
+            ) : (
+              'Not linked to a scan run row'
+            )}
+          </p>
+        </div>
+        <div className="col-span-2 lg:col-span-4 border-t border-slate-100 pt-4">
+          <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Remediation</p>
+          <FindingStatusForm
+            findingId={findingId}
+            defaultValue={finding.status}
+            canManage={canManageFindings}
+            defaultNote={finding.statusNote}
+          />
+          <p className="text-xs text-slate-500 mt-2">
+            Resolved/mitigated findings stay in history. If a later automated scan detects the same issue again, status
+            reopens to Open unless marked false positive or won&apos;t fix. Operators should add a short note when closing
+            or accepting risk.
+          </p>
+        </div>
+      </div>
+
+      <div className="card">
+        <h2 className="text-lg font-semibold text-slate-900 mb-2">What the platform knows</h2>
+        <ul className="text-sm text-slate-600 list-disc pl-5 space-y-1">
+          <li>Rule id, severity from the scanner, and deduplicated occurrences per page.</li>
+          <li>Remediation status you set (audited) and optional operator notes.</li>
+          <li>We do not certify WCAG conformance; automated checks are incomplete by definition.</li>
+        </ul>
       </div>
 
       {finding.helpUrl && (
@@ -206,6 +359,7 @@ export default async function FindingDetailPage({
               <tr className="border-b border-slate-200">
                 <th className="pb-2 text-left font-medium text-slate-500">Page</th>
                 <th className="pb-2 text-left font-medium text-slate-500">Selector</th>
+                <th className="pb-2 text-left font-medium text-slate-500">Evidence</th>
                 <th className="pb-2 text-right font-medium text-slate-500">Last Seen</th>
               </tr>
             </thead>
@@ -221,6 +375,13 @@ export default async function FindingDetailPage({
                       {occ.selector.length > 60 ? occ.selector.slice(0, 60) + '...' : occ.selector}
                     </code>
                   </td>
+                  <td className="py-2 text-slate-600 max-w-md">
+                    {occ.lastRawViolation?.elementContext ? (
+                      <span className="text-xs">{occ.lastRawViolation.elementContext}</span>
+                    ) : (
+                      <span className="text-xs text-slate-400">No failure summary stored for this occurrence</span>
+                    )}
+                  </td>
                   <td className="py-2 text-right text-slate-500">{occ.lastSeenAt.toLocaleDateString()}</td>
                 </tr>
               ))}
@@ -228,6 +389,30 @@ export default async function FindingDetailPage({
           </table>
         </div>
       </div>
+
+      {finding.statusEvents.length > 0 && (
+        <div className="card">
+          <h2 className="text-lg font-semibold text-slate-900 mb-4">Remediation history</h2>
+          <ul className="space-y-2 text-sm">
+            {finding.statusEvents.map((ev) => (
+              <li key={ev.id} className="border-b border-slate-100 pb-2">
+                <span className="text-slate-500">{ev.createdAt.toLocaleString()}</span>
+                {' · '}
+                <span className="font-medium text-slate-800">
+                  {ev.fromStatus ?? '—'} → {ev.toStatus}
+                </span>
+                {ev.user && (
+                  <span className="text-slate-500">
+                    {' '}
+                    ({ev.user.name ?? ev.user.email})
+                  </span>
+                )}
+                {ev.note && <p className="text-slate-600 mt-1">{ev.note}</p>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

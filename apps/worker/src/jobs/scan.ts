@@ -1,7 +1,12 @@
 import { Job, Queue } from 'bullmq';
 import { prisma } from '@aros/db';
 import { chromium, type Browser } from 'playwright';
-import { bullmqConnectionOptions, createFingerprint } from '@aros/shared';
+import {
+  bullmqConnectionOptions,
+  createFingerprint,
+  shouldReopenOnAutomatedDetection,
+  type FindingStatusValue,
+} from '@aros/shared';
 
 interface ScanJobData {
   scanRunId: string;
@@ -94,8 +99,9 @@ export async function handleScanJob(job: Job<ScanJobData>) {
 
             const impact = severityMap[violation.impact ?? 'moderate'] ?? 'MODERATE';
 
-            // Store raw violation
-            await prisma.rawViolation.create({
+            const now = new Date();
+
+            const raw = await prisma.rawViolation.create({
               data: {
                 scanRunId,
                 pageId: pageRecord.id,
@@ -111,27 +117,47 @@ export async function handleScanJob(job: Job<ScanJobData>) {
               },
             });
 
-            // Upsert canonical finding
-            await prisma.canonicalFinding.upsert({
+            const existing = await prisma.canonicalFinding.findUnique({
               where: { fingerprint },
-              create: {
-                siteId,
-                ruleId: violation.id,
-                impact,
-                description: violation.help ?? violation.description ?? '',
-                helpUrl: violation.helpUrl,
-                wcagTags: violation.tags?.filter((t: string) => t.startsWith('wcag')) ?? [],
-                fingerprint,
-                status: 'OPEN',
-                occurrenceCount: 1,
-              },
-              update: {
-                lastSeenAt: new Date(),
-                occurrenceCount: { increment: 1 },
-              },
             });
 
-            // Upsert occurrence
+            if (!existing) {
+              await prisma.canonicalFinding.create({
+                data: {
+                  siteId,
+                  ruleId: violation.id,
+                  impact,
+                  description: violation.help ?? violation.description ?? '',
+                  helpUrl: violation.helpUrl,
+                  wcagTags: violation.tags?.filter((t: string) => t.startsWith('wcag')) ?? [],
+                  fingerprint,
+                  evidenceSource: 'AUTOMATED_AXE',
+                  status: 'OPEN',
+                  occurrenceCount: 1,
+                  lastScanRunId: scanRunId,
+                  lastVerifiedAt: now,
+                },
+              });
+            } else {
+              const st = existing.status as FindingStatusValue;
+              const reopenAutomated =
+                shouldReopenOnAutomatedDetection(st) &&
+                (st === 'RESOLVED' || st === 'MITIGATED');
+
+              await prisma.canonicalFinding.update({
+                where: { id: existing.id },
+                data: {
+                  lastSeenAt: now,
+                  occurrenceCount: { increment: 1 },
+                  lastScanRunId: scanRunId,
+                  lastVerifiedAt: now,
+                  ...(reopenAutomated
+                    ? { status: 'OPEN', reopenedCount: { increment: 1 } }
+                    : {}),
+                },
+              });
+            }
+
             const canonicalFinding = await prisma.canonicalFinding.findUnique({
               where: { fingerprint },
             });
@@ -139,30 +165,25 @@ export async function handleScanJob(job: Job<ScanJobData>) {
             if (canonicalFinding) {
               await prisma.findingOccurrence.upsert({
                 where: {
-                  id: `${canonicalFinding.id}-${pageRecord.id}`,
+                  canonicalFindingId_pageId: {
+                    canonicalFindingId: canonicalFinding.id,
+                    pageId: pageRecord.id,
+                  },
                 },
                 create: {
                   canonicalFindingId: canonicalFinding.id,
                   pageId: pageRecord.id,
                   selector,
                   elementHtml: elementHtml.slice(0, 2000),
+                  lastRawViolationId: raw.id,
                 },
                 update: {
-                  lastSeenAt: new Date(),
+                  lastSeenAt: now,
                   resolved: false,
+                  selector,
+                  elementHtml: elementHtml.slice(0, 2000),
+                  lastRawViolationId: raw.id,
                 },
-              }).catch(() => {
-                // May fail on unique constraint for new occurrences; use create as fallback
-                return prisma.findingOccurrence.create({
-                  data: {
-                    canonicalFindingId: canonicalFinding.id,
-                    pageId: pageRecord.id,
-                    selector,
-                    elementHtml: elementHtml.slice(0, 2000),
-                  },
-                }).catch(() => {
-                  // Already exists, skip
-                });
               });
             }
 

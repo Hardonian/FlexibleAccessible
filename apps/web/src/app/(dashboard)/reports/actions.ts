@@ -51,8 +51,12 @@ export async function generateReportAction(formData: FormData) {
       },
       byStatus: {
         open: findings.filter((f) => f.status === 'OPEN').length,
+        acknowledged: findings.filter((f) => f.status === 'ACKNOWLEDGED').length,
         inProgress: findings.filter((f) => f.status === 'IN_PROGRESS').length,
-        fixed: findings.filter((f) => f.status === 'FIXED').length,
+        resolved: findings.filter((f) => f.status === 'RESOLVED').length,
+        mitigated: findings.filter((f) => f.status === 'MITIGATED').length,
+        falsePositive: findings.filter((f) => f.status === 'FALSE_POSITIVE').length,
+        wontFix: findings.filter((f) => f.status === 'WONT_FIX').length,
       },
     },
     findings: findings.map((f) => ({
