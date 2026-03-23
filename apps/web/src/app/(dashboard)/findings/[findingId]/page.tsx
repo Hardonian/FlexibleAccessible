@@ -244,7 +244,10 @@ export default async function FindingDetailPage({
                 {finding.lastVerifiedAt?.toLocaleString() ?? 'last verified time'}. Results may have changed.
               </>
             ) : automationFreshness === 'never_autoverified' ? (
-              <>No automated verification timestamp on record.</>
+              <>
+                Last auto-verified: never — this record has not been touched by a completed automated scan yet. Queue a
+                verification scan (or wait for one after crawl) to refresh evidence.
+              </>
             ) : automationFreshness === 'no_completed_scan' ? (
               <>No completed scan found for this organization yet.</>
             ) : (

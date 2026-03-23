@@ -32,7 +32,10 @@ export async function handleCrawlJob(job: Job<CrawlJobData>) {
 
   const site = await prisma.site.findUnique({
     where: { id: siteId },
-    include: { workspace: { select: { organizationId: true } } },
+    include: {
+      workspace: { select: { organizationId: true } },
+      crawlConfig: { select: { autoScanAfterCrawl: true } },
+    },
   });
   if (!site) {
     await prisma.crawlRun.update({
@@ -221,7 +224,9 @@ export async function handleCrawlJob(job: Job<CrawlJobData>) {
 
     console.log(`[Crawl] Completed crawl ${crawlRunId}: ${pagesCrawled} pages crawled`);
 
-    if (pagesCrawled > 0 && site.workspace) {
+    const autoScanAfterCrawl = site.crawlConfig?.autoScanAfterCrawl !== false;
+
+    if (pagesCrawled > 0 && site.workspace && autoScanAfterCrawl) {
       const scanResult = await enqueueSiteScan(
         { prisma },
         {
@@ -269,6 +274,8 @@ export async function handleCrawlJob(job: Job<CrawlJobData>) {
       } else {
         console.error(`[Crawl] Post-crawl scan failed: ${scanResult.message}`);
       }
+    } else if (pagesCrawled > 0 && site.workspace && !autoScanAfterCrawl) {
+      console.log(`[Crawl] Post-crawl scan skipped (autoScanAfterCrawl disabled) crawlRun=${crawlRunId}`);
     }
   } catch (err) {
     console.error(`[Crawl] Crawl ${crawlRunId} failed:`, err);
