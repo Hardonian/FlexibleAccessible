@@ -2,6 +2,10 @@ import { requireSession } from '@/lib/session';
 import { prisma } from '@/lib/db';
 import Link from 'next/link';
 import type { Prisma, Severity, FindingStatus } from '@aros/db';
+import { getRoutePlatformTruth } from '@/lib/platform-truth-cache';
+import { resolveDashboardOrgMembership, runOrgScopedQuery } from '@/lib/route-data-boundary';
+import { RouteReliabilityNotice } from '@/components/reliability/route-reliability-notice';
+import { hasPermission } from '@aros/config';
 
 type FindingListRow = Prisma.CanonicalFindingGetPayload<{
   include: {
@@ -27,29 +31,43 @@ export default async function FindingsPage({
 }) {
   const user = await requireSession();
   const params = await searchParams;
+  const platformTruth = await getRoutePlatformTruth();
+  const canViewSystem = await prisma.membership
+    .findMany({ where: { userId: user.id }, select: { role: true } })
+    .then((rows) => rows.some((m) => hasPermission(m.role, 'org:system:view')))
+    .catch(() => false);
 
-  let membership: { organizationId: string } | null = null;
-  let loadError: string | null = null;
-  try {
-    membership = await prisma.membership.findFirst({
-      where: { userId: user.id },
-    });
-  } catch (e) {
-    loadError = e instanceof Error ? e.message : 'Database error';
-    console.error('[findings] membership load failed', e);
+  const orgRes = await resolveDashboardOrgMembership(user.id, platformTruth);
+
+  if (orgRes.kind === 'platform_blocked') {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-slate-900">Findings</h1>
+        <RouteReliabilityNotice variant="error" title="Findings require a working database" showSystemLink={canViewSystem}>
+          <p>Findings cannot be loaded until core data services are healthy. See the banner above for status.</p>
+        </RouteReliabilityNotice>
+      </div>
+    );
   }
 
-  if (!membership) {
+  if (orgRes.kind === 'error') {
     return (
-      <div className="card text-center py-12 space-y-3">
-        <h1 className="text-lg font-semibold text-slate-900">Findings unavailable</h1>
-        {loadError ? (
-          <p className="text-sm text-slate-600">
-            Could not verify your organization ({loadError}). Check database connectivity.
-          </p>
-        ) : (
-          <p className="text-sm text-slate-600">No organization membership for this account.</p>
-        )}
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-slate-900">Findings</h1>
+        <RouteReliabilityNotice variant="error" title="Could not verify organization" showSystemLink={canViewSystem}>
+          <p>{orgRes.message}</p>
+        </RouteReliabilityNotice>
+      </div>
+    );
+  }
+
+  if (orgRes.kind === 'none') {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-slate-900">Findings</h1>
+        <RouteReliabilityNotice variant="info" title="No organization membership">
+          <p>You need to belong to an organization to view findings.</p>
+        </RouteReliabilityNotice>
       </div>
     );
   }
@@ -62,7 +80,7 @@ export default async function FindingsPage({
     occurrences: {
       some: {
         page: {
-          site: { workspace: { organizationId: membership.organizationId } },
+          site: { workspace: { organizationId: orgRes.organizationId } },
           ...(params.siteId ? { siteId: params.siteId } : {}),
         },
       },
@@ -79,10 +97,8 @@ export default async function FindingsPage({
     where.ruleId = params.ruleId;
   }
 
-  let findings: FindingListRow[] = [];
-  let total = 0;
-  try {
-    [findings, total] = await Promise.all([
+  const listResult = await runOrgScopedQuery(orgRes, async () => {
+    const [findings, total] = await Promise.all([
       prisma.canonicalFinding.findMany({
         where,
         orderBy: [{ impact: 'asc' }, { occurrenceCount: 'desc' }],
@@ -95,36 +111,38 @@ export default async function FindingsPage({
       }),
       prisma.canonicalFinding.count({ where }),
     ]);
-  } catch (e) {
-    loadError = e instanceof Error ? e.message : 'Database error';
-    console.error('[findings] query failed', e);
+    return { findings, total };
+  });
+
+  if (!listResult.ok) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-slate-900">Findings</h1>
+        <RouteReliabilityNotice variant="error" title="Findings list unavailable" showSystemLink={canViewSystem}>
+          <p>Could not load findings from the database ({listResult.message}).</p>
+        </RouteReliabilityNotice>
+      </div>
+    );
   }
 
+  const { findings, total } = listResult.data;
   const totalPages = Math.ceil(total / limit);
 
   return (
     <div className="space-y-6">
-      {loadError && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950" role="status">
-          <p className="font-medium">Findings list unavailable</p>
-          <p className="mt-1">Could not load findings from the database. Filters still work after recovery.</p>
-          <p className="mt-1 text-amber-900/90">Detail: {loadError}</p>
-        </div>
-      )}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Findings</h1>
-          <p className="text-slate-500 mt-1">
-            {loadError ? '—' : total} accessibility issues found
-          </p>
+          <p className="text-slate-500 mt-1">{total} accessibility issues found</p>
         </div>
       </div>
 
-      {/* Filters */}
       <div className="card">
         <form className="flex flex-wrap gap-4" method="GET">
           <div>
-            <label htmlFor="severity-filter" className="label">Severity</label>
+            <label htmlFor="severity-filter" className="label">
+              Severity
+            </label>
             <select id="severity-filter" name="severity" className="input" defaultValue={params.severity ?? ''}>
               <option value="">All</option>
               <option value="CRITICAL">Critical</option>
@@ -134,7 +152,9 @@ export default async function FindingsPage({
             </select>
           </div>
           <div>
-            <label htmlFor="status-filter" className="label">Status</label>
+            <label htmlFor="status-filter" className="label">
+              Status
+            </label>
             <select id="status-filter" name="status" className="input" defaultValue={params.status ?? ''}>
               <option value="">All</option>
               <option value="OPEN">Open</option>
@@ -152,61 +172,23 @@ export default async function FindingsPage({
         </form>
       </div>
 
-      {/* Findings List */}
       {findings.length === 0 ? (
-        <div className="card text-center py-12">
-          <p className="text-slate-500">No findings match your filters.</p>
+        <div className="card text-center py-12 space-y-2">
+          <p className="text-slate-700 font-medium">No findings match your filters</p>
+          <p className="text-sm text-slate-500">
+            {total === 0
+              ? 'There are no findings for this organization yet, or none match the selected filters.'
+              : 'Try clearing filters or changing the page.'}
+          </p>
         </div>
       ) : (
         <div className="space-y-3">
           {findings.map((finding) => (
-            <Link
-              key={finding.id}
-              href={`/findings/${finding.id}`}
-              className="card hover:shadow-md transition-shadow block"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span
-                      className={`badge ${
-                        finding.impact === 'CRITICAL'
-                          ? 'badge-critical'
-                          : finding.impact === 'SERIOUS'
-                          ? 'badge-serious'
-                          : finding.impact === 'MODERATE'
-                          ? 'badge-moderate'
-                          : 'badge-minor'
-                      }`}
-                    >
-                      {finding.impact.toLowerCase()}
-                    </span>
-                    <span className="text-xs text-slate-400">{finding.ruleId}</span>
-                    {finding.cluster && (
-                      <span className="badge bg-purple-100 text-purple-800">
-                        {finding.cluster.name}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-sm font-medium text-slate-900">{finding.description}</p>
-                  <div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
-                    <span>{finding._count.occurrences} occurrences</span>
-                    <span>First seen: {finding.firstSeenAt.toLocaleDateString()}</span>
-                    {finding.wcagTags.length > 0 && (
-                      <span>WCAG: {finding.wcagTags.join(', ')}</span>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <StatusBadge status={finding.status} />
-                </div>
-              </div>
-            </Link>
+            <FindingRow key={finding.id} finding={finding} />
           ))}
         </div>
       )}
 
-      {/* Pagination */}
       {totalPages > 1 && (
         <nav className="flex items-center justify-center gap-2" aria-label="Pagination">
           {page > 1 && (
@@ -231,6 +213,45 @@ export default async function FindingsPage({
         </nav>
       )}
     </div>
+  );
+}
+
+function FindingRow({ finding }: { finding: FindingListRow }) {
+  return (
+    <Link href={`/findings/${finding.id}`} className="card hover:shadow-md transition-shadow block">
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            <span
+              className={`badge ${
+                finding.impact === 'CRITICAL'
+                  ? 'badge-critical'
+                  : finding.impact === 'SERIOUS'
+                    ? 'badge-serious'
+                    : finding.impact === 'MODERATE'
+                      ? 'badge-moderate'
+                      : 'badge-minor'
+              }`}
+            >
+              {finding.impact.toLowerCase()}
+            </span>
+            <span className="text-xs text-slate-400">{finding.ruleId}</span>
+            {finding.cluster && (
+              <span className="badge bg-purple-100 text-purple-800">{finding.cluster.name}</span>
+            )}
+          </div>
+          <p className="text-sm font-medium text-slate-900">{finding.description}</p>
+          <div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
+            <span>{finding._count.occurrences} occurrences</span>
+            <span>First seen: {finding.firstSeenAt.toLocaleDateString()}</span>
+            {finding.wcagTags.length > 0 && <span>WCAG: {finding.wcagTags.join(', ')}</span>}
+          </div>
+        </div>
+        <div>
+          <StatusBadge status={finding.status} />
+        </div>
+      </div>
+    </Link>
   );
 }
 

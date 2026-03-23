@@ -2,8 +2,11 @@ import Link from 'next/link';
 import { requireSession } from '@/lib/session';
 import { prisma } from '@/lib/db';
 import { hasPermission } from '@aros/config';
+import type { MemberRole } from '@aros/db';
 import { redirect } from 'next/navigation';
 import { getPlatformHealthPayload } from '@/lib/platform-health';
+import { getRoutePlatformTruth } from '@/lib/platform-truth-cache';
+import { RouteReliabilityNotice } from '@/components/reliability/route-reliability-notice';
 
 export const metadata = { title: 'System & services - AROS' };
 
@@ -20,10 +23,33 @@ const healthStateStyles: Record<string, string> = {
 export default async function SystemPage() {
   const user = await requireSession();
 
-  const membership = await prisma.membership.findFirst({
-    where: { userId: user.id },
-    include: { organization: { select: { id: true, name: true, slug: true } } },
-  });
+  let membership: {
+    organizationId: string;
+    role: string;
+    organization: { id: string; name: string; slug: string };
+  } | null = null;
+  let membershipError: string | null = null;
+
+  try {
+    membership = await prisma.membership.findFirst({
+      where: { userId: user.id },
+      include: { organization: { select: { id: true, name: true, slug: true } } },
+    });
+  } catch (e) {
+    membershipError = e instanceof Error ? e.message : 'Database error';
+    console.error('[system] membership load failed', e);
+  }
+
+  if (membershipError) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-slate-900">System & core services</h1>
+        <RouteReliabilityNotice variant="error" title="Cannot verify access">
+          <p>We could not load your organization membership ({membershipError}).</p>
+        </RouteReliabilityNotice>
+      </div>
+    );
+  }
 
   if (!membership) {
     return (
@@ -34,9 +60,11 @@ export default async function SystemPage() {
     );
   }
 
-  if (!hasPermission(membership.role, 'org:system:view')) {
+  if (!hasPermission(membership.role as MemberRole, 'org:system:view')) {
     redirect('/dashboard');
   }
+
+  const platformTruth = await getRoutePlatformTruth().catch(() => null);
 
   let payload: Awaited<ReturnType<typeof getPlatformHealthPayload>> | null = null;
   let loadError: string | null = null;
@@ -54,10 +82,19 @@ export default async function SystemPage() {
       <div>
         <h1 className="text-2xl font-bold text-slate-900">System & core services</h1>
         <p className="text-slate-500 mt-1">
-          Live deployment status for {membership.organization.name}. Values are derived from connectivity checks,
-          queue metrics, and worker heartbeats — not static placeholders.
+          Live deployment status for {membership.organization.name}. Values are derived from connectivity checks, queue
+          metrics, and worker heartbeats — not static placeholders.
         </p>
       </div>
+
+      {platformTruth && platformTruth.shellBlocker !== 'none' && (
+        <RouteReliabilityNotice variant="warning" title="Route-level platform summary">
+          <p>
+            Shell readiness: <span className="font-mono">{platformTruth.readiness}</span>. This page shows the full
+            operator report when available.
+          </p>
+        </RouteReliabilityNotice>
+      )}
 
       {loadError && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-900" role="alert">
@@ -87,9 +124,7 @@ export default async function SystemPage() {
               <div>
                 <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">Readiness</dt>
                 <dd className="mt-1">
-                  <span className="badge bg-slate-100 text-slate-800">
-                    {payload.report.bootstrap.readiness}
-                  </span>
+                  <span className="badge bg-slate-100 text-slate-800">{payload.report.bootstrap.readiness}</span>
                 </dd>
               </div>
               <div className="sm:col-span-2">
@@ -151,12 +186,13 @@ export default async function SystemPage() {
                 JSON API (authenticated)
               </Link>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-3" data-testid="core-services-list">
               {payload.report.services.map((svc) => (
                 <article
                   key={svc.id}
                   className="card border border-slate-200"
                   aria-labelledby={`svc-${svc.id}-title`}
+                  data-service-id={svc.id}
                 >
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>

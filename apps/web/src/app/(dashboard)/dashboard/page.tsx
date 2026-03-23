@@ -1,118 +1,132 @@
 import { requireSession } from '@/lib/session';
 import { prisma } from '@/lib/db';
 import Link from 'next/link';
+import { getRoutePlatformTruth } from '@/lib/platform-truth-cache';
+import { resolveDashboardOrgMembership, runOrgScopedQuery } from '@/lib/route-data-boundary';
+import { RouteReliabilityNotice } from '@/components/reliability/route-reliability-notice';
+import { hasPermission } from '@aros/config';
 
 export const metadata = { title: 'Dashboard - AROS' };
 
 export default async function DashboardPage() {
   const user = await requireSession();
+  const platformTruth = await getRoutePlatformTruth();
+  const canViewSystem = await prisma.membership
+    .findMany({ where: { userId: user.id }, select: { role: true } })
+    .then((rows) => rows.some((m) => hasPermission(m.role, 'org:system:view')))
+    .catch(() => false);
 
-  let membership: {
-    organizationId: string;
-    organization: { id: string; name: string; slug: string };
-  } | null = null;
-  let dataError: string | null = null;
+  const orgRes = await resolveDashboardOrgMembership(user.id, platformTruth);
 
-  try {
-    membership = await prisma.membership.findFirst({
-      where: { userId: user.id },
-      include: { organization: true },
-    });
-  } catch (e) {
-    dataError = e instanceof Error ? e.message : 'Database error';
-    console.error('[dashboard] membership load failed', e);
-  }
-
-  if (!membership) {
+  if (orgRes.kind === 'platform_blocked') {
     return (
       <div className="space-y-6">
-        {dataError && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950" role="status">
-            <p className="font-medium">Data temporarily unavailable</p>
-            <p className="mt-1">
-              The dashboard could not load your organization. Check database connectivity and migrations.{' '}
-              {dataError && <span className="block mt-1 text-amber-900/90">Detail: {dataError}</span>}
-            </p>
-            <p className="mt-2">
-              Operators: see <Link href="/system" className="text-brand-700 underline">System &amp; core services</Link>{' '}
-              (requires admin/owner).
-            </p>
-          </div>
-        )}
-        <div className="text-center py-12">
-          <h2 className="text-lg font-semibold text-slate-900">No organization found</h2>
-          <p className="text-slate-500 mt-2">Please contact support.</p>
-        </div>
+        <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
+        <RouteReliabilityNotice variant="error" title="This page needs a working database" showSystemLink={canViewSystem}>
+          <p>
+            Organization data cannot be loaded safely right now. Fix core dependencies first, then refresh. The banner
+            above summarizes what is wrong.
+          </p>
+        </RouteReliabilityNotice>
       </div>
     );
   }
 
-  const orgId = membership.organizationId;
+  if (orgRes.kind === 'error') {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
+        <RouteReliabilityNotice variant="error" title="Data temporarily unavailable" showSystemLink={canViewSystem}>
+          <p>We could not load your organization ({orgRes.message}).</p>
+        </RouteReliabilityNotice>
+      </div>
+    );
+  }
 
-  let sitesCount = 0;
-  let openFindings = 0;
-  let clustersCount = 0;
-  let pendingReviews = 0;
-  let recentCrawls: Array<{
-    id: string;
-    status: string;
-    pagesCrawled: number;
-    pagesFound: number;
-    createdAt: Date;
-    site: { name: string; domain: string };
-  }> = [];
+  if (orgRes.kind === 'none') {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
+        <RouteReliabilityNotice variant="info" title="No organization found">
+          <p>You do not have an organization membership yet. Contact an administrator to be added to a team.</p>
+        </RouteReliabilityNotice>
+      </div>
+    );
+  }
 
-  try {
-    [sitesCount, openFindings, clustersCount, pendingReviews, recentCrawls] = await Promise.all([
+  const statsResult = await runOrgScopedQuery(orgRes, async (oid) => {
+    const [org, sitesCount, openFindings, clustersCount, pendingReviews, recentCrawls] = await Promise.all([
+      prisma.organization.findUnique({ where: { id: oid }, select: { name: true } }),
       prisma.site.count({
-        where: { workspace: { organizationId: orgId } },
+        where: { workspace: { organizationId: oid } },
       }),
       prisma.canonicalFinding.count({
         where: {
           status: 'OPEN',
           occurrences: {
-            some: { page: { site: { workspace: { organizationId: orgId } } } },
+            some: { page: { site: { workspace: { organizationId: oid } } } },
           },
         },
       }),
       prisma.issueCluster.count({
-        where: { site: { workspace: { organizationId: orgId } } },
+        where: { site: { workspace: { organizationId: oid } } },
       }),
       prisma.reviewTask.count({
         where: { status: 'PENDING' },
       }),
       prisma.crawlRun.findMany({
-        where: { site: { workspace: { organizationId: orgId } } },
+        where: { site: { workspace: { organizationId: oid } } },
         orderBy: { createdAt: 'desc' },
         take: 5,
         include: { site: { select: { name: true, domain: true } } },
       }),
     ]);
-  } catch (e) {
-    dataError = e instanceof Error ? e.message : 'Database error';
-    console.error('[dashboard] stats load failed', e);
+
+    if (!org) return null;
+
+    return {
+      orgName: org.name,
+      sitesCount,
+      openFindings,
+      clustersCount,
+      pendingReviews,
+      recentCrawls,
+    };
+  });
+
+  if (!statsResult.ok || !statsResult.data) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
+        <RouteReliabilityNotice variant="error" title="Dashboard metrics unavailable" showSystemLink={canViewSystem}>
+          <p>
+            {statsResult.ok ? 'Organization context was lost.' : `Could not load metrics (${statsResult.message}).`}
+          </p>
+        </RouteReliabilityNotice>
+      </div>
+    );
   }
+
+  const { orgName, sitesCount, openFindings, clustersCount, pendingReviews, recentCrawls } = statsResult.data;
+
+  const workerNote =
+    platformTruth.shellBlocker === 'none' && !platformTruth.flags.workerRunning ? (
+      <RouteReliabilityNotice variant="warning" title="Background processing paused" showSystemLink={canViewSystem}>
+        <p>
+          Workers are not running. New crawls and queued jobs will not complete until the worker process is started and
+          Redis is healthy.
+        </p>
+      </RouteReliabilityNotice>
+    ) : null;
 
   return (
     <div className="space-y-8">
+      {workerNote}
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
-        <p className="text-slate-500 mt-1">
-          Overview for {membership.organization.name}
-        </p>
+        <p className="text-slate-500 mt-1">Overview for {orgName}</p>
       </div>
 
-      {dataError && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950" role="status">
-          <p className="font-medium">Partial data</p>
-          <p className="mt-1">
-            Some dashboard metrics could not be loaded. Counts below may be zero until the database is healthy.{' '}
-            <span className="block mt-1 text-amber-900/90">Detail: {dataError}</span>
-          </p>
-        </div>
-      )}
-
-      {/* Stats Grid */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Sites" value={sitesCount} href="/sites" />
         <StatCard label="Open Findings" value={openFindings} href="/findings" />
@@ -120,7 +134,6 @@ export default async function DashboardPage() {
         <StatCard label="Pending Reviews" value={pendingReviews} href="/reviews" />
       </div>
 
-      {/* Quick Actions */}
       <div className="card">
         <h2 className="text-lg font-semibold text-slate-900 mb-4">Quick Actions</h2>
         <div className="flex flex-wrap gap-3">
@@ -136,7 +149,6 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Recent Crawls */}
       <div className="card">
         <h2 className="text-lg font-semibold text-slate-900 mb-4">Recent Crawls</h2>
         {recentCrawls.length === 0 ? (
@@ -161,18 +173,14 @@ export default async function DashboardPage() {
               <tbody>
                 {recentCrawls.map((crawl) => (
                   <tr key={crawl.id} className="border-b border-slate-100">
-                    <td className="py-2 font-medium text-slate-900">
-                      {crawl.site.name}
-                    </td>
+                    <td className="py-2 font-medium text-slate-900">{crawl.site.name}</td>
                     <td className="py-2">
                       <CrawlStatusBadge status={crawl.status} />
                     </td>
                     <td className="py-2 text-right text-slate-600">
                       {crawl.pagesCrawled}/{crawl.pagesFound}
                     </td>
-                    <td className="py-2 text-right text-slate-500">
-                      {crawl.createdAt.toLocaleDateString()}
-                    </td>
+                    <td className="py-2 text-right text-slate-500">{crawl.createdAt.toLocaleDateString()}</td>
                   </tr>
                 ))}
               </tbody>
@@ -184,15 +192,7 @@ export default async function DashboardPage() {
   );
 }
 
-function StatCard({
-  label,
-  value,
-  href,
-}: {
-  label: string;
-  value: number;
-  href: string;
-}) {
+function StatCard({ label, value, href }: { label: string; value: number; href: string }) {
   return (
     <Link href={href} className="card hover:shadow-md transition-shadow group">
       <p className="text-sm text-slate-500">{label}</p>
@@ -212,8 +212,6 @@ function CrawlStatusBadge({ status }: { status: string }) {
     CANCELLED: 'bg-slate-100 text-slate-500',
   };
   return (
-    <span className={`badge ${styles[status] ?? 'bg-slate-100 text-slate-800'}`}>
-      {status.toLowerCase()}
-    </span>
+    <span className={`badge ${styles[status] ?? 'bg-slate-100 text-slate-800'}`}>{status.toLowerCase()}</span>
   );
 }

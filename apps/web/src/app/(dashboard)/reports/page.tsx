@@ -1,64 +1,114 @@
 import { requireSession } from '@/lib/session';
 import { prisma } from '@/lib/db';
 import { generateReportAction } from './actions';
+import { getRoutePlatformTruth } from '@/lib/platform-truth-cache';
+import { resolveDashboardOrgMembership, runOrgScopedQuery } from '@/lib/route-data-boundary';
+import { RouteReliabilityNotice } from '@/components/reliability/route-reliability-notice';
+import { hasPermission } from '@aros/config';
 
 export const metadata = { title: 'Reports - AROS' };
 
 export default async function ReportsPage() {
   const user = await requireSession();
+  const platformTruth = await getRoutePlatformTruth();
+  const canViewSystem = await prisma.membership
+    .findMany({ where: { userId: user.id }, select: { role: true } })
+    .then((rows) => rows.some((m) => hasPermission(m.role, 'org:system:view')))
+    .catch(() => false);
 
-  const membership = await prisma.membership.findFirst({
-    where: { userId: user.id },
+  const orgRes = await resolveDashboardOrgMembership(user.id, platformTruth);
+
+  if (orgRes.kind === 'platform_blocked') {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-slate-900">Evidence Reports</h1>
+        <RouteReliabilityNotice variant="error" title="Reports require a working database" showSystemLink={canViewSystem}>
+          <p>Report data cannot be loaded until core data services are healthy.</p>
+        </RouteReliabilityNotice>
+      </div>
+    );
+  }
+
+  if (orgRes.kind === 'error') {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-slate-900">Evidence Reports</h1>
+        <RouteReliabilityNotice variant="error" title="Could not verify organization" showSystemLink={canViewSystem}>
+          <p>{orgRes.message}</p>
+        </RouteReliabilityNotice>
+      </div>
+    );
+  }
+
+  if (orgRes.kind === 'none') {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-slate-900">Evidence Reports</h1>
+        <RouteReliabilityNotice variant="info" title="No organization membership">
+          <p>You need an organization to generate reports.</p>
+        </RouteReliabilityNotice>
+      </div>
+    );
+  }
+
+  const statsResult = await runOrgScopedQuery(orgRes, async (orgId) => {
+    const [totalFindings, openFindings, fixedFindings, criticalFindings, sites] = await Promise.all([
+      prisma.canonicalFinding.count({
+        where: { occurrences: { some: { page: { site: { workspace: { organizationId: orgId } } } } } },
+      }),
+      prisma.canonicalFinding.count({
+        where: {
+          status: 'OPEN',
+          occurrences: { some: { page: { site: { workspace: { organizationId: orgId } } } } },
+        },
+      }),
+      prisma.canonicalFinding.count({
+        where: {
+          status: 'FIXED',
+          occurrences: { some: { page: { site: { workspace: { organizationId: orgId } } } } },
+        },
+      }),
+      prisma.canonicalFinding.count({
+        where: {
+          impact: 'CRITICAL',
+          status: 'OPEN',
+          occurrences: { some: { page: { site: { workspace: { organizationId: orgId } } } } },
+        },
+      }),
+      prisma.site.findMany({
+        where: { workspace: { organizationId: orgId } },
+        select: { id: true, name: true, domain: true },
+      }),
+    ]);
+    return { totalFindings, openFindings, fixedFindings, criticalFindings, sites };
   });
-  if (!membership) return null;
 
-  const orgId = membership.organizationId;
+  if (!statsResult.ok) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-slate-900">Evidence Reports</h1>
+        <RouteReliabilityNotice variant="error" title="Could not load report summary" showSystemLink={canViewSystem}>
+          <p>{statsResult.message}</p>
+        </RouteReliabilityNotice>
+      </div>
+    );
+  }
 
-  const [totalFindings, openFindings, fixedFindings, criticalFindings, sites] = await Promise.all([
-    prisma.canonicalFinding.count({
-      where: { occurrences: { some: { page: { site: { workspace: { organizationId: orgId } } } } } },
-    }),
-    prisma.canonicalFinding.count({
-      where: {
-        status: 'OPEN',
-        occurrences: { some: { page: { site: { workspace: { organizationId: orgId } } } } },
-      },
-    }),
-    prisma.canonicalFinding.count({
-      where: {
-        status: 'FIXED',
-        occurrences: { some: { page: { site: { workspace: { organizationId: orgId } } } } },
-      },
-    }),
-    prisma.canonicalFinding.count({
-      where: {
-        impact: 'CRITICAL',
-        status: 'OPEN',
-        occurrences: { some: { page: { site: { workspace: { organizationId: orgId } } } } },
-      },
-    }),
-    prisma.site.findMany({
-      where: { workspace: { organizationId: orgId } },
-      select: { id: true, name: true, domain: true },
-    }),
-  ]);
+  const { totalFindings, openFindings, fixedFindings, criticalFindings, sites } = statsResult.data;
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Evidence Reports</h1>
-        <p className="text-slate-500 mt-1">
-          Generate conformance evidence and status reports.
-        </p>
+        <p className="text-slate-500 mt-1">Generate conformance evidence and status reports.</p>
       </div>
 
       <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
-        Reports generated by this platform provide evidence of testing and remediation efforts.
-        They do not constitute a legal guarantee of WCAG conformance. Full conformance requires
-        manual expert review of criteria that cannot be automated.
+        Reports generated by this platform provide evidence of testing and remediation efforts. They do not constitute a
+        legal guarantee of WCAG conformance. Full conformance requires manual expert review of criteria that cannot be
+        automated.
       </div>
 
-      {/* Summary */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="card">
           <p className="text-sm text-slate-500">Total Findings</p>
@@ -78,12 +128,13 @@ export default async function ReportsPage() {
         </div>
       </div>
 
-      {/* Generate Report */}
       <div className="card">
         <h2 className="text-lg font-semibold text-slate-900 mb-4">Generate Report</h2>
         <form action={generateReportAction} className="space-y-4">
           <div>
-            <label htmlFor="report-site" className="label">Site</label>
+            <label htmlFor="report-site" className="label">
+              Site
+            </label>
             <select id="report-site" name="siteId" className="input">
               <option value="">All sites</option>
               {sites.map((site) => (
@@ -94,7 +145,9 @@ export default async function ReportsPage() {
             </select>
           </div>
           <div>
-            <label htmlFor="report-format" className="label">Format</label>
+            <label htmlFor="report-format" className="label">
+              Format
+            </label>
             <select id="report-format" name="format" className="input">
               <option value="json">JSON</option>
               <option value="csv">CSV</option>
