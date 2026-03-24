@@ -9,6 +9,7 @@ let sharedScanQueue: Queue | null = null;
 /**
  * Singleton scan queue for producers (Next.js server, core-services).
  * Avoids opening a new Redis connection on every enqueue.
+ * Lazily constructs the Queue so static import chains (e.g. Next build) do not connect to Redis.
  */
 export function getSharedScanQueue(): Queue {
   if (!sharedScanQueue) {

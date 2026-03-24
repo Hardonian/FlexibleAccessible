@@ -10,6 +10,8 @@ import { startSiteScanAction } from './scan-actions';
 import {
   getPostCrawlScanEnqueueFailureHint,
   getSiteVerificationStatus,
+  postCrawlKickoffOperatorSummary,
+  scanEnqueueFailureOperatorHint,
 } from '@/lib/sites/verification-status';
 
 export async function generateMetadata({ params }: { params: Promise<{ siteId: string }> }) {
@@ -45,12 +47,23 @@ export default async function SiteDetailPage({ params }: { params: Promise<{ sit
 
   const membership = site.workspace.organization.memberships[0];
   const canStartScan = hasPermission(membership.role, 'scan:start');
+  const canManageSite = hasPermission(membership.role, 'site:manage');
 
   const [recentCrawls, recentScans, findings, pageCountForScan, verificationExtras] = await Promise.all([
     prisma.crawlRun.findMany({
       where: { siteId },
       orderBy: { createdAt: 'desc' },
       take: 10,
+      select: {
+        id: true,
+        status: true,
+        pagesCrawled: true,
+        startedAt: true,
+        completedAt: true,
+        postCrawlScanKickoffStatus: true,
+        postCrawlScanKickoffReasonCode: true,
+        postCrawlScanKickoffDetail: true,
+      },
     }),
     prisma.scanRun.findMany({
       where: { siteId },
@@ -125,11 +138,11 @@ export default async function SiteDetailPage({ params }: { params: Promise<{ sit
         </div>
       ) : null}
       {verificationStatus?.status === 'failed_enqueue' ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
-          <span className="font-medium">Verification failed to queue.</span>{' '}
-          {verificationStatus.errorHint
-            ? verificationStatus.errorHint.replace(/^Queue unavailable:\s*/i, '')
-            : 'Check Redis and workers, then use Queue verification scan.'}
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          <span className="font-medium">Verification could not be queued.</span>{' '}
+          {scanEnqueueFailureOperatorHint(verificationStatus.enqueueFailureCode)}
+          {verificationStatus.errorDetail ? ` ${verificationStatus.errorDetail}` : ''} Use Queue verification scan once
+          Redis and workers are healthy.
         </div>
       ) : null}
       {postCrawlEnqueueHint.show && postCrawlEnqueueHint.message ? (
@@ -167,9 +180,11 @@ export default async function SiteDetailPage({ params }: { params: Promise<{ sit
               }
             />
           ) : null}
-          <Link href={`/sites/${siteId}/settings`} className="btn-secondary">
-            Settings
-          </Link>
+          {canManageSite ? (
+            <Link href={`/sites/${siteId}/settings`} className="btn-secondary">
+              Settings
+            </Link>
+          ) : null}
         </div>
       </div>
 
@@ -216,39 +231,53 @@ export default async function SiteDetailPage({ params }: { params: Promise<{ sit
                 <tr className="border-b border-slate-200">
                   <th className="pb-2 text-left font-medium text-slate-500">Status</th>
                   <th className="pb-2 text-right font-medium text-slate-500">Pages</th>
+                  <th className="pb-2 text-left font-medium text-slate-500">After crawl</th>
                   <th className="pb-2 text-right font-medium text-slate-500">Started</th>
                   <th className="pb-2 text-right font-medium text-slate-500">Completed</th>
                 </tr>
               </thead>
               <tbody>
-                {recentCrawls.map((crawl) => (
-                  <tr key={crawl.id} className="border-b border-slate-100">
-                    <td className="py-2">
-                      <span
-                        className={`badge ${
-                          crawl.status === 'COMPLETED'
-                            ? 'bg-green-100 text-green-800'
-                            : crawl.status === 'RUNNING'
-                            ? 'bg-blue-100 text-blue-800'
-                            : crawl.status === 'FAILED'
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-slate-100 text-slate-800'
-                        }`}
-                      >
-                        {crawl.status.toLowerCase()}
-                      </span>
-                    </td>
-                    <td className="py-2 text-right text-slate-600">
-                      {crawl.pagesCrawled}
-                    </td>
-                    <td className="py-2 text-right text-slate-500">
-                      {crawl.startedAt?.toLocaleString() ?? '-'}
-                    </td>
-                    <td className="py-2 text-right text-slate-500">
-                      {crawl.completedAt?.toLocaleString() ?? '-'}
-                    </td>
-                  </tr>
-                ))}
+                {recentCrawls.map((crawl) => {
+                  const afterSummary =
+                    crawl.status === 'COMPLETED'
+                      ? postCrawlKickoffOperatorSummary(
+                          crawl.postCrawlScanKickoffStatus,
+                          crawl.postCrawlScanKickoffReasonCode,
+                          crawl.postCrawlScanKickoffDetail
+                        )
+                      : null;
+                  return (
+                    <tr key={crawl.id} className="border-b border-slate-100">
+                      <td className="py-2">
+                        <span
+                          className={`badge ${
+                            crawl.status === 'COMPLETED'
+                              ? 'bg-green-100 text-green-800'
+                              : crawl.status === 'RUNNING'
+                                ? 'bg-blue-100 text-blue-800'
+                                : crawl.status === 'FAILED'
+                                  ? 'bg-red-100 text-red-800'
+                                  : 'bg-slate-100 text-slate-800'
+                          }`}
+                        >
+                          {crawl.status.toLowerCase()}
+                        </span>
+                      </td>
+                      <td className="py-2 text-right text-slate-600">{crawl.pagesCrawled}</td>
+                      <td className="py-2 text-left text-slate-600 text-xs max-w-xs">
+                        {afterSummary ?? (
+                          <span className="text-slate-400">—</span>
+                        )}
+                      </td>
+                      <td className="py-2 text-right text-slate-500">
+                        {crawl.startedAt?.toLocaleString() ?? '-'}
+                      </td>
+                      <td className="py-2 text-right text-slate-500">
+                        {crawl.completedAt?.toLocaleString() ?? '-'}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

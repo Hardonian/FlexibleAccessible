@@ -1,13 +1,42 @@
 import { Queue } from 'bullmq';
 import { bullmqConnectionOptions, getSharedScanQueue } from '@aros/shared';
 
-const connection = bullmqConnectionOptions();
+let crawlQueueInstance: Queue | null = null;
+let clusterQueueInstance: Queue | null = null;
+let remediationQueueInstance: Queue | null = null;
 
-export const crawlQueue = new Queue('crawl', { connection });
-/** Shared BullMQ queue instance (same Redis connection pattern as crawl/cluster). */
-export const scanQueue = getSharedScanQueue();
-export const clusterQueue = new Queue('cluster', { connection });
-export const remediationQueue = new Queue('remediation', { connection });
+function connection() {
+  return bullmqConnectionOptions();
+}
+
+/**
+ * Lazy BullMQ queue handles so importing this module during Next.js static analysis
+ * does not open Redis connections (avoids build-time ECONNREFUSED noise).
+ */
+export function getCrawlQueue(): Queue {
+  if (!crawlQueueInstance) {
+    crawlQueueInstance = new Queue('crawl', { connection: connection() });
+  }
+  return crawlQueueInstance;
+}
+
+export function getScanQueue(): Queue {
+  return getSharedScanQueue();
+}
+
+export function getClusterQueue(): Queue {
+  if (!clusterQueueInstance) {
+    clusterQueueInstance = new Queue('cluster', { connection: connection() });
+  }
+  return clusterQueueInstance;
+}
+
+export function getRemediationQueue(): Queue {
+  if (!remediationQueueInstance) {
+    remediationQueueInstance = new Queue('remediation', { connection: connection() });
+  }
+  return remediationQueueInstance;
+}
 
 export interface CrawlJobData {
   crawlRunId: string;
