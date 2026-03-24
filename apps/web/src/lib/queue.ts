@@ -1,10 +1,11 @@
 import { Queue } from 'bullmq';
-import { bullmqConnectionOptions } from '@aros/shared';
+import { bullmqConnectionOptions, getSharedScanQueue } from '@aros/shared';
 
 const connection = bullmqConnectionOptions();
 
 export const crawlQueue = new Queue('crawl', { connection });
-export const scanQueue = new Queue('scan', { connection });
+/** Shared BullMQ queue instance (same Redis connection pattern as crawl/cluster). */
+export const scanQueue = getSharedScanQueue();
 export const clusterQueue = new Queue('cluster', { connection });
 export const remediationQueue = new Queue('remediation', { connection });
 

@@ -7,6 +7,10 @@ import { startCrawlAction } from './actions';
 import { ScanNowButton } from './scan-now-button';
 import { scanSiteInitialState } from './scan-action-state';
 import { startSiteScanAction } from './scan-actions';
+import {
+  getPostCrawlScanEnqueueFailureHint,
+  getSiteVerificationStatus,
+} from '@/lib/sites/verification-status';
 
 export async function generateMetadata({ params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = await params;
@@ -42,7 +46,7 @@ export default async function SiteDetailPage({ params }: { params: Promise<{ sit
   const membership = site.workspace.organization.memberships[0];
   const canStartScan = hasPermission(membership.role, 'scan:start');
 
-  const [recentCrawls, recentScans, findings, activeScan, pageCountForScan] = await Promise.all([
+  const [recentCrawls, recentScans, findings, pageCountForScan, verificationExtras] = await Promise.all([
     prisma.crawlRun.findMany({
       where: { siteId },
       orderBy: { createdAt: 'desc' },
@@ -61,13 +65,42 @@ export default async function SiteDetailPage({ params }: { params: Promise<{ sit
       orderBy: { impact: 'asc' },
       take: 20,
     }),
-    prisma.scanRun.findFirst({
-      where: { siteId, status: { in: ['PENDING', 'RUNNING'] } },
-      orderBy: { createdAt: 'desc' },
-      select: { id: true, status: true, createdAt: true },
-    }),
     prisma.page.count({ where: { siteId } }),
+    (async () => {
+      try {
+        const [verificationStatus, postCrawlEnqueueHint] = await Promise.all([
+          getSiteVerificationStatus(prisma, {
+            siteId,
+            organizationId: site.workspace.organizationId,
+          }),
+          getPostCrawlScanEnqueueFailureHint(prisma, {
+            siteId,
+            organizationId: site.workspace.organizationId,
+          }),
+        ]);
+        return { verificationStatus, postCrawlEnqueueHint, verificationLoadError: null as string | null };
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Could not load verification status';
+        console.error('[site detail] verification status query failed', e);
+        return {
+          verificationStatus: null,
+          postCrawlEnqueueHint: { show: false, message: null },
+          verificationLoadError: message,
+        };
+      }
+    })(),
   ]);
+
+  const { verificationStatus, postCrawlEnqueueHint, verificationLoadError } = verificationExtras;
+
+  const scanBlocked =
+    verificationStatus?.status === 'pending' || verificationStatus?.status === 'running';
+  const scanBlockedHint =
+    verificationStatus?.status === 'pending'
+      ? 'Verification is already queued for this site.'
+      : verificationStatus?.status === 'running'
+        ? 'Verification is already running for this site.'
+        : null;
 
   const findingsBySeverity = {
     critical: findings.filter((f) => f.impact === 'CRITICAL').length,
@@ -78,6 +111,32 @@ export default async function SiteDetailPage({ params }: { params: Promise<{ sit
 
   return (
     <div className="space-y-6">
+      {verificationLoadError ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Could not load live verification queue status ({verificationLoadError}). Scan history below still reflects stored
+          runs.
+        </div>
+      ) : null}
+      {verificationStatus?.status === 'pending' || verificationStatus?.status === 'running' ? (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+          {verificationStatus.status === 'pending' ? 'Verification pending' : 'Verification in progress'}: automated evidence
+          refreshes when this scan finishes (queued at{' '}
+          {verificationStatus.createdAt?.toLocaleString() ?? 'unknown'}).
+        </div>
+      ) : null}
+      {verificationStatus?.status === 'failed_enqueue' ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+          <span className="font-medium">Verification failed to queue.</span>{' '}
+          {verificationStatus.errorHint
+            ? verificationStatus.errorHint.replace(/^Queue unavailable:\s*/i, '')
+            : 'Check Redis and workers, then use Queue verification scan.'}
+        </div>
+      ) : null}
+      {postCrawlEnqueueHint.show && postCrawlEnqueueHint.message ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          {postCrawlEnqueueHint.message}
+        </div>
+      ) : null}
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2 text-sm text-slate-500 mb-1">
@@ -101,15 +160,10 @@ export default async function SiteDetailPage({ params }: { params: Promise<{ sit
               action={startSiteScanAction}
               initialState={scanSiteInitialState}
               siteId={siteId}
-              disabled={pageCountForScan === 0 || Boolean(activeScan)}
+              disabled={pageCountForScan === 0 || Boolean(scanBlocked)}
               blockedHint={
-                activeScan
-                  ? activeScan.status === 'PENDING'
-                    ? 'Verification is already queued for this site.'
-                    : 'Verification is already running for this site.'
-                  : pageCountForScan === 0
-                    ? 'Run a crawl first so there are pages to verify.'
-                    : null
+                scanBlockedHint ??
+                (pageCountForScan === 0 ? 'Run a crawl first so there are pages to verify.' : null)
               }
             />
           ) : null}

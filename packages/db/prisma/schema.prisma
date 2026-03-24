@@ -143,6 +143,8 @@ model CrawlConfig {
   excludePatterns   String[] @default([])
   respectRobots     Boolean  @default(true)
   renderJavaScript  Boolean  @default(true)
+  /** When true, worker enqueues a site scan after a crawl completes with pages. */
+  autoScanAfterCrawl Boolean @default(true)
   viewports         Json     @default("[{\"width\":1280,\"height\":720},{\"width\":375,\"height\":812}]")
   scheduleCron      String?
   authConfig        Json?

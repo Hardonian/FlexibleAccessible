@@ -90,7 +90,7 @@ describe('enqueueSiteScan', () => {
     });
   });
 
-  it('coalesces when pending scan exists for site', async () => {
+  it('coalesces when pending scan exists for site (operator, no crawlRunId)', async () => {
     const prisma = mockPrisma();
     vi.mocked(prisma.site.findFirst).mockResolvedValue({ id: 's1' } as never);
     vi.mocked(prisma.page.count).mockResolvedValue(1 as never);
@@ -136,5 +136,25 @@ describe('enqueueSiteScan', () => {
         data: expect.objectContaining({ status: 'FAILED' }),
       })
     );
+  });
+
+  it('allows a new operator scan when only a completed scan exists for the site', async () => {
+    const add = vi.fn().mockResolvedValue({ id: 'job' });
+    const prisma = mockPrisma();
+    vi.mocked(prisma.site.findFirst).mockResolvedValue({ id: 's1' } as never);
+    vi.mocked(prisma.page.count).mockResolvedValue(1 as never);
+    vi.mocked(prisma.scanRun.findFirst)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null);
+    vi.mocked(prisma.scanRun.create).mockResolvedValue({ id: 'sr-new' } as never);
+    vi.mocked(prisma.auditLog.create).mockResolvedValue({} as never);
+
+    const result = await enqueueSiteScan(
+      { prisma, queue: { add, close: vi.fn() } },
+      { siteId: 's1', organizationId: 'o1', trigger: 'operator' }
+    );
+
+    expect(result).toMatchObject({ ok: true, kind: 'queued', scanRunId: 'sr-new' });
+    expect(add).toHaveBeenCalled();
   });
 });

@@ -11,6 +11,7 @@ export type { PaginatedResult, PaginationParams } from './pagination';
 export { paginationSchema, buildPaginationMeta } from './pagination';
 export { wcagCriteriaMap, getWcagLevel } from './wcag';
 export { bullmqConnectionOptions } from './redis-connection';
+export { SCAN_QUEUE_NAME, getSharedScanQueue } from './scan-queue';
 export {
   FINDING_STATUSES,
   OPERATOR_ALLOWED_TRANSITIONS,
