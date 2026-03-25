@@ -1,11 +1,72 @@
-import type { PrismaClient } from '@aros/db';
+import type {
+  PostCrawlScanKickoffStatus,
+  PrismaClient,
+  ScanEnqueueFailureCode,
+} from '@aros/db';
 
 export type SiteVerificationRow = {
   status: 'idle' | 'pending' | 'running' | 'failed_enqueue';
   scanRunId: string | null;
   createdAt: Date | null;
-  errorHint: string | null;
+  /** Canonical enqueue failure code when status is failed_enqueue */
+  enqueueFailureCode: ScanEnqueueFailureCode | null;
+  /** Operator-facing detail (underlying error text when available) */
+  errorDetail: string | null;
 };
+
+const KICKOFF_FAILURE_STATUSES: PostCrawlScanKickoffStatus[] = [
+  'QUEUE_UNAVAILABLE',
+  'QUEUE_REJECTED',
+  'DISPATCH_UNAVAILABLE',
+  'KICKOFF_FAILED_UNKNOWN',
+];
+
+function stripQueueUnavailablePrefix(message: string): string {
+  return message.replace(/^Queue unavailable:\s*/i, '').trim();
+}
+
+export function scanEnqueueFailureOperatorHint(code: ScanEnqueueFailureCode | null): string {
+  switch (code) {
+    case 'QUEUE_UNAVAILABLE':
+      return 'The verification queue could not be reached (often Redis or network).';
+    case 'QUEUE_REJECTED':
+      return 'The queue rejected the job (for example policy or resource limits).';
+    case 'DISPATCH_UNAVAILABLE':
+      return 'Dispatch to workers failed; check worker and queue configuration.';
+    case 'KICKOFF_FAILED_UNKNOWN':
+    default:
+      return 'Verification could not be queued for an unexpected reason.';
+  }
+}
+
+export function postCrawlKickoffOperatorSummary(
+  status: PostCrawlScanKickoffStatus,
+  reasonCode: ScanEnqueueFailureCode | null,
+  detail: string | null
+): string | null {
+  switch (status) {
+    case 'NOT_REQUESTED':
+    case 'REQUESTED':
+      return null;
+    case 'ENQUEUED':
+      return 'After this crawl, a verification scan was queued successfully.';
+    case 'SKIPPED_BY_SETTING':
+      return (
+        detail ??
+        'Automatic verification after crawl is disabled in crawl settings; start a scan manually when ready.'
+      );
+    case 'QUEUE_UNAVAILABLE':
+    case 'QUEUE_REJECTED':
+    case 'DISPATCH_UNAVAILABLE':
+    case 'KICKOFF_FAILED_UNKNOWN': {
+      const base = scanEnqueueFailureOperatorHint(reasonCode);
+      const tail = detail?.trim() ? ` (${detail.trim()})` : '';
+      return `Crawl finished, but automatic verification could not be queued. ${base}${tail}`;
+    }
+    default:
+      return null;
+  }
+}
 
 /**
  * Operator-facing scan lifecycle from persisted ScanRun + audit (no BullMQ reads).
@@ -31,7 +92,8 @@ export async function getSiteVerificationStatus(
       status: active.status === 'PENDING' ? 'pending' : 'running',
       scanRunId: active.id,
       createdAt: active.createdAt,
-      errorHint: null,
+      enqueueFailureCode: null,
+      errorDetail: null,
     };
   }
 
@@ -39,32 +101,52 @@ export async function getSiteVerificationStatus(
     where: {
       siteId,
       status: 'FAILED',
-      errorMessage: { startsWith: 'Queue unavailable:' },
       site: { workspace: { organizationId } },
+      OR: [
+        { enqueueFailureCode: { not: null } },
+        { errorMessage: { startsWith: 'Queue unavailable:' } },
+      ],
     },
     orderBy: { createdAt: 'desc' },
-    select: { id: true, createdAt: true, errorMessage: true },
+    select: {
+      id: true,
+      createdAt: true,
+      errorMessage: true,
+      enqueueFailureCode: true,
+    },
   });
 
   if (failedEnqueue) {
+    const code = failedEnqueue.enqueueFailureCode ?? 'QUEUE_UNAVAILABLE';
+    const errorDetail = failedEnqueue.errorMessage
+      ? stripQueueUnavailablePrefix(failedEnqueue.errorMessage)
+      : null;
     return {
       status: 'failed_enqueue',
       scanRunId: failedEnqueue.id,
       createdAt: failedEnqueue.createdAt,
-      errorHint: failedEnqueue.errorMessage,
+      enqueueFailureCode: code,
+      errorDetail,
     };
   }
 
-  return { status: 'idle', scanRunId: null, createdAt: null, errorHint: null };
+  return {
+    status: 'idle',
+    scanRunId: null,
+    createdAt: null,
+    enqueueFailureCode: null,
+    errorDetail: null,
+  };
 }
 
 export type PostCrawlEnqueueFailureHint = {
   show: boolean;
   message: string | null;
+  kickoffStatus: PostCrawlScanKickoffStatus | null;
 };
 
 /**
- * Surface a truthful follow-up when post-crawl auto-scan enqueue failed and nothing has recovered yet.
+ * Surface a truthful follow-up when post-crawl auto-scan kickoff failed and nothing has recovered yet.
  */
 export async function getPostCrawlScanEnqueueFailureHint(
   prisma: PrismaClient,
@@ -80,25 +162,23 @@ export async function getPostCrawlScanEnqueueFailureHint(
       site: { workspace: { organizationId } },
     },
     orderBy: { completedAt: 'desc' },
-    select: { id: true, completedAt: true },
+    select: {
+      id: true,
+      completedAt: true,
+      postCrawlScanKickoffStatus: true,
+      postCrawlScanKickoffReasonCode: true,
+      postCrawlScanKickoffDetail: true,
+    },
   });
 
   if (!latestCrawl?.completedAt) {
-    return { show: false, message: null };
+    return { show: false, message: null, kickoffStatus: null };
   }
 
-  const failedForCrawl = await prisma.scanRun.findFirst({
-    where: {
-      siteId,
-      crawlRunId: latestCrawl.id,
-      status: 'FAILED',
-      errorMessage: { startsWith: 'Queue unavailable:' },
-    },
-    select: { id: true },
-  });
+  const kickoffStatus = latestCrawl.postCrawlScanKickoffStatus;
 
-  if (!failedForCrawl) {
-    return { show: false, message: null };
+  if (!KICKOFF_FAILURE_STATUSES.includes(kickoffStatus)) {
+    return { show: false, message: null, kickoffStatus };
   }
 
   const recovered = await prisma.scanRun.findFirst({
@@ -120,12 +200,20 @@ export async function getPostCrawlScanEnqueueFailureHint(
   });
 
   if (recovered) {
-    return { show: false, message: null };
+    return { show: false, message: null, kickoffStatus };
   }
+
+  const message = postCrawlKickoffOperatorSummary(
+    kickoffStatus,
+    latestCrawl.postCrawlScanKickoffReasonCode,
+    latestCrawl.postCrawlScanKickoffDetail
+  );
 
   return {
     show: true,
     message:
-      'Automatic verification could not be queued after the latest crawl (verification queue unavailable). Start a verification scan once Redis and workers are healthy.',
+      message ??
+      'Crawl finished, but automatic verification could not be queued. Start a verification scan manually once Redis and workers are healthy.',
+    kickoffStatus,
   };
 }

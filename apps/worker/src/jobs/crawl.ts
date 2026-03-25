@@ -1,6 +1,6 @@
 import { Job } from 'bullmq';
-import { prisma } from '@aros/db';
-import { enqueueSiteScan } from '@aros/core-services';
+import { prisma, type PostCrawlScanKickoffStatus, type ScanEnqueueFailureCode } from '@aros/db';
+import { classifyScanEnqueueFailure, enqueueSiteScan } from '@aros/core-services';
 import { chromium, type Browser, type Page } from 'playwright';
 
 interface CrawlJobData {
@@ -226,7 +226,37 @@ export async function handleCrawlJob(job: Job<CrawlJobData>) {
 
     const autoScanAfterCrawl = site.crawlConfig?.autoScanAfterCrawl !== false;
 
-    if (pagesCrawled > 0 && site.workspace && autoScanAfterCrawl) {
+    async function persistKickoff(data: {
+      postCrawlScanKickoffStatus: PostCrawlScanKickoffStatus;
+      postCrawlScanKickoffReasonCode?: ScanEnqueueFailureCode | null;
+      postCrawlScanKickoffDetail?: string | null;
+      postCrawlScanKickoffScanRunId?: string | null;
+    }) {
+      await prisma.crawlRun.update({
+        where: { id: crawlRunId },
+        data: {
+          postCrawlScanKickoffStatus: data.postCrawlScanKickoffStatus,
+          postCrawlScanKickoffReasonCode: data.postCrawlScanKickoffReasonCode ?? null,
+          postCrawlScanKickoffDetail: data.postCrawlScanKickoffDetail ?? null,
+          postCrawlScanKickoffScanRunId: data.postCrawlScanKickoffScanRunId ?? null,
+        },
+      });
+    }
+
+    if (!site.workspace || pagesCrawled === 0) {
+      await persistKickoff({
+        postCrawlScanKickoffStatus: 'NOT_REQUESTED',
+        postCrawlScanKickoffDetail:
+          pagesCrawled === 0 ? 'No pages crawled; auto-scan not attempted.' : null,
+      });
+    } else if (!autoScanAfterCrawl) {
+      console.log(`[Crawl] Post-crawl scan skipped (autoScanAfterCrawl disabled) crawlRun=${crawlRunId}`);
+      await persistKickoff({
+        postCrawlScanKickoffStatus: 'SKIPPED_BY_SETTING',
+        postCrawlScanKickoffDetail: 'Automatic verification after crawl is off in site crawl settings.',
+      });
+    } else {
+      await persistKickoff({ postCrawlScanKickoffStatus: 'REQUESTED' });
       const scanResult = await enqueueSiteScan(
         { prisma },
         {
@@ -249,10 +279,23 @@ export async function handleCrawlJob(job: Job<CrawlJobData>) {
             `[Crawl] Post-crawl scan coalesced: ${scanResult.scanRunId} status=${scanResult.status}`
           );
         }
+        await persistKickoff({
+          postCrawlScanKickoffStatus: 'ENQUEUED',
+          postCrawlScanKickoffScanRunId: scanResult.scanRunId,
+          postCrawlScanKickoffReasonCode: null,
+          postCrawlScanKickoffDetail: null,
+        });
       } else if (scanResult.kind === 'queue_unavailable') {
+        const reasonCode = classifyScanEnqueueFailure(scanResult.message);
         console.error(
           `[Crawl] Post-crawl scan enqueue failed (queue): scanRun=${scanResult.scanRunId} ${scanResult.message}`
         );
+        await persistKickoff({
+          postCrawlScanKickoffStatus: 'QUEUE_UNAVAILABLE',
+          postCrawlScanKickoffReasonCode: reasonCode,
+          postCrawlScanKickoffDetail: scanResult.message,
+          postCrawlScanKickoffScanRunId: scanResult.scanRunId,
+        });
         await prisma.auditLog
           .create({
             data: {
@@ -264,18 +307,30 @@ export async function handleCrawlJob(job: Job<CrawlJobData>) {
                 siteId,
                 scanRunId: scanResult.scanRunId,
                 reason: 'queue_unavailable',
+                enqueueFailureCode: reasonCode,
                 message: scanResult.message,
               },
             },
           })
           .catch(() => undefined);
       } else if (scanResult.kind === 'invalid_target') {
+        const detail =
+          scanResult.reason === 'no_pages'
+            ? 'No pages in database to verify.'
+            : 'Site could not be resolved for scan enqueue.';
         console.warn(`[Crawl] Post-crawl scan skipped: ${scanResult.reason}`);
+        await persistKickoff({
+          postCrawlScanKickoffStatus: 'NOT_REQUESTED',
+          postCrawlScanKickoffDetail: detail,
+        });
       } else {
         console.error(`[Crawl] Post-crawl scan failed: ${scanResult.message}`);
+        await persistKickoff({
+          postCrawlScanKickoffStatus: 'KICKOFF_FAILED_UNKNOWN',
+          postCrawlScanKickoffReasonCode: 'KICKOFF_FAILED_UNKNOWN',
+          postCrawlScanKickoffDetail: scanResult.message,
+        });
       }
-    } else if (pagesCrawled > 0 && site.workspace && !autoScanAfterCrawl) {
-      console.log(`[Crawl] Post-crawl scan skipped (autoScanAfterCrawl disabled) crawlRun=${crawlRunId}`);
     }
   } catch (err) {
     console.error(`[Crawl] Crawl ${crawlRunId} failed:`, err);

@@ -133,7 +133,10 @@ describe('enqueueSiteScan', () => {
     expect(update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'sr-fail' },
-        data: expect.objectContaining({ status: 'FAILED' }),
+        data: expect.objectContaining({
+          status: 'FAILED',
+          enqueueFailureCode: 'QUEUE_UNAVAILABLE',
+        }),
       })
     );
   });

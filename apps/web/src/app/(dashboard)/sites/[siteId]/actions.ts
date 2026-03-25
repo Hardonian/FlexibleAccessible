@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation';
 import { requireSession } from '@/lib/session';
 import { prisma } from '@/lib/db';
-import { crawlQueue, type CrawlJobData } from '@/lib/queue';
+import { getCrawlQueue, type CrawlJobData } from '@/lib/queue';
 
 export async function startCrawlAction(formData: FormData) {
   const user = await requireSession();
@@ -70,7 +70,7 @@ export async function startCrawlAction(formData: FormData) {
         ],
       },
     };
-    await crawlQueue.add('crawl', jobData, {
+    await getCrawlQueue().add('crawl', jobData, {
       attempts: 3,
       backoff: { type: 'exponential', delay: 5000 },
     });

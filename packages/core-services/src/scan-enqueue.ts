@@ -1,6 +1,7 @@
 import { Queue } from 'bullmq';
 import type { PrismaClient, ScanStatus } from '@aros/db';
 import { getSharedScanQueue, SCAN_QUEUE_NAME } from '@aros/shared';
+import { classifyScanEnqueueFailure } from './scan-enqueue-failure-code';
 
 export { SCAN_QUEUE_NAME };
 
@@ -155,11 +156,13 @@ export async function enqueueSiteScan(
         await queueInstance.close().catch(() => undefined);
       }
       const message = e instanceof Error ? e.message : 'Queue add failed';
+      const enqueueFailureCode = classifyScanEnqueueFailure(message);
       await prisma.scanRun
         .update({
           where: { id: scanRun.id },
           data: {
             status: 'FAILED',
+            enqueueFailureCode,
             errorMessage: `Queue unavailable: ${message}`,
             completedAt: new Date(),
           },

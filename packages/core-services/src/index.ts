@@ -11,6 +11,7 @@ export {
   type EnqueueSiteScanResult,
   type ScanEnqueueTrigger,
 } from './scan-enqueue';
+export { classifyScanEnqueueFailure } from './scan-enqueue-failure-code';
 export { checkPostgres, checkRedisPing, getQueueDepths } from './checks';
 export {
   isWorkerHeartbeatStale,

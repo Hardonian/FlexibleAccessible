@@ -165,6 +165,26 @@ enum CrawlStatus {
   CANCELLED
 }
 
+/** Outcome of attempting to start a verification scan after a crawl completes (worker-written). */
+enum PostCrawlScanKickoffStatus {
+  NOT_REQUESTED
+  REQUESTED
+  ENQUEUED
+  SKIPPED_BY_SETTING
+  QUEUE_UNAVAILABLE
+  QUEUE_REJECTED
+  DISPATCH_UNAVAILABLE
+  KICKOFF_FAILED_UNKNOWN
+}
+
+/** Structured reason when a ScanRun never left the queue (enqueue-time failure). */
+enum ScanEnqueueFailureCode {
+  QUEUE_UNAVAILABLE
+  QUEUE_REJECTED
+  DISPATCH_UNAVAILABLE
+  KICKOFF_FAILED_UNKNOWN
+}
+
 model CrawlRun {
   id            String      @id @default(cuid())
   siteId        String
@@ -176,6 +196,11 @@ model CrawlRun {
   completedAt   DateTime?
   errorMessage  String?
   metadata      Json?
+  /** Canonical post-crawl auto-scan attempt outcome (distinct from crawl success/failure). */
+  postCrawlScanKickoffStatus      PostCrawlScanKickoffStatus @default(NOT_REQUESTED)
+  postCrawlScanKickoffReasonCode  ScanEnqueueFailureCode?
+  postCrawlScanKickoffDetail      String?
+  postCrawlScanKickoffScanRunId   String?
   createdAt     DateTime    @default(now())
 
   site      Site       @relation(fields: [siteId], references: [id], onDelete: Cascade)
@@ -247,6 +272,8 @@ model ScanRun {
   startedAt     DateTime?
   completedAt   DateTime?
   errorMessage  String?
+  /** Set when the run failed before a worker claimed it (e.g. BullMQ add failed). */
+  enqueueFailureCode ScanEnqueueFailureCode?
   createdAt     DateTime   @default(now())
 
   site      Site           @relation(fields: [siteId], references: [id], onDelete: Cascade)
