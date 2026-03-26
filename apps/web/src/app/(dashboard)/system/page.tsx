@@ -11,7 +11,7 @@ import {
   IssueAcknowledgeButton,
   OperatorControlPlaneClient,
 } from '@/components/system/operator-control-plane-client';
-import { parseOperatorPlatformFlags, type PlatformDiagnosticIssue } from '@aros/core-services';
+import { type PlatformDiagnosticIssue } from '@aros/core-services';
 
 export const metadata = { title: 'System & services - AROS' };
 
@@ -171,7 +171,7 @@ export default async function SystemPage() {
                 organizationId={orgId}
                 optionalIssueIds={optionalDiagnosticIds(payload)}
                 initialSuppressedIds={
-                  parseOperatorPlatformFlags(payload.report.operatorPlatformFlags).prefs.suppressedOptionalDiagnosticIds
+                  payload.operatorFlags.prefs.suppressedOptionalDiagnosticIds
                 }
               />
             ) : (
