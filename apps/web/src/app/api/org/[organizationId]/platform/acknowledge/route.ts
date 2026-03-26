@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { collectPlatformHealth, derivePlatformDiagnostics, parseOperatorPlatformFlags } from '@aros/core-services';
+import { collectPlatformHealth, derivePlatformDiagnostics } from '@aros/core-services';
 import { requireOrgAccess } from '@/lib/auth-guard';
 import { prisma } from '@/lib/db';
 import { apiError } from '@/lib/api-utils';
 import { logOperatorPlatformAction } from '@/lib/operator-platform-audit';
-import { updateOperatorFlags } from '@/lib/operator-product-flags';
+import { parseOperatorFlagsForOrganization } from '@/lib/operator-org-flags';
+import { updateOperatorFlagsForOrganization } from '@/lib/operator-product-flags';
 import { getPlatformHealthPayload } from '@/lib/platform-health';
 
 export const dynamic = 'force-dynamic';
@@ -42,7 +43,7 @@ export async function POST(
     const { issueId } = parsedBody.data;
 
     const report = await collectPlatformHealth(prisma);
-    const flags = parseOperatorPlatformFlags(report.operatorPlatformFlags);
+    const flags = parseOperatorFlagsForOrganization(report.operatorPlatformFlags, organizationId);
     const { issues } = derivePlatformDiagnostics(report, flags);
     const known = issues.some((i) => i.id === issueId);
     if (!known) {
@@ -65,7 +66,7 @@ export async function POST(
       );
     }
 
-    await updateOperatorFlags((current) => {
+    await updateOperatorFlagsForOrganization(organizationId, (current) => {
       const next = new Set(current.acknowledgements.acknowledgedIssueIds);
       next.add(issueId);
       return {

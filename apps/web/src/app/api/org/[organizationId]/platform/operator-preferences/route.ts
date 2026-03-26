@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { requireOrgAccess } from '@/lib/auth-guard';
 import { apiError } from '@/lib/api-utils';
 import { logOperatorPlatformAction } from '@/lib/operator-platform-audit';
-import { updateOperatorFlags } from '@/lib/operator-product-flags';
+import { updateOperatorFlagsForOrganization } from '@/lib/operator-product-flags';
 import { getPlatformHealthPayload } from '@/lib/platform-health';
 import { validateSuppressedOptionalDiagnosticIds } from '@/lib/operator-preferences-validation';
 
@@ -63,7 +63,7 @@ export async function PATCH(
       );
     }
 
-    await updateOperatorFlags((current) => ({
+    await updateOperatorFlagsForOrganization(organizationId, (current) => ({
       ...current,
       prefs: {
         ...current.prefs,

@@ -3,7 +3,6 @@ import {
   buildRoutePlatformTruth,
   derivePlatformDiagnostics,
   listOperatorActions,
-  parseOperatorPlatformFlags,
   type ControlPlaneSummary,
   type OperatorActionDescriptor,
   type PlatformDiagnosticIssue,
@@ -11,6 +10,7 @@ import {
 } from '@aros/core-services';
 import { parseEnvDiagnostics } from '@aros/config';
 import { prisma } from './db';
+import { parseOperatorFlagsForOrganization } from './operator-org-flags';
 import type { PlatformHealthReport, RoutePlatformTruth } from '@aros/core-services';
 import { getRecentPlatformAuditEntries, type RecentPlatformAuditEntry } from './operator-platform-audit';
 
@@ -29,6 +29,7 @@ export interface PlatformHealthApiPayload {
   };
   operatorActions: OperatorActionDescriptor[];
   recentPlatformActions: RecentPlatformAuditEntry[];
+  operatorFlags: ReturnType<typeof parseOperatorFlagsForOrganization>;
 }
 
 export async function getPlatformHealthPayload(organizationId?: string): Promise<PlatformHealthApiPayload> {
@@ -37,7 +38,7 @@ export async function getPlatformHealthPayload(organizationId?: string): Promise
     (k) => (diag.fieldErrors[k]?.length ?? 0) > 0
   );
   const report = await collectPlatformHealth(prisma);
-  const parsedFlags = parseOperatorPlatformFlags(report.operatorPlatformFlags);
+  const parsedFlags = parseOperatorFlagsForOrganization(report.operatorPlatformFlags, organizationId);
   const { issues, setupChecklist, summary } = derivePlatformDiagnostics(report, parsedFlags);
   const recentPlatformActions =
     organizationId != null
@@ -50,5 +51,6 @@ export async function getPlatformHealthPayload(organizationId?: string): Promise
     diagnostics: { issues, setupChecklist, summary },
     operatorActions: listOperatorActions(),
     recentPlatformActions,
+    operatorFlags: parsedFlags,
   };
 }
