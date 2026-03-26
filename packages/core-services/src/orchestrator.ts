@@ -80,6 +80,38 @@ export async function collectPlatformHealth(prisma: PrismaClient): Promise<Platf
   const checkedAt = new Date().toISOString();
   const envDiag = parseEnvDiagnostics(process.env);
 
+  /** Next.js sets this during `next build` static analysis; avoid live DB/Redis probes and log noise. */
+  const skipLiveInfraProbes =
+    process.env.NODE_ENV === 'production' && process.env.NEXT_PHASE === 'phase-production-build';
+
+  if (skipLiveInfraProbes) {
+    const sessionOk = envDiag.valid;
+    const noopInfra = { ok: true as const, checkedAt, skipped: true as const };
+    return {
+      checkedAt,
+      liveInfraProbes: 'skipped_build',
+      bootstrap: {
+        installed: false,
+        installedAt: null,
+        bootstrapVersion: 0,
+        readiness: 'ready',
+        blockers: [] as string[],
+        warnings: [] as string[],
+      },
+      dependencies: {
+        database: noopInfra,
+        redis: noopInfra,
+        sessionStore: {
+          ok: sessionOk,
+          checkedAt,
+          message: sessionOk ? undefined : 'Sessions require valid DB + NEXTAUTH_*',
+        },
+      },
+      services: [],
+      operatorPlatformFlags: null,
+    };
+  }
+
   const dbCheck = await checkPostgres(() => prisma.$queryRaw`SELECT 1`);
   const redisUrl = process.env.REDIS_URL?.trim() || 'redis://localhost:6379';
   const redisCheck = await checkRedisPing(redisUrl);
@@ -456,6 +488,7 @@ export async function collectPlatformHealth(prisma: PrismaClient): Promise<Platf
 
   return {
     checkedAt,
+    liveInfraProbes: 'live',
     bootstrap,
     dependencies: {
       database: dbCheck,

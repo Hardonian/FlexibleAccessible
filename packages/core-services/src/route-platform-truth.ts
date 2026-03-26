@@ -1,4 +1,4 @@
-import type { PlatformHealthReport, PlatformReadiness } from './types';
+import type { LiveInfraProbesMode, PlatformHealthReport, PlatformReadiness } from './types';
 
 /** Safe, route-consumable projection of platform health (no secrets; no raw env values). */
 export type RoutePlatformShellBlocker =
@@ -9,6 +9,8 @@ export type RoutePlatformShellBlocker =
 
 export interface RoutePlatformTruth {
   checkedAt: string;
+  /** When `skipped_build`, health flags are neutral placeholders for compile-time evaluation only. */
+  liveInfraProbes: LiveInfraProbesMode;
   shellBlocker: RoutePlatformShellBlocker;
   /**
    * When true, org-scoped Prisma reads are expected to work; routes should use degraded/partial envelopes
@@ -42,6 +44,28 @@ function serviceById(report: PlatformHealthReport, id: string) {
  * Callers must pass the real report from collectPlatformHealth — do not fabricate readiness.
  */
 export function buildRoutePlatformTruth(report: PlatformHealthReport): RoutePlatformTruth {
+  if (report.liveInfraProbes === 'skipped_build') {
+    return {
+      checkedAt: report.checkedAt,
+      liveInfraProbes: 'skipped_build',
+      shellBlocker: 'none',
+      allowOrgScopedDbReads: true,
+      readiness: 'ready',
+      installed: false,
+      userImpactSummary: [],
+      operatorRemediationHints: [],
+      flags: {
+        databaseOk: true,
+        redisOk: true,
+        sessionOk: true,
+        envConfigOk: true,
+        workerRunning: true,
+        jobPipelinesHealthy: true,
+      },
+      optionalSubsystemIssues: [],
+    };
+  }
+
   const appApi = serviceById(report, 'app-api');
   const database = serviceById(report, 'database');
   const redis = serviceById(report, 'redis-queue');
@@ -117,6 +141,7 @@ export function buildRoutePlatformTruth(report: PlatformHealthReport): RoutePlat
 
   return {
     checkedAt: report.checkedAt,
+    liveInfraProbes: 'live',
     shellBlocker,
     allowOrgScopedDbReads,
     readiness: report.bootstrap.readiness,

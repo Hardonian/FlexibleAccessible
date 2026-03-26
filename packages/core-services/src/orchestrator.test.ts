@@ -28,6 +28,7 @@ describe('collectPlatformHealth', () => {
   });
   afterEach(() => {
     vi.useRealTimers();
+    delete process.env.NEXT_PHASE;
   });
 
   it('reports not_installed when platform row missing', async () => {
@@ -39,6 +40,7 @@ describe('collectPlatformHealth', () => {
     } as unknown as PrismaClient;
 
     const report = await collectPlatformHealth(prisma);
+    expect(report.liveInfraProbes).toBe('live');
     expect(report.bootstrap.installed).toBe(false);
     expect(report.bootstrap.readiness).toBe('not_installed');
     expect(report.operatorPlatformFlags).toBeNull();
@@ -58,8 +60,23 @@ describe('collectPlatformHealth', () => {
     } as unknown as PrismaClient;
 
     const report = await collectPlatformHealth(prisma);
+    expect(report.liveInfraProbes).toBe('live');
     const worker = report.services.find((s) => s.id === 'worker-runtime');
     expect(worker?.healthState).toBe('running');
     expect(report.operatorPlatformFlags).toEqual({});
+  });
+
+  it('skips live infra probes during Next.js production build phase', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('NEXT_PHASE', 'phase-production-build');
+    const prisma = {
+      $queryRaw: vi.fn(),
+      platformState: { findUnique: vi.fn() },
+    } as unknown as PrismaClient;
+
+    const report = await collectPlatformHealth(prisma);
+    expect(report.liveInfraProbes).toBe('skipped_build');
+    expect(prisma.$queryRaw).not.toHaveBeenCalled();
+    expect(report.services).toEqual([]);
   });
 });

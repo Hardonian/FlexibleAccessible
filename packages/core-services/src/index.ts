@@ -12,6 +12,10 @@ export {
   type ScanEnqueueTrigger,
 } from './scan-enqueue';
 export { classifyScanEnqueueFailure } from './scan-enqueue-failure-code';
+export {
+  persistPostCrawlScanKickoffAfterEnqueue,
+  POST_CRAWL_KICKOFF_FAILURE_STATUSES,
+} from './scan-kickoff-persist';
 export { checkPostgres, checkRedisPing, getQueueDepths } from './checks';
 export {
   isWorkerHeartbeatStale,
@@ -21,6 +25,7 @@ export {
 export type {
   CoreServiceDefinition,
   CoreServiceRuntimeView,
+  LiveInfraProbesMode,
   PlatformHealthReport,
   PlatformBootstrapStatus,
   ServiceHealthState,
