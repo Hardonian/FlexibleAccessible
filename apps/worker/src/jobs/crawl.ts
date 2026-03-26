@@ -1,6 +1,10 @@
 import { Job } from 'bullmq';
 import { prisma, type PostCrawlScanKickoffStatus, type ScanEnqueueFailureCode } from '@aros/db';
-import { classifyScanEnqueueFailure, enqueueSiteScan } from '@aros/core-services';
+import {
+  classifyScanEnqueueFailure,
+  enqueueSiteScan,
+  persistPostCrawlScanKickoffAfterEnqueue,
+} from '@aros/core-services';
 import { chromium, type Browser, type Page } from 'playwright';
 
 interface CrawlJobData {
@@ -279,23 +283,13 @@ export async function handleCrawlJob(job: Job<CrawlJobData>) {
             `[Crawl] Post-crawl scan coalesced: ${scanResult.scanRunId} status=${scanResult.status}`
           );
         }
-        await persistKickoff({
-          postCrawlScanKickoffStatus: 'ENQUEUED',
-          postCrawlScanKickoffScanRunId: scanResult.scanRunId,
-          postCrawlScanKickoffReasonCode: null,
-          postCrawlScanKickoffDetail: null,
-        });
+        await persistPostCrawlScanKickoffAfterEnqueue(prisma, crawlRunId, scanResult);
       } else if (scanResult.kind === 'queue_unavailable') {
         const reasonCode = classifyScanEnqueueFailure(scanResult.message);
         console.error(
           `[Crawl] Post-crawl scan enqueue failed (queue): scanRun=${scanResult.scanRunId} ${scanResult.message}`
         );
-        await persistKickoff({
-          postCrawlScanKickoffStatus: 'QUEUE_UNAVAILABLE',
-          postCrawlScanKickoffReasonCode: reasonCode,
-          postCrawlScanKickoffDetail: scanResult.message,
-          postCrawlScanKickoffScanRunId: scanResult.scanRunId,
-        });
+        await persistPostCrawlScanKickoffAfterEnqueue(prisma, crawlRunId, scanResult);
         await prisma.auditLog
           .create({
             data: {
@@ -313,23 +307,13 @@ export async function handleCrawlJob(job: Job<CrawlJobData>) {
             },
           })
           .catch(() => undefined);
-      } else if (scanResult.kind === 'invalid_target') {
-        const detail =
-          scanResult.reason === 'no_pages'
-            ? 'No pages in database to verify.'
-            : 'Site could not be resolved for scan enqueue.';
-        console.warn(`[Crawl] Post-crawl scan skipped: ${scanResult.reason}`);
-        await persistKickoff({
-          postCrawlScanKickoffStatus: 'NOT_REQUESTED',
-          postCrawlScanKickoffDetail: detail,
-        });
       } else {
-        console.error(`[Crawl] Post-crawl scan failed: ${scanResult.message}`);
-        await persistKickoff({
-          postCrawlScanKickoffStatus: 'KICKOFF_FAILED_UNKNOWN',
-          postCrawlScanKickoffReasonCode: 'KICKOFF_FAILED_UNKNOWN',
-          postCrawlScanKickoffDetail: scanResult.message,
-        });
+        if (scanResult.kind === 'invalid_target') {
+          console.warn(`[Crawl] Post-crawl scan skipped: ${scanResult.reason}`);
+        } else {
+          console.error(`[Crawl] Post-crawl scan failed: ${scanResult.message}`);
+        }
+        await persistPostCrawlScanKickoffAfterEnqueue(prisma, crawlRunId, scanResult);
       }
     }
   } catch (err) {

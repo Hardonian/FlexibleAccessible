@@ -6,6 +6,7 @@ function baseReport(overrides: Partial<PlatformHealthReport> = {}): PlatformHeal
   const services = overrides.services;
   return {
     checkedAt: '2025-01-01T00:00:00.000Z',
+    liveInfraProbes: 'live' as const,
     bootstrap: {
       installed: true,
       installedAt: '2025-01-01T00:00:00.000Z',
@@ -145,6 +146,31 @@ function baseReport(overrides: Partial<PlatformHealthReport> = {}): PlatformHeal
 }
 
 describe('buildRoutePlatformTruth', () => {
+  it('returns neutral shell when live probes skipped (build)', () => {
+    const truth = buildRoutePlatformTruth({
+      checkedAt: 't',
+      liveInfraProbes: 'skipped_build',
+      bootstrap: {
+        installed: false,
+        installedAt: null,
+        bootstrapVersion: 0,
+        readiness: 'ready',
+        blockers: [],
+        warnings: [],
+      },
+      dependencies: {
+        database: { ok: true, checkedAt: 't', skipped: true },
+        redis: { ok: true, checkedAt: 't', skipped: true },
+        sessionStore: { ok: true, checkedAt: 't' },
+      },
+      services: [],
+      operatorPlatformFlags: null,
+    });
+    expect(truth.liveInfraProbes).toBe('skipped_build');
+    expect(truth.shellBlocker).toBe('none');
+    expect(truth.flags.redisOk).toBe(true);
+  });
+
   it('marks critical_dependency_down when database is down', () => {
     const t = buildRoutePlatformTruth(
       baseReport({

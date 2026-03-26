@@ -6,7 +6,7 @@ import { hasPermission } from '@aros/config';
 import { startCrawlAction } from './actions';
 import { ScanNowButton } from './scan-now-button';
 import { scanSiteInitialState } from './scan-action-state';
-import { startSiteScanAction } from './scan-actions';
+import { retryPostCrawlScanKickoffAction, startSiteScanAction } from './scan-actions';
 import {
   getPostCrawlScanEnqueueFailureHint,
   getSiteVerificationStatus,
@@ -97,7 +97,13 @@ export default async function SiteDetailPage({ params }: { params: Promise<{ sit
         console.error('[site detail] verification status query failed', e);
         return {
           verificationStatus: null,
-          postCrawlEnqueueHint: { show: false, message: null },
+          postCrawlEnqueueHint: {
+            show: false,
+            message: null,
+            kickoffStatus: null,
+            relatedScanRunId: null,
+            crawlRunId: null,
+          },
           verificationLoadError: message,
         };
       }
@@ -105,6 +111,17 @@ export default async function SiteDetailPage({ params }: { params: Promise<{ sit
   ]);
 
   const { verificationStatus, postCrawlEnqueueHint, verificationLoadError } = verificationExtras;
+
+  const postCrawlKickoffFailed =
+    postCrawlEnqueueHint.show &&
+    postCrawlEnqueueHint.kickoffStatus != null &&
+    ['QUEUE_UNAVAILABLE', 'QUEUE_REJECTED', 'DISPATCH_UNAVAILABLE', 'KICKOFF_FAILED_UNKNOWN'].includes(
+      postCrawlEnqueueHint.kickoffStatus
+    );
+  const showSiteFailedEnqueueBanner =
+    verificationStatus?.status === 'failed_enqueue' &&
+    (!postCrawlKickoffFailed ||
+      verificationStatus.scanRunId !== postCrawlEnqueueHint.relatedScanRunId);
 
   const scanBlocked =
     verificationStatus?.status === 'pending' || verificationStatus?.status === 'running';
@@ -137,17 +154,26 @@ export default async function SiteDetailPage({ params }: { params: Promise<{ sit
           {verificationStatus.createdAt?.toLocaleString() ?? 'unknown'}).
         </div>
       ) : null}
-      {verificationStatus?.status === 'failed_enqueue' ? (
+      {showSiteFailedEnqueueBanner ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
           <span className="font-medium">Verification could not be queued.</span>{' '}
           {scanEnqueueFailureOperatorHint(verificationStatus.enqueueFailureCode)}
-          {verificationStatus.errorDetail ? ` ${verificationStatus.errorDetail}` : ''} Use Queue verification scan once
-          Redis and workers are healthy.
+          {verificationStatus.errorDetail ? ` ${verificationStatus.errorDetail}` : ''} Use Queue verification scan once Redis
+          and workers are healthy.
         </div>
       ) : null}
       {postCrawlEnqueueHint.show && postCrawlEnqueueHint.message ? (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          {postCrawlEnqueueHint.message}
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 space-y-3">
+          <p>{postCrawlEnqueueHint.message}</p>
+          {canStartScan && postCrawlKickoffFailed && postCrawlEnqueueHint.crawlRunId ? (
+            <form action={retryPostCrawlScanKickoffAction}>
+              <input type="hidden" name="siteId" value={siteId} />
+              <input type="hidden" name="crawlRunId" value={postCrawlEnqueueHint.crawlRunId} />
+              <button type="submit" className="btn-secondary text-sm">
+                Retry scan kickoff
+              </button>
+            </form>
+          ) : null}
         </div>
       ) : null}
       <div className="flex items-start justify-between">

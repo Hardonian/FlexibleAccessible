@@ -36,6 +36,11 @@ export interface DependencyCheckResult {
   ok: boolean;
   message?: string;
   checkedAt: string;
+  /**
+   * When true, no live connection was attempted (e.g. Next.js production build).
+   * Callers should not treat `ok: false` as a production outage in this case.
+   */
+  skipped?: boolean;
 }
 
 export interface CoreServiceRuntimeView extends CoreServiceDefinition {
@@ -63,8 +68,12 @@ export interface PlatformBootstrapStatus {
   warnings: string[];
 }
 
+export type LiveInfraProbesMode = 'live' | 'skipped_build';
+
 export interface PlatformHealthReport {
   checkedAt: string;
+  /** When `skipped_build`, Postgres/Redis/queue were not probed (Next.js production build). */
+  liveInfraProbes: LiveInfraProbesMode;
   bootstrap: PlatformBootstrapStatus;
   dependencies: {
     database: DependencyCheckResult;

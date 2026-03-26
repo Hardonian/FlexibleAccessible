@@ -102,10 +102,7 @@ export async function getSiteVerificationStatus(
       siteId,
       status: 'FAILED',
       site: { workspace: { organizationId } },
-      OR: [
-        { enqueueFailureCode: { not: null } },
-        { errorMessage: { startsWith: 'Queue unavailable:' } },
-      ],
+      enqueueFailureCode: { not: null },
     },
     orderBy: { createdAt: 'desc' },
     select: {
@@ -117,10 +114,9 @@ export async function getSiteVerificationStatus(
   });
 
   if (failedEnqueue) {
-    const code = failedEnqueue.enqueueFailureCode ?? 'QUEUE_UNAVAILABLE';
-    const errorDetail = failedEnqueue.errorMessage
-      ? stripQueueUnavailablePrefix(failedEnqueue.errorMessage)
-      : null;
+    const code = failedEnqueue.enqueueFailureCode!;
+    const raw = failedEnqueue.errorMessage?.trim() ?? '';
+    const errorDetail = raw ? stripQueueUnavailablePrefix(raw) || raw : null;
     return {
       status: 'failed_enqueue',
       scanRunId: failedEnqueue.id,
@@ -143,6 +139,9 @@ export type PostCrawlEnqueueFailureHint = {
   show: boolean;
   message: string | null;
   kickoffStatus: PostCrawlScanKickoffStatus | null;
+  /** ScanRun created for a failed enqueue, if any (dedupes with site-level failed_enqueue banner). */
+  relatedScanRunId: string | null;
+  crawlRunId: string | null;
 };
 
 /**
@@ -168,17 +167,18 @@ export async function getPostCrawlScanEnqueueFailureHint(
       postCrawlScanKickoffStatus: true,
       postCrawlScanKickoffReasonCode: true,
       postCrawlScanKickoffDetail: true,
+      postCrawlScanKickoffScanRunId: true,
     },
   });
 
   if (!latestCrawl?.completedAt) {
-    return { show: false, message: null, kickoffStatus: null };
+    return { show: false, message: null, kickoffStatus: null, relatedScanRunId: null, crawlRunId: null };
   }
 
   const kickoffStatus = latestCrawl.postCrawlScanKickoffStatus;
 
   if (!KICKOFF_FAILURE_STATUSES.includes(kickoffStatus)) {
-    return { show: false, message: null, kickoffStatus };
+    return { show: false, message: null, kickoffStatus, relatedScanRunId: null, crawlRunId: null };
   }
 
   const recovered = await prisma.scanRun.findFirst({
@@ -200,7 +200,7 @@ export async function getPostCrawlScanEnqueueFailureHint(
   });
 
   if (recovered) {
-    return { show: false, message: null, kickoffStatus };
+    return { show: false, message: null, kickoffStatus, relatedScanRunId: null, crawlRunId: null };
   }
 
   const message = postCrawlKickoffOperatorSummary(
@@ -215,5 +215,7 @@ export async function getPostCrawlScanEnqueueFailureHint(
       message ??
       'Crawl finished, but automatic verification could not be queued. Start a verification scan manually once Redis and workers are healthy.',
     kickoffStatus,
+    relatedScanRunId: latestCrawl.postCrawlScanKickoffScanRunId ?? null,
+    crawlRunId: latestCrawl.id,
   };
 }

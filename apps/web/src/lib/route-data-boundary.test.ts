@@ -13,6 +13,7 @@ vi.mock('./db', () => ({
 function truth(allow: boolean): RoutePlatformTruth {
   return {
     checkedAt: 'x',
+    liveInfraProbes: 'live',
     shellBlocker: allow ? 'none' : 'critical_dependency_down',
     allowOrgScopedDbReads: allow,
     readiness: allow ? 'ready' : 'blocked',

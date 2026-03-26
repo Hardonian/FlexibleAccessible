@@ -1,6 +1,10 @@
 'use server';
 
-import { enqueueSiteScan } from '@aros/core-services/scan-enqueue';
+import { redirect } from 'next/navigation';
+import {
+  enqueueSiteScan,
+  persistPostCrawlScanKickoffAfterEnqueue,
+} from '@aros/core-services';
 import { ApiError } from '@aros/shared';
 import { prisma } from '@/lib/db';
 import { requireSiteAccess } from '@/lib/auth-guard';
@@ -88,5 +92,91 @@ export async function startSiteScanAction(
     const msg = e instanceof Error ? e.message : 'Request failed';
     return { status: 'error', message: msg, variant: 'error' };
   }
+}
+
+/** Re-attempt scan enqueue for a completed crawl; updates the same canonical kickoff fields as the worker. */
+export async function retryPostCrawlScanKickoffAction(formData: FormData) {
+  const siteId = formData.get('siteId') as string;
+  const crawlRunId = formData.get('crawlRunId') as string;
+  if (!siteId || !crawlRunId) {
+    redirect(siteId ? `/sites/${siteId}` : '/sites');
+  }
+
+  try {
+    const ctx = await requireSiteAccess(siteId, 'scan:start');
+    const crawl = await prisma.crawlRun.findFirst({
+      where: {
+        id: crawlRunId,
+        siteId: ctx.siteId,
+        status: 'COMPLETED',
+        pagesCrawled: { gt: 0 },
+        site: { workspace: { organizationId: ctx.organizationId } },
+      },
+      select: { id: true },
+    });
+    if (!crawl) {
+      redirect(`/sites/${siteId}`);
+    }
+
+    await prisma.crawlRun.update({
+      where: { id: crawlRunId },
+      data: { postCrawlScanKickoffStatus: 'REQUESTED' },
+    });
+
+    const result = await enqueueSiteScan(
+      { prisma },
+      {
+        siteId: ctx.siteId,
+        organizationId: ctx.organizationId,
+        crawlRunId,
+        trigger: 'operator',
+        userId: ctx.user.id,
+      }
+    );
+
+    await persistPostCrawlScanKickoffAfterEnqueue(prisma, crawlRunId, result);
+
+    if (result.ok && result.kind === 'queued') {
+      await prisma.auditLog
+        .create({
+          data: {
+            organizationId: ctx.organizationId,
+            userId: ctx.user.id,
+            action: 'scan.queued',
+            entityType: 'CrawlRun',
+            entityId: crawlRunId,
+            metadata: { siteId: ctx.siteId, crawlRunId, trigger: 'operator_retry' },
+          },
+        })
+        .catch(() => undefined);
+    }
+
+    if (!result.ok && result.kind === 'queue_unavailable') {
+      await prisma.auditLog
+        .create({
+          data: {
+            organizationId: ctx.organizationId,
+            userId: ctx.user.id,
+            action: 'scan.enqueue_failed',
+            entityType: 'CrawlRun',
+            entityId: crawlRunId,
+            metadata: {
+              siteId: ctx.siteId,
+              scanRunId: result.scanRunId,
+              reason: 'queue_unavailable',
+              trigger: 'operator_retry',
+            },
+          },
+        })
+        .catch(() => undefined);
+    }
+  } catch (e) {
+    if (e instanceof ApiError && (e.statusCode === 403 || e.statusCode === 404)) {
+      redirect(`/sites/${siteId}`);
+    }
+    throw e;
+  }
+
+  redirect(`/sites/${siteId}`);
 }
 

@@ -75,6 +75,18 @@ describe('getSiteVerificationStatus', () => {
     });
     expect(findFirst).toHaveBeenCalledTimes(2);
   });
+
+  it('ignores legacy failed scans without enqueueFailureCode', async () => {
+    const findFirst = vi
+      .fn()
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null);
+    const row = await getSiteVerificationStatus(mockPrisma({ findFirst }), {
+      siteId: 's1',
+      organizationId: 'o1',
+    });
+    expect(row.status).toBe('idle');
+  });
 });
 
 describe('getPostCrawlScanEnqueueFailureHint', () => {
@@ -88,6 +100,7 @@ describe('getPostCrawlScanEnqueueFailureHint', () => {
           postCrawlScanKickoffStatus: 'QUEUE_UNAVAILABLE',
           postCrawlScanKickoffReasonCode: 'QUEUE_UNAVAILABLE',
           postCrawlScanKickoffDetail: 'ECONNREFUSED',
+          postCrawlScanKickoffScanRunId: null,
         }),
       },
       scanRun: {
@@ -102,6 +115,8 @@ describe('getPostCrawlScanEnqueueFailureHint', () => {
     expect(hint.show).toBe(true);
     expect(hint.kickoffStatus).toBe('QUEUE_UNAVAILABLE');
     expect(hint.message).toContain('could not be queued');
+    expect(hint.crawlRunId).toBe('c1');
+    expect(hint.relatedScanRunId).toBeNull();
   });
 
   it('hides hint when kickoff succeeded', async () => {
@@ -113,6 +128,7 @@ describe('getPostCrawlScanEnqueueFailureHint', () => {
           postCrawlScanKickoffStatus: 'ENQUEUED',
           postCrawlScanKickoffReasonCode: null,
           postCrawlScanKickoffDetail: null,
+          postCrawlScanKickoffScanRunId: null,
         }),
       },
     } as unknown as PrismaClient;
@@ -134,6 +150,7 @@ describe('getPostCrawlScanEnqueueFailureHint', () => {
           postCrawlScanKickoffStatus: 'QUEUE_UNAVAILABLE',
           postCrawlScanKickoffReasonCode: 'QUEUE_UNAVAILABLE',
           postCrawlScanKickoffDetail: null,
+          postCrawlScanKickoffScanRunId: null,
         }),
       },
       scanRun: {
