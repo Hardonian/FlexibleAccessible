@@ -10,9 +10,10 @@ import {
 } from '@aros/core-services';
 import { parseEnvDiagnostics } from '@aros/config';
 import { prisma } from './db';
-import { resolveOperatorFlagsForOrganization } from './operator-org-flags';
+import { deriveLegacyDependenceStatus, resolveOperatorFlagsForOrganization } from './operator-org-flags';
 import type { PlatformHealthReport, RoutePlatformTruth } from '@aros/core-services';
 import { getRecentPlatformAuditEntries, type RecentPlatformAuditEntry } from './operator-platform-audit';
+import { evaluateLegacyRetirementForOperator } from './operator-legacy-retirement';
 
 export interface PlatformHealthApiPayload {
   report: PlatformHealthReport;
@@ -36,9 +37,19 @@ export interface PlatformHealthApiPayload {
     hasLegacyValues: boolean;
     requiresRepair: boolean;
   };
+  legacyRetirement: {
+    currentOrganization: {
+      dependence: ReturnType<typeof deriveLegacyDependenceStatus>;
+      requiresRepair: boolean;
+    };
+    operatorScope: Awaited<ReturnType<typeof evaluateLegacyRetirementForOperator>> | null;
+  };
 }
 
-export async function getPlatformHealthPayload(organizationId?: string): Promise<PlatformHealthApiPayload> {
+export async function getPlatformHealthPayload(
+  organizationId?: string,
+  actorUserId?: string
+): Promise<PlatformHealthApiPayload> {
   const diag = parseEnvDiagnostics(process.env);
   const invalidKeys = Object.keys(diag.fieldErrors).filter(
     (k) => (diag.fieldErrors[k]?.length ?? 0) > 0
@@ -57,6 +68,9 @@ export async function getPlatformHealthPayload(organizationId?: string): Promise
     organizationId != null
       ? await getRecentPlatformAuditEntries(organizationId).catch(() => [])
       : [];
+  const operatorScope = actorUserId ? await evaluateLegacyRetirementForOperator(actorUserId).catch(() => null) : null;
+  const currentDependence = deriveLegacyDependenceStatus(operatorFlagsResolution);
+
   return {
     report,
     envDiagnostics: { valid: diag.valid, invalidKeys },
@@ -70,6 +84,13 @@ export async function getPlatformHealthPayload(organizationId?: string): Promise
       hasScopedEntry: operatorFlagsResolution.hasScopedEntry,
       hasLegacyValues: operatorFlagsResolution.hasLegacyValues,
       requiresRepair: operatorFlagsResolution.source === 'legacy_fallback',
+    },
+    legacyRetirement: {
+      currentOrganization: {
+        dependence: currentDependence,
+        requiresRepair: currentDependence === 'legacy_fallback',
+      },
+      operatorScope,
     },
   };
 }

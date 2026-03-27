@@ -6,6 +6,8 @@ const PLATFORM_ACTIONS = [
   'platform.operator_prefs.updated',
   'platform.legacy_flags.fallback_detected',
   'platform.legacy_flags.backfill',
+  'platform.legacy_flags.retirement_evaluated',
+  'platform.legacy_flags.retirement_blocked',
 ] as const;
 
 export type PlatformAuditAction = (typeof PLATFORM_ACTIONS)[number];

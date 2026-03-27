@@ -13,7 +13,7 @@ export async function POST(
   try {
     const { organizationId } = await context.params;
     const ctx = await requireOrgAccess(organizationId, 'org:system:manage');
-    const payload = await getPlatformHealthPayload(organizationId);
+    const payload = await getPlatformHealthPayload(organizationId, ctx.user.id);
     await logOperatorPlatformAction({
       organizationId,
       userId: ctx.user.id,

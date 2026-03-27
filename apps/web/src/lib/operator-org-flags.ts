@@ -8,6 +8,7 @@ const OPERATOR_PREFS_BY_ORG_KEY = 'operatorPrefsByOrg';
 const OPERATOR_ACKS_BY_ORG_KEY = 'operatorAcknowledgementsByOrg';
 
 export type OperatorFlagsSource = 'scoped' | 'legacy_fallback' | 'none';
+export type LegacyDependenceStatus = 'scoped_clean' | 'legacy_fallback' | 'no_operator_state';
 
 export interface OperatorFlagsResolution {
   flags: ParsedOperatorPlatformFlags;
@@ -124,6 +125,18 @@ export interface LegacyBackfillResult {
   status: 'migrated' | 'skipped_no_legacy' | 'skipped_scoped_present';
   source: OperatorFlagsSource;
   migrated: boolean;
+}
+
+export function deriveLegacyDependenceStatus(
+  resolution: Pick<OperatorFlagsResolution, 'source'>
+): LegacyDependenceStatus {
+  if (resolution.source === 'scoped') {
+    return 'scoped_clean';
+  }
+  if (resolution.source === 'legacy_fallback') {
+    return 'legacy_fallback';
+  }
+  return 'no_operator_state';
 }
 
 export function backfillLegacyOperatorFlagsForOrgRecord(
