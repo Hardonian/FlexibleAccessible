@@ -77,7 +77,7 @@ export default async function SystemPage() {
   let payload: Awaited<ReturnType<typeof getPlatformHealthPayload>> | null = null;
   let loadError: string | null = null;
   try {
-    payload = await getPlatformHealthPayload(orgId);
+    payload = await getPlatformHealthPayload(orgId, user.id);
   } catch (e) {
     loadError = e instanceof Error ? e.message : 'Failed to load platform health';
     console.error('[system] platform health failed', e);
@@ -174,6 +174,13 @@ export default async function SystemPage() {
                   ? ' (legacy fallback active; backfill recommended).'
                   : ' (organization-scoped state or no operator flags detected).'}
               </p>
+              <p className="mt-1">
+                Legacy retirement dependence:{' '}
+                <span className="font-mono text-xs">{payload.legacyRetirement.currentOrganization.dependence}</span>
+                {payload.legacyRetirement.currentOrganization.requiresRepair
+                  ? ' (this org still depends on compatibility fallback).'
+                  : ' (this org is not currently using legacy fallback).'}
+              </p>
             </div>
             {canRunOperatorActions ? (
               <OperatorControlPlaneClient
@@ -183,6 +190,7 @@ export default async function SystemPage() {
                   payload.operatorFlags.prefs.suppressedOptionalDiagnosticIds
                 }
                 fallbackModeActive={payload.operatorFlagsStatus.requiresRepair}
+                initialRetirementReadiness={payload.legacyRetirement.operatorScope?.readiness ?? null}
               />
             ) : (
               <p className="text-sm text-slate-600" role="status">

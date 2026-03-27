@@ -58,7 +58,7 @@ export async function POST(
       },
     });
 
-    const payload = await getPlatformHealthPayload(organizationId);
+    const payload = await getPlatformHealthPayload(organizationId, ctx.user.id);
 
     return NextResponse.json({
       success: true,

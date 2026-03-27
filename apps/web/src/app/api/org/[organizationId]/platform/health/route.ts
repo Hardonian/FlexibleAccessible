@@ -11,8 +11,8 @@ export async function GET(
 ) {
   try {
     const { organizationId } = await context.params;
-    await requireOrgAccess(organizationId, 'org:system:view');
-    const payload = await getPlatformHealthPayload(organizationId);
+    const ctx = await requireOrgAccess(organizationId, 'org:system:view');
+    const payload = await getPlatformHealthPayload(organizationId, ctx.user.id);
     return NextResponse.json({ success: true, data: payload });
   } catch (e) {
     return apiError(e);

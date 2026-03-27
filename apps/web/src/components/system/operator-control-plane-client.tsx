@@ -9,6 +9,12 @@ interface Props {
   optionalIssueIds: string[];
   initialSuppressedIds: string[];
   fallbackModeActive: boolean;
+  initialRetirementReadiness: {
+    status: 'fallback_detected' | 'no_fallback_observed' | 'unknown';
+    inspectedOrganizationCount: number;
+    fallbackOrganizationCount: number;
+    reason: string;
+  } | null;
 }
 
 export function OperatorControlPlaneClient({
@@ -16,12 +22,14 @@ export function OperatorControlPlaneClient({
   optionalIssueIds,
   initialSuppressedIds,
   fallbackModeActive,
+  initialRetirementReadiness,
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [suppressed, setSuppressed] = useState<Set<string>>(() => new Set(initialSuppressedIds));
+  const [retirementReadiness, setRetirementReadiness] = useState(initialRetirementReadiness);
 
   const base = `/api/org/${organizationId}/platform`;
 
@@ -93,6 +101,29 @@ export function OperatorControlPlaneClient({
     });
   }, [base, router, suppressed]);
 
+  const evaluateRetirementReadiness = useCallback(() => {
+    setActionError(null);
+    setActionMessage(null);
+    startTransition(async () => {
+      try {
+        const res = await fetch(`${base}/legacy-retirement`, { method: 'POST' });
+        const body = await res.json().catch(() => null);
+        if (!res.ok || !body?.success) {
+          setActionError(body?.error?.message ?? `Retirement evaluation failed (${res.status})`);
+          return;
+        }
+        const readiness = body?.data?.evaluation?.readiness;
+        if (readiness) {
+          setRetirementReadiness(readiness);
+        }
+        setActionMessage('Legacy retirement readiness evaluated. Prune remains evidence-gated and blocked by default.');
+        router.refresh();
+      } catch {
+        setActionError('Network error evaluating legacy retirement readiness.');
+      }
+    });
+  }, [base, router]);
+
   const toggleSuppressed = (id: string, checked: boolean) => {
     setSuppressed((prev) => {
       const next = new Set(prev);
@@ -137,6 +168,33 @@ export function OperatorControlPlaneClient({
           </button>
         </div>
       )}
+
+      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700" role="status">
+        <p className="font-medium">Legacy retirement readiness</p>
+        <p className="mt-1">
+          Status:{' '}
+          <span className="font-mono text-xs">
+            {retirementReadiness?.status ?? 'unknown'}
+          </span>{' '}
+          · inspected orgs:{' '}
+          <span className="font-mono text-xs">
+            {retirementReadiness?.inspectedOrganizationCount ?? 0}
+          </span>{' '}
+          · fallback orgs:{' '}
+          <span className="font-mono text-xs">
+            {retirementReadiness?.fallbackOrganizationCount ?? 0}
+          </span>
+        </p>
+        <p className="mt-1 text-slate-600">{retirementReadiness?.reason ?? 'Run evaluation to refresh retirement evidence.'}</p>
+        <button
+          type="button"
+          onClick={evaluateRetirementReadiness}
+          disabled={pending}
+          className="mt-3 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-800 hover:bg-slate-100 disabled:opacity-60"
+        >
+          Evaluate retirement readiness
+        </button>
+      </div>
 
       {actionError && (
         <p className="text-sm text-red-800" role="alert">

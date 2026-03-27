@@ -86,7 +86,7 @@ export async function POST(
       metadata: { issueId },
     });
 
-    const payload = await getPlatformHealthPayload(organizationId);
+    const payload = await getPlatformHealthPayload(organizationId, ctx.user.id);
     return NextResponse.json({ success: true, data: { issueId, payload } });
   } catch (e) {
     return apiError(e);

@@ -607,5 +607,14 @@ export function listOperatorActions(): OperatorActionDescriptor[] {
       pathSuffix: 'repair-legacy-flags',
       available: true,
     },
+    {
+      id: 'evaluate_legacy_retirement',
+      label: 'Evaluate legacy retirement readiness',
+      description:
+        'Produces an evidence report of fallback dependence across organizations this operator can manage. Does not prune shared legacy keys.',
+      method: 'POST',
+      pathSuffix: 'legacy-retirement',
+      available: true,
+    },
   ];
 }

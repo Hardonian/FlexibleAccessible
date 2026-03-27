@@ -79,7 +79,7 @@ export async function PATCH(
       metadata: { count: ids.length },
     });
 
-    const payload = await getPlatformHealthPayload(organizationId);
+    const payload = await getPlatformHealthPayload(organizationId, ctx.user.id);
     return NextResponse.json({ success: true, data: { suppressedOptionalDiagnosticIds: ids, payload } });
   } catch (e) {
     return apiError(e);
