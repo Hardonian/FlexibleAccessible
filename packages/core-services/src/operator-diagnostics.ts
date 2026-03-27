@@ -14,7 +14,7 @@ export type RemediationType =
 export type ActorResponsibility = 'platform_operator' | 'deployment_engineer' | 'org_admin' | 'end_user_unaffected';
 
 export interface OperatorProductFlags {
-  /** Optional service diagnostic IDs suppressed from critical/warning banners (deployment-wide). */
+  /** Optional service diagnostic IDs suppressed from critical/warning banners (organization-scoped when namespaced keys are present). */
   suppressedOptionalDiagnosticIds: string[];
 }
 
@@ -592,9 +592,19 @@ export function listOperatorActions(): OperatorActionDescriptor[] {
       id: 'suppress_optional',
       label: 'Hide optional warning',
       description:
-        'Stops showing a specific optional-service diagnostic in operator banners. Deployment-wide; does not disable the service.',
+        'Stops showing a specific optional-service diagnostic in operator banners for the active organization. Does not disable the service.',
       method: 'PATCH',
       pathSuffix: 'operator-preferences',
+      available: true,
+    },
+
+    {
+      id: 'repair_legacy_operator_flags',
+      label: 'Backfill legacy operator flags',
+      description:
+        'Copies legacy deployment-wide operator flags into this organization namespace when fallback mode is detected.',
+      method: 'POST',
+      pathSuffix: 'repair-legacy-flags',
       available: true,
     },
   ];

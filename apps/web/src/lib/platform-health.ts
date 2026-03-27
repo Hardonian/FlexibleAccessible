@@ -10,7 +10,7 @@ import {
 } from '@aros/core-services';
 import { parseEnvDiagnostics } from '@aros/config';
 import { prisma } from './db';
-import { parseOperatorFlagsForOrganization } from './operator-org-flags';
+import { resolveOperatorFlagsForOrganization } from './operator-org-flags';
 import type { PlatformHealthReport, RoutePlatformTruth } from '@aros/core-services';
 import { getRecentPlatformAuditEntries, type RecentPlatformAuditEntry } from './operator-platform-audit';
 
@@ -29,7 +29,13 @@ export interface PlatformHealthApiPayload {
   };
   operatorActions: OperatorActionDescriptor[];
   recentPlatformActions: RecentPlatformAuditEntry[];
-  operatorFlags: ReturnType<typeof parseOperatorFlagsForOrganization>;
+  operatorFlags: ReturnType<typeof resolveOperatorFlagsForOrganization>['flags'];
+  operatorFlagsStatus: {
+    source: ReturnType<typeof resolveOperatorFlagsForOrganization>['source'];
+    hasScopedEntry: boolean;
+    hasLegacyValues: boolean;
+    requiresRepair: boolean;
+  };
 }
 
 export async function getPlatformHealthPayload(organizationId?: string): Promise<PlatformHealthApiPayload> {
@@ -38,8 +44,15 @@ export async function getPlatformHealthPayload(organizationId?: string): Promise
     (k) => (diag.fieldErrors[k]?.length ?? 0) > 0
   );
   const report = await collectPlatformHealth(prisma);
-  const parsedFlags = parseOperatorFlagsForOrganization(report.operatorPlatformFlags, organizationId);
-  const { issues, setupChecklist, summary } = derivePlatformDiagnostics(report, parsedFlags);
+  const operatorFlagsResolution = resolveOperatorFlagsForOrganization(report.operatorPlatformFlags, organizationId);
+  const { issues, setupChecklist, summary } = derivePlatformDiagnostics(report, operatorFlagsResolution.flags);
+
+  if (organizationId && operatorFlagsResolution.source === 'legacy_fallback') {
+    console.warn('[platform-health] legacy operator flag fallback active', {
+      organizationId,
+      hasLegacyValues: operatorFlagsResolution.hasLegacyValues,
+    });
+  }
   const recentPlatformActions =
     organizationId != null
       ? await getRecentPlatformAuditEntries(organizationId).catch(() => [])
@@ -51,6 +64,12 @@ export async function getPlatformHealthPayload(organizationId?: string): Promise
     diagnostics: { issues, setupChecklist, summary },
     operatorActions: listOperatorActions(),
     recentPlatformActions,
-    operatorFlags: parsedFlags,
+    operatorFlags: operatorFlagsResolution.flags,
+    operatorFlagsStatus: {
+      source: operatorFlagsResolution.source,
+      hasScopedEntry: operatorFlagsResolution.hasScopedEntry,
+      hasLegacyValues: operatorFlagsResolution.hasLegacyValues,
+      requiresRepair: operatorFlagsResolution.source === 'legacy_fallback',
+    },
   };
 }
