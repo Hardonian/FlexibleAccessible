@@ -4,6 +4,8 @@ const PLATFORM_ACTIONS = [
   'platform.recheck',
   'platform.issue.acknowledged',
   'platform.operator_prefs.updated',
+  'platform.legacy_flags.fallback_detected',
+  'platform.legacy_flags.backfill',
 ] as const;
 
 export type PlatformAuditAction = (typeof PLATFORM_ACTIONS)[number];

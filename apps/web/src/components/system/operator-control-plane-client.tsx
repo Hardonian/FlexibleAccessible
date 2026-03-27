@@ -8,12 +8,14 @@ interface Props {
   organizationId: string;
   optionalIssueIds: string[];
   initialSuppressedIds: string[];
+  fallbackModeActive: boolean;
 }
 
 export function OperatorControlPlaneClient({
   organizationId,
   optionalIssueIds,
   initialSuppressedIds,
+  fallbackModeActive,
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -38,6 +40,32 @@ export function OperatorControlPlaneClient({
         router.refresh();
       } catch {
         setActionError('Network error during recheck.');
+      }
+    });
+  }, [base, router]);
+
+  const runLegacyBackfill = useCallback(() => {
+    setActionError(null);
+    setActionMessage(null);
+    startTransition(async () => {
+      try {
+        const res = await fetch(`${base}/repair-legacy-flags`, { method: 'POST' });
+        const body = await res.json().catch(() => null);
+        if (!res.ok || !body?.success) {
+          setActionError(body?.error?.message ?? `Repair failed (${res.status})`);
+          return;
+        }
+        const status = body?.data?.result?.status;
+        if (status === 'migrated') {
+          setActionMessage('Legacy fallback data was backfilled to this organization.');
+        } else if (status === 'skipped_scoped_present') {
+          setActionMessage('No repair needed. Organization-scoped operator state already exists.');
+        } else {
+          setActionMessage('No legacy fallback data was available to backfill.');
+        }
+        router.refresh();
+      } catch {
+        setActionError('Network error during legacy backfill.');
       }
     });
   }, [base, router]);
@@ -92,6 +120,24 @@ export function OperatorControlPlaneClient({
         </p>
       </div>
 
+      {fallbackModeActive && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900" role="status">
+          <p className="font-medium">Compatibility mode active</p>
+          <p className="mt-1">
+            This organization is currently reading legacy deployment-wide operator flags. Run backfill to copy them into
+            organization-scoped keys and retire silent shared-state fallback.
+          </p>
+          <button
+            type="button"
+            onClick={runLegacyBackfill}
+            disabled={pending}
+            className="mt-3 rounded-md border border-amber-300 bg-white px-3 py-1.5 text-sm font-medium text-amber-900 hover:bg-amber-100 disabled:opacity-60"
+          >
+            Backfill legacy operator flags
+          </button>
+        </div>
+      )}
+
       {actionError && (
         <p className="text-sm text-red-800" role="alert">
           {actionError}
@@ -107,7 +153,7 @@ export function OperatorControlPlaneClient({
         <fieldset className="rounded-lg border border-slate-200 bg-slate-50/80 p-4">
           <legend className="px-1 text-sm font-medium text-slate-900">Optional service banner suppression</legend>
           <p className="mt-2 text-xs text-slate-600">
-            Deployment-wide preference only. It hides specific optional-service diagnostics from summary banners; it does
+            Organization-scoped preference. It hides specific optional-service diagnostics from summary banners; it does
             not disable integrations or change environment variables.
           </p>
           <ul className="mt-3 space-y-2">

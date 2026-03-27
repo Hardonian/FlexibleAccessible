@@ -166,6 +166,15 @@ export default async function SystemPage() {
                 </li>
               ))}
             </ul>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+              <p>
+                Operator flag state source:{' '}
+                <span className="font-mono text-xs">{payload.operatorFlagsStatus.source}</span>
+                {payload.operatorFlagsStatus.requiresRepair
+                  ? ' (legacy fallback active; backfill recommended).'
+                  : ' (organization-scoped state or no operator flags detected).'}
+              </p>
+            </div>
             {canRunOperatorActions ? (
               <OperatorControlPlaneClient
                 organizationId={orgId}
@@ -173,6 +182,7 @@ export default async function SystemPage() {
                 initialSuppressedIds={
                   payload.operatorFlags.prefs.suppressedOptionalDiagnosticIds
                 }
+                fallbackModeActive={payload.operatorFlagsStatus.requiresRepair}
               />
             ) : (
               <p className="text-sm text-slate-600" role="status">
