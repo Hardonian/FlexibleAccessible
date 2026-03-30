@@ -95,7 +95,7 @@ export default async function ClusterDetailPage({
             Remediation Suggestions ({cluster.suggestions.length})
           </h2>
           <div className="space-y-4">
-            {cluster.suggestions.map((s) => (
+            {cluster.suggestions.map((s: (typeof cluster.suggestions)[number]) => (
               <div key={s.id} className="border border-slate-200 rounded-lg p-4">
                 <div className="flex justify-between items-center mb-2">
                   <span className="badge bg-blue-100 text-blue-800">
@@ -135,7 +135,7 @@ export default async function ClusterDetailPage({
           Related Findings ({cluster.findings.length})
         </h2>
         <ul className="space-y-2" role="list">
-          {cluster.findings.map((f) => (
+          {cluster.findings.map((f: (typeof cluster.findings)[number]) => (
             <li key={f.id}>
               <Link
                 href={`/findings/${f.id}`}

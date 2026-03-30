@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
+import type { Prisma } from '@aros/db';
 import { createSession } from '@/lib/session';
 import { hashPassword, slugify } from '@aros/shared';
 
@@ -41,7 +42,7 @@ export async function signupAction(
   }
 
   // Create user, org, membership, workspace, and free subscription in a transaction
-  const result = await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const user = await tx.user.create({
       data: { email, name, passwordHash },
     });

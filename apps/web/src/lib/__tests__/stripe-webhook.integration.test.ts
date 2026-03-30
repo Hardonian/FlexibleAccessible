@@ -7,8 +7,19 @@ import {
   type StripeWebhookEnv,
 } from '../stripe-webhook';
 
-const DATABASE_URL = process.env.DATABASE_URL;
 const prisma = new PrismaClient();
+
+/** Skip integration tests when DATABASE_URL is unset or Postgres is not reachable (e.g. local `npm run verify` without Docker). */
+let databaseReachable = false;
+if (process.env.DATABASE_URL) {
+  try {
+    await prisma.$connect();
+    await prisma.$queryRaw`SELECT 1`;
+    databaseReachable = true;
+  } catch {
+    await prisma.$disconnect().catch(() => {});
+  }
+}
 
 const env: StripeWebhookEnv = {
   webhookSecret: 'whsec_test_integration_secret_key_32bytes!!',
@@ -43,7 +54,7 @@ function subscriptionPayload(opts: {
   };
 }
 
-const describeDb = DATABASE_URL ? describe.sequential : describe.skip;
+const describeDb = databaseReachable ? describe.sequential : describe.skip;
 
 describeDb('Stripe webhook integration', () => {
   let orgId: string;

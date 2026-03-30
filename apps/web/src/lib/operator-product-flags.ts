@@ -1,4 +1,5 @@
 import { ApiError } from '@aros/shared';
+import type { Prisma } from '@aros/db';
 import { prisma } from '@/lib/db';
 import type { ParsedOperatorPlatformFlags } from '@aros/core-services';
 import {
@@ -6,7 +7,6 @@ import {
   backfillLegacyOperatorFlagsForOrgRecord,
   parseOperatorFlagsForOrganization,
   type LegacyBackfillResult,
-  resolveOperatorFlagsForOrganization,
 } from './operator-org-flags';
 
 export {
@@ -32,7 +32,7 @@ export async function loadProductFlagsRecord(): Promise<Record<string, unknown>>
 export async function saveProductFlagsRecord(next: Record<string, unknown>) {
   await prisma.platformState.update({
     where: { id: 'platform' },
-    data: { productFlags: next as any },
+    data: { productFlags: next as Prisma.InputJsonValue },
   });
 }
 
