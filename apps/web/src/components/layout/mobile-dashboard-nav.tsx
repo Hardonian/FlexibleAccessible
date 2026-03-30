@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useTransition } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -9,35 +9,32 @@ import {
   type OrgInfo,
 } from "./dashboard-nav-config";
 import { useDashboardNav } from "./dashboard-nav-context";
+import { switchOrgAction } from "./switch-org-action";
 
 interface MobileDashboardNavProps {
   orgs: OrgInfo[];
   user: { id: string; email: string; name: string | null };
   canViewSystem?: boolean;
+  activeOrgId?: string;
 }
 
 export function MobileDashboardNav({
   orgs,
   user,
   canViewSystem,
+  activeOrgId,
 }: MobileDashboardNavProps) {
   const pathname = usePathname();
   const { mobileNavOpen, closeMobileNav } = useDashboardNav();
-  const [currentOrg, setCurrentOrg] = useState(orgs[0]);
   const panelRef = useRef<HTMLElement>(null);
   const firstLinkRef = useRef<HTMLAnchorElement>(null);
+  const [isPending, startTransition] = useTransition();
+
+  const currentOrgId = activeOrgId ?? orgs[0]?.id;
 
   useEffect(() => {
     closeMobileNav();
   }, [pathname, closeMobileNav]);
-
-  useEffect(() => {
-    if (orgs.length === 0) return;
-    setCurrentOrg((prev) => {
-      if (prev && orgs.some((o) => o.id === prev.id)) return prev;
-      return orgs[0];
-    });
-  }, [orgs]);
 
   useEffect(() => {
     if (!mobileNavOpen) return;
@@ -95,22 +92,31 @@ export function MobileDashboardNav({
           <label htmlFor="org-select-mobile" className="sr-only">
             Select organization
           </label>
-          <select
-            id="org-select-mobile"
-            className="input text-sm"
-            value={currentOrg?.id ?? ""}
+          <form
+            action={switchOrgAction}
             onChange={(e) => {
-              const org = orgs.find((o) => o.id === e.target.value);
-              if (org) setCurrentOrg(org);
+              const form = e.currentTarget;
+              startTransition(() => {
+                form.requestSubmit();
+                closeMobileNav();
+              });
             }}
-            disabled={orgs.length === 0}
           >
-            {orgs.map((org) => (
-              <option key={org.id} value={org.id}>
-                {org.name}
-              </option>
-            ))}
-          </select>
+            <select
+              id="org-select-mobile"
+              name="organizationId"
+              className="input text-sm"
+              defaultValue={currentOrgId}
+              disabled={isPending || orgs.length === 0}
+              aria-busy={isPending}
+            >
+              {orgs.map((org) => (
+                <option key={org.id} value={org.id}>
+                  {org.name}
+                </option>
+              ))}
+            </select>
+          </form>
         </div>
 
         <nav className="flex-1 overflow-y-auto p-3" aria-label="Main">

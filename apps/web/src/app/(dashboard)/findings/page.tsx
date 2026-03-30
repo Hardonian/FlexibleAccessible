@@ -9,6 +9,7 @@ import {
 } from "@/lib/route-data-boundary";
 import { RouteReliabilityNotice } from "@/components/reliability/route-reliability-notice";
 import { hasPermission } from "@aros/config";
+import { StatusBadge } from "@aros/ui";
 
 type FindingListRow = Prisma.CanonicalFindingGetPayload<{
   include: {
@@ -380,25 +381,6 @@ function EvidenceSourceBadge({ source }: { source: string }) {
       title="How this finding entered the system"
     >
       {label}
-    </span>
-  );
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const styles: Record<string, string> = {
-    OPEN: "bg-red-100 text-red-800",
-    ACKNOWLEDGED: "bg-amber-100 text-amber-900",
-    IN_PROGRESS: "bg-blue-100 text-blue-800",
-    RESOLVED: "bg-green-100 text-green-800",
-    MITIGATED: "bg-emerald-100 text-emerald-900",
-    WONT_FIX: "bg-slate-100 text-slate-600",
-    FALSE_POSITIVE: "bg-slate-100 text-slate-600",
-  };
-  return (
-    <span
-      className={`badge ${styles[status] ?? "bg-slate-100 text-slate-800"}`}
-    >
-      {status.toLowerCase().replace("_", " ")}
     </span>
   );
 }

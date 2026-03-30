@@ -1,51 +1,79 @@
-import { requireSession } from '@/lib/session';
-import { prisma } from '@/lib/db';
-import { generateReportAction } from './actions';
-import { getRoutePlatformTruth } from '@/lib/platform-truth-cache';
-import { resolveDashboardOrgMembership, runOrgScopedQuery } from '@/lib/route-data-boundary';
-import { RouteReliabilityNotice } from '@/components/reliability/route-reliability-notice';
-import { hasPermission } from '@aros/config';
-import { buildFindingsOperationalSummary } from '@/lib/findings/reporting-summary';
+import { requireSession } from "@/lib/session";
+import { prisma } from "@/lib/db";
+import { generateReportAction } from "./actions";
+import { getRoutePlatformTruth } from "@/lib/platform-truth-cache";
+import {
+  resolveDashboardOrgMembership,
+  runOrgScopedQuery,
+} from "@/lib/route-data-boundary";
+import { RouteReliabilityNotice } from "@/components/reliability/route-reliability-notice";
+import { hasPermission } from "@aros/config";
+import { buildFindingsOperationalSummary } from "@/lib/findings/reporting-summary";
 
-export const metadata = { title: 'Reports - AROS' };
+export const metadata = { title: "Reports - AROS" };
 
-export default async function ReportsPage() {
+export default async function ReportsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ report_error?: string }>;
+}) {
   const user = await requireSession();
   const platformTruth = await getRoutePlatformTruth();
+  const params = await searchParams;
   const canViewSystem = await prisma.membership
     .findMany({ where: { userId: user.id }, select: { role: true } })
-    .then((rows) => rows.some((m) => hasPermission(m.role, 'org:system:view')))
+    .then((rows) => rows.some((m) => hasPermission(m.role, "org:system:view")))
     .catch(() => false);
+
+  const reportError =
+    params.report_error === "no_org"
+      ? "Could not determine your organization. Please try again."
+      : params.report_error === "query_failed"
+        ? "Report query failed. Please try again or contact support."
+        : null;
 
   const orgRes = await resolveDashboardOrgMembership(user.id, platformTruth);
 
-  if (orgRes.kind === 'platform_blocked') {
+  if (orgRes.kind === "platform_blocked") {
     return (
       <div className="space-y-6">
         <h1 className="text-2xl font-bold text-slate-900">Evidence Reports</h1>
-        <RouteReliabilityNotice variant="error" title="Reports require a working database" showSystemLink={canViewSystem}>
-          <p>Report data cannot be loaded until core data services are healthy.</p>
+        <RouteReliabilityNotice
+          variant="error"
+          title="Reports require a working database"
+          showSystemLink={canViewSystem}
+        >
+          <p>
+            Report data cannot be loaded until core data services are healthy.
+          </p>
         </RouteReliabilityNotice>
       </div>
     );
   }
 
-  if (orgRes.kind === 'error') {
+  if (orgRes.kind === "error") {
     return (
       <div className="space-y-6">
         <h1 className="text-2xl font-bold text-slate-900">Evidence Reports</h1>
-        <RouteReliabilityNotice variant="error" title="Could not verify organization" showSystemLink={canViewSystem}>
+        <RouteReliabilityNotice
+          variant="error"
+          title="Could not verify organization"
+          showSystemLink={canViewSystem}
+        >
           <p>{orgRes.message}</p>
         </RouteReliabilityNotice>
       </div>
     );
   }
 
-  if (orgRes.kind === 'none') {
+  if (orgRes.kind === "none") {
     return (
       <div className="space-y-6">
         <h1 className="text-2xl font-bold text-slate-900">Evidence Reports</h1>
-        <RouteReliabilityNotice variant="info" title="No organization membership">
+        <RouteReliabilityNotice
+          variant="info"
+          title="No organization membership"
+        >
           <p>You need an organization to generate reports.</p>
         </RouteReliabilityNotice>
       </div>
@@ -58,7 +86,11 @@ export default async function ReportsPage() {
         where: { workspace: { organizationId: orgId } },
         select: { id: true, name: true, domain: true },
       }),
-      buildFindingsOperationalSummary(prisma, orgId, platformTruth.flags.jobPipelinesHealthy),
+      buildFindingsOperationalSummary(
+        prisma,
+        orgId,
+        platformTruth.flags.jobPipelinesHealthy,
+      ),
     ]);
     return { opSummary, sites };
   });
@@ -67,7 +99,11 @@ export default async function ReportsPage() {
     return (
       <div className="space-y-6">
         <h1 className="text-2xl font-bold text-slate-900">Evidence Reports</h1>
-        <RouteReliabilityNotice variant="error" title="Could not load report summary" showSystemLink={canViewSystem}>
+        <RouteReliabilityNotice
+          variant="error"
+          title="Could not load report summary"
+          showSystemLink={canViewSystem}
+        >
           <p>{statsResult.message}</p>
         </RouteReliabilityNotice>
       </div>
@@ -80,20 +116,37 @@ export default async function ReportsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Evidence Reports</h1>
-        <p className="text-slate-500 mt-1">Generate conformance evidence and status reports.</p>
+        <p className="text-slate-500 mt-1">
+          Generate conformance evidence and status reports.
+        </p>
       </div>
 
+      {reportError && (
+        <RouteReliabilityNotice
+          variant="error"
+          title="Report generation failed"
+        >
+          <p>{reportError}</p>
+        </RouteReliabilityNotice>
+      )}
+
       <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
-        Reports generated by this platform provide evidence of testing and remediation efforts. They do not constitute a
-        legal guarantee of WCAG conformance. Full conformance requires manual expert review of criteria that cannot be
-        automated.
+        Reports generated by this platform provide evidence of testing and
+        remediation efforts. They do not constitute a legal guarantee of WCAG
+        conformance. Full conformance requires manual expert review of criteria
+        that cannot be automated.
       </div>
 
       {!platformTruth.flags.jobPipelinesHealthy && (
-        <RouteReliabilityNotice variant="warning" title="Background pipelines degraded" showSystemLink={canViewSystem}>
+        <RouteReliabilityNotice
+          variant="warning"
+          title="Background pipelines degraded"
+          showSystemLink={canViewSystem}
+        >
           <p>
-            Scan queues or workers may be unavailable. Counts below still reflect stored data; automated evidence may be
-            stale until pipelines recover.
+            Scan queues or workers may be unavailable. Counts below still
+            reflect stored data; automated evidence may be stale until pipelines
+            recover.
           </p>
         </RouteReliabilityNotice>
       )}
@@ -101,52 +154,71 @@ export default async function ReportsPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="card">
           <p className="text-sm text-slate-500">Total findings (org)</p>
-          <p className="text-2xl font-bold text-slate-900">{opSummary.totals.findings}</p>
+          <p className="text-2xl font-bold text-slate-900">
+            {opSummary.totals.findings}
+          </p>
         </div>
         <div className="card">
           <p className="text-sm text-slate-500">Open</p>
-          <p className="text-2xl font-bold text-red-600">{opSummary.totals.open}</p>
+          <p className="text-2xl font-bold text-red-600">
+            {opSummary.totals.open}
+          </p>
         </div>
         <div className="card">
           <p className="text-sm text-slate-500">Resolved</p>
-          <p className="text-2xl font-bold text-green-600">{opSummary.totals.resolved}</p>
+          <p className="text-2xl font-bold text-green-600">
+            {opSummary.totals.resolved}
+          </p>
         </div>
         <div className="card">
           <p className="text-sm text-slate-500">Critical open</p>
-          <p className="text-2xl font-bold text-red-700">{opSummary.totals.criticalOpen}</p>
+          <p className="text-2xl font-bold text-red-700">
+            {opSummary.totals.criticalOpen}
+          </p>
         </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="card">
           <p className="text-sm text-slate-500">Acknowledged</p>
-          <p className="text-2xl font-bold text-slate-900">{opSummary.totals.acknowledged}</p>
+          <p className="text-2xl font-bold text-slate-900">
+            {opSummary.totals.acknowledged}
+          </p>
         </div>
         <div className="card">
           <p className="text-sm text-slate-500">In progress</p>
-          <p className="text-2xl font-bold text-blue-600">{opSummary.totals.inProgress}</p>
+          <p className="text-2xl font-bold text-blue-600">
+            {opSummary.totals.inProgress}
+          </p>
         </div>
         <div className="card">
           <p className="text-sm text-slate-500">Mitigated</p>
-          <p className="text-2xl font-bold text-emerald-700">{opSummary.totals.mitigated}</p>
+          <p className="text-2xl font-bold text-emerald-700">
+            {opSummary.totals.mitigated}
+          </p>
         </div>
         <div className="card">
           <p className="text-sm text-slate-500">Stale automated evidence</p>
-          <p className="text-2xl font-bold text-amber-700">{opSummary.staleAutomationCount}</p>
+          <p className="text-2xl font-bold text-amber-700">
+            {opSummary.staleAutomationCount}
+          </p>
         </div>
       </div>
 
       <div className="card text-sm text-slate-600 space-y-2">
         <p className="font-medium text-slate-900">Evidence source mix</p>
         <p>
-          Automated (axe): {opSummary.evidenceSourceMix.automatedAxe} · Manual review:{' '}
-          {opSummary.evidenceSourceMix.manualReview} · Imported: {opSummary.evidenceSourceMix.imported}
+          Automated (axe): {opSummary.evidenceSourceMix.automatedAxe} · Manual
+          review: {opSummary.evidenceSourceMix.manualReview} · Imported:{" "}
+          {opSummary.evidenceSourceMix.imported}
         </p>
         <p className="text-slate-500">{opSummary.automationFreshnessNote}</p>
       </div>
 
       <div className="card">
-        <h2 className="text-lg font-semibold text-slate-900 mb-4">Generate Report</h2>
+        <h2 className="text-lg font-semibold text-slate-900 mb-4">
+          Generate Report
+        </h2>
         <form action={generateReportAction} className="space-y-4">
           <div>
             <label htmlFor="report-site" className="label">

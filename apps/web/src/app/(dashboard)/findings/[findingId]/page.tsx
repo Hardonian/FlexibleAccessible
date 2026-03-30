@@ -503,16 +503,28 @@ export default async function FindingDetailPage({
                   </caption>
                   <thead className="bg-slate-50/80 border-b border-slate-200">
                     <tr>
-                      <th className="px-5 py-3.5 font-semibold text-slate-600">
+                      <th
+                        scope="col"
+                        className="px-5 py-3.5 font-semibold text-slate-600"
+                      >
                         Page Context
                       </th>
-                      <th className="px-5 py-3.5 font-semibold text-slate-600">
+                      <th
+                        scope="col"
+                        className="px-5 py-3.5 font-semibold text-slate-600"
+                      >
                         DOM Target
                       </th>
-                      <th className="px-5 py-3.5 font-semibold text-slate-600">
+                      <th
+                        scope="col"
+                        className="px-5 py-3.5 font-semibold text-slate-600"
+                      >
                         Failure Summary
                       </th>
-                      <th className="px-5 py-3.5 font-semibold text-slate-600 text-right">
+                      <th
+                        scope="col"
+                        className="px-5 py-3.5 font-semibold text-slate-600 text-right"
+                      >
                         Age
                       </th>
                     </tr>

@@ -1,34 +1,57 @@
 "use server";
 
+import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import type { ReviewStatus } from "@aros/db";
+import { hasPermission } from "@aros/config";
+
+const VALID_REVIEW_STATUSES: ReviewStatus[] = [
+  "PENDING",
+  "IN_PROGRESS",
+  "APPROVED",
+  "REJECTED",
+  "NEEDS_CHANGES",
+];
 
 export async function updateReviewAction(formData: FormData) {
   const user = await requireSession();
   const taskId = formData.get("taskId") as string;
-  const status = formData.get("status") as ReviewStatus;
+  const status = (formData.get("status") as string) || "";
 
-  if (!taskId || !status) return;
+  if (!taskId) {
+    redirect("/reviews?review_error=missing_task");
+  }
+
+  if (!VALID_REVIEW_STATUSES.includes(status as ReviewStatus)) {
+    redirect("/reviews?review_error=invalid_status");
+  }
+
+  const reviewStatus = status as ReviewStatus;
 
   const task = await prisma.reviewTask.findUnique({
     where: { id: taskId },
     select: {
       id: true,
+      status: true,
       suggestion: {
         select: {
           cluster: {
             select: {
               site: {
-                select: { workspace: { select: { organizationId: true } } },
+                select: {
+                  workspace: { select: { organizationId: true } },
+                },
               },
             },
           },
           finding: {
             select: {
               site: {
-                select: { workspace: { select: { organizationId: true } } },
+                select: {
+                  workspace: { select: { organizationId: true } },
+                },
               },
             },
           },
@@ -37,28 +60,46 @@ export async function updateReviewAction(formData: FormData) {
     },
   });
 
-  if (!task) return;
+  if (!task) {
+    redirect("/reviews?review_error=not_found");
+  }
 
   const orgId =
     task.suggestion?.cluster?.site.workspace.organizationId ??
     task.suggestion?.finding?.site.workspace.organizationId;
 
-  if (!orgId) return;
+  if (!orgId) {
+    redirect("/reviews?review_error=no_org");
+  }
 
   const membership = await prisma.membership.findFirst({
     where: { userId: user.id, organizationId: orgId },
+    select: { role: true },
   });
 
-  if (!membership) return;
+  if (!membership) {
+    redirect("/reviews?review_error=forbidden");
+  }
 
-  await prisma.reviewTask.update({
-    where: { id: taskId },
-    data: {
-      status,
-      reviewedAt:
-        status === "APPROVED" || status === "REJECTED" ? new Date() : undefined,
-    },
-  });
+  if (!hasPermission(membership.role, "review:manage")) {
+    redirect("/reviews?review_error=forbidden");
+  }
+
+  try {
+    await prisma.reviewTask.update({
+      where: { id: taskId },
+      data: {
+        status: reviewStatus,
+        assigneeId: user.id,
+        reviewedAt:
+          reviewStatus === "APPROVED" || reviewStatus === "REJECTED"
+            ? new Date()
+            : undefined,
+      },
+    });
+  } catch {
+    redirect("/reviews?review_error=update_failed");
+  }
 
   revalidatePath("/reviews");
 }

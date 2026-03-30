@@ -1,6 +1,9 @@
 import { prisma } from "./db";
+import { cookies } from "next/headers";
 import type { MemberRole } from "@aros/db";
 import type { RoutePlatformTruth } from "@aros/core-services";
+
+const ACTIVE_ORG_COOKIE = "aros_active_org";
 
 export type OrgMembershipCore = {
   organizationId: string;
@@ -14,8 +17,9 @@ export type OrgMembershipResolution =
   | { kind: "error"; message: string };
 
 /**
- * Resolves the user's primary org membership for dashboard routes.
- * When platform truth disallows DB reads, skips hitting Prisma for membership (avoids noisy errors).
+ * Resolves the user's active org membership for dashboard routes.
+ * Prefers the cookie-selected org, falls back to oldest membership.
+ * When platform truth disallows DB reads, skips hitting Prisma for membership.
  */
 export async function resolveDashboardOrgMembership(
   userId: string,
@@ -26,6 +30,28 @@ export async function resolveDashboardOrgMembership(
   }
 
   try {
+    const cookieStore = await cookies();
+    const preferredOrgId = cookieStore.get(ACTIVE_ORG_COOKIE)?.value;
+
+    if (preferredOrgId) {
+      const preferred = await prisma.membership.findUnique({
+        where: {
+          userId_organizationId: {
+            userId,
+            organizationId: preferredOrgId,
+          },
+        },
+        select: { organizationId: true, role: true },
+      });
+      if (preferred) {
+        return {
+          kind: "ok",
+          organizationId: preferred.organizationId,
+          role: preferred.role,
+        };
+      }
+    }
+
     const row = await prisma.membership.findFirst({
       where: { userId },
       select: { organizationId: true, role: true },

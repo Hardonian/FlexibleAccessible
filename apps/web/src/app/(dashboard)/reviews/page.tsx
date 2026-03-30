@@ -7,16 +7,33 @@ import { getRoutePlatformTruth } from "@/lib/platform-truth-cache";
 import { resolveDashboardOrgMembership } from "@/lib/route-data-boundary";
 import { RouteReliabilityNotice } from "@/components/reliability/route-reliability-notice";
 import { hasPermission } from "@aros/config";
+import { StatusBadge } from "@aros/ui";
 
 export const metadata = { title: "Reviews - AROS" };
 
-export default async function ReviewsPage() {
+export default async function ReviewsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ review_error?: string }>;
+}) {
   const user = await requireSession();
   const platformTruth = await getRoutePlatformTruth();
+  const params = await searchParams;
   const canViewSystem = await prisma.membership
     .findMany({ where: { userId: user.id }, select: { role: true } })
     .then((rows) => rows.some((m) => hasPermission(m.role, "org:system:view")))
     .catch(() => false);
+
+  const reviewError = params.review_error
+    ? ({
+        missing_task: "Review task not specified.",
+        invalid_status: "Invalid review status.",
+        not_found: "Review task not found.",
+        no_org: "Could not determine organization for this review.",
+        forbidden: "You do not have permission to update this review.",
+        update_failed: "Failed to update review. Please try again.",
+      }[params.review_error] ?? "An error occurred.")
+    : null;
 
   const orgRes = await resolveDashboardOrgMembership(user.id, platformTruth);
 
@@ -143,6 +160,12 @@ export default async function ReviewsPage() {
         assessment.
       </div>
 
+      {reviewError && (
+        <RouteReliabilityNotice variant="error" title="Review update failed">
+          <p>{reviewError}</p>
+        </RouteReliabilityNotice>
+      )}
+
       {tasks.length === 0 ? (
         <div className="card text-center py-12">
           <p className="text-slate-500">No review tasks yet.</p>
@@ -224,16 +247,5 @@ export default async function ReviewsPage() {
 }
 
 function ReviewStatusBadge({ status }: { status: string }) {
-  const styles: Record<string, string> = {
-    PENDING: "bg-amber-100 text-amber-800",
-    IN_PROGRESS: "bg-blue-100 text-blue-800",
-    APPROVED: "bg-green-100 text-green-800",
-    REJECTED: "bg-red-100 text-red-800",
-    NEEDS_CHANGES: "bg-orange-100 text-orange-800",
-  };
-  return (
-    <span className={`badge ${styles[status] ?? ""}`}>
-      {status.toLowerCase().replace("_", " ")}
-    </span>
-  );
+  return <StatusBadge status={status} />;
 }

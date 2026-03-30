@@ -327,19 +327,34 @@ export default async function SiteDetailPage({
               <caption className="sr-only">Recent crawl runs</caption>
               <thead>
                 <tr className="border-b border-slate-200">
-                  <th className="pb-2 text-left font-medium text-slate-500">
+                  <th
+                    scope="col"
+                    className="pb-2 text-left font-medium text-slate-500"
+                  >
                     Status
                   </th>
-                  <th className="pb-2 text-right font-medium text-slate-500">
+                  <th
+                    scope="col"
+                    className="pb-2 text-right font-medium text-slate-500"
+                  >
                     Pages
                   </th>
-                  <th className="pb-2 text-left font-medium text-slate-500">
+                  <th
+                    scope="col"
+                    className="pb-2 text-left font-medium text-slate-500"
+                  >
                     After crawl
                   </th>
-                  <th className="pb-2 text-right font-medium text-slate-500">
+                  <th
+                    scope="col"
+                    className="pb-2 text-right font-medium text-slate-500"
+                  >
                     Started
                   </th>
-                  <th className="pb-2 text-right font-medium text-slate-500">
+                  <th
+                    scope="col"
+                    className="pb-2 text-right font-medium text-slate-500"
+                  >
                     Completed
                   </th>
                 </tr>
@@ -407,16 +422,28 @@ export default async function SiteDetailPage({
               <caption className="sr-only">Recent scan runs</caption>
               <thead>
                 <tr className="border-b border-slate-200">
-                  <th className="pb-2 text-left font-medium text-slate-500">
+                  <th
+                    scope="col"
+                    className="pb-2 text-left font-medium text-slate-500"
+                  >
                     Status
                   </th>
-                  <th className="pb-2 text-right font-medium text-slate-500">
+                  <th
+                    scope="col"
+                    className="pb-2 text-right font-medium text-slate-500"
+                  >
                     Pages scanned
                   </th>
-                  <th className="pb-2 text-right font-medium text-slate-500">
+                  <th
+                    scope="col"
+                    className="pb-2 text-right font-medium text-slate-500"
+                  >
                     Violations
                   </th>
-                  <th className="pb-2 text-right font-medium text-slate-500">
+                  <th
+                    scope="col"
+                    className="pb-2 text-right font-medium text-slate-500"
+                  >
                     Started
                   </th>
                 </tr>

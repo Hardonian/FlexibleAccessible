@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { Sidebar } from "@/components/layout/sidebar";
@@ -51,6 +52,13 @@ export default async function DashboardLayout({
     workspaces: m.organization.workspaces,
   }));
 
+  const cookieStore = await cookies();
+  const preferredOrgId = cookieStore.get("aros_active_org")?.value;
+  const activeOrgId =
+    preferredOrgId && orgs.some((o) => o.id === preferredOrgId)
+      ? preferredOrgId
+      : orgs[0]?.id;
+
   const canViewSystem = memberships.some((m) =>
     hasPermission(m.role, "org:system:view"),
   );
@@ -74,11 +82,17 @@ export default async function DashboardLayout({
         Skip to main content
       </a>
       <div className="flex min-h-dvh overflow-hidden bg-slate-50 md:h-screen">
-        <Sidebar orgs={orgs} user={user} canViewSystem={canViewSystem} />
+        <Sidebar
+          orgs={orgs}
+          user={user}
+          canViewSystem={canViewSystem}
+          activeOrgId={activeOrgId}
+        />
         <MobileDashboardNav
           orgs={orgs}
           user={user}
           canViewSystem={canViewSystem}
+          activeOrgId={activeOrgId}
         />
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <TopBar

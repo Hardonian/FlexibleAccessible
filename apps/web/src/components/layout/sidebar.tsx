@@ -1,32 +1,32 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useTransition } from "react";
 import Link from "next/link";
-import { useRouter, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   DASHBOARD_NAV_ITEMS,
   NAV_ICON_MAP,
   type OrgInfo,
 } from "./dashboard-nav-config";
+import { switchOrgAction } from "./switch-org-action";
 
 interface SidebarProps {
   orgs: OrgInfo[];
   user: { id: string; email: string; name: string | null };
   canViewSystem?: boolean;
+  activeOrgId?: string;
 }
 
-export function Sidebar({ orgs, user, canViewSystem }: SidebarProps) {
+export function Sidebar({
+  orgs,
+  user,
+  canViewSystem,
+  activeOrgId,
+}: SidebarProps) {
   const pathname = usePathname();
-  const router = useRouter();
-  const [currentOrg, setCurrentOrg] = useState(orgs[0]);
+  const [isPending, startTransition] = useTransition();
 
-  useEffect(() => {
-    if (orgs.length === 0) return;
-    setCurrentOrg((prev) => {
-      if (prev && orgs.some((o) => o.id === prev.id)) return prev;
-      return orgs[0];
-    });
-  }, [orgs]);
+  const currentOrgId = activeOrgId ?? orgs[0]?.id;
 
   return (
     <aside
@@ -44,24 +44,30 @@ export function Sidebar({ orgs, user, canViewSystem }: SidebarProps) {
         <label htmlFor="org-select" className="sr-only">
           Select organization
         </label>
-        <select
-          id="org-select"
-          value={currentOrg?.id ?? ""}
+        <form
+          action={switchOrgAction}
           onChange={(e) => {
-            const org = orgs.find((o) => o.id === e.target.value);
-            if (org) {
-              setCurrentOrg(org);
-              router.refresh();
-            }
+            const form = e.currentTarget;
+            startTransition(() => {
+              form.requestSubmit();
+            });
           }}
-          className="input text-sm"
         >
-          {orgs.map((org) => (
-            <option key={org.id} value={org.id}>
-              {org.name}
-            </option>
-          ))}
-        </select>
+          <select
+            id="org-select"
+            name="organizationId"
+            defaultValue={currentOrgId}
+            className="input text-sm"
+            disabled={isPending}
+            aria-busy={isPending}
+          >
+            {orgs.map((org) => (
+              <option key={org.id} value={org.id}>
+                {org.name}
+              </option>
+            ))}
+          </select>
+        </form>
       </div>
 
       <nav className="flex-1 overflow-y-auto p-3">

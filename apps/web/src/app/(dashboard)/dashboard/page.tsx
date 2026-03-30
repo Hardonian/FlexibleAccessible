@@ -241,16 +241,28 @@ export default async function DashboardPage() {
               <caption className="sr-only">Recent crawl runs</caption>
               <thead>
                 <tr className="border-b border-slate-200">
-                  <th className="pb-2 text-left font-medium text-slate-500">
+                  <th
+                    scope="col"
+                    className="pb-2 text-left font-medium text-slate-500"
+                  >
                     Site
                   </th>
-                  <th className="pb-2 text-left font-medium text-slate-500">
+                  <th
+                    scope="col"
+                    className="pb-2 text-left font-medium text-slate-500"
+                  >
                     Status
                   </th>
-                  <th className="pb-2 text-right font-medium text-slate-500">
+                  <th
+                    scope="col"
+                    className="pb-2 text-right font-medium text-slate-500"
+                  >
                     Pages
                   </th>
-                  <th className="pb-2 text-right font-medium text-slate-500">
+                  <th
+                    scope="col"
+                    className="pb-2 text-right font-medium text-slate-500"
+                  >
                     Date
                   </th>
                 </tr>
