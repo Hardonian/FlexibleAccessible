@@ -1,7 +1,7 @@
-import { notFound } from 'next/navigation';
-import { requireSession } from '@/lib/session';
-import { prisma } from '@/lib/db';
-import Link from 'next/link';
+import { notFound } from "next/navigation";
+import { requireSession } from "@/lib/session";
+import { prisma } from "@/lib/db";
+import Link from "next/link";
 
 export default async function ClusterDetailPage({
   params,
@@ -9,21 +9,30 @@ export default async function ClusterDetailPage({
   params: Promise<{ clusterId: string }>;
 }) {
   const { clusterId } = await params;
-  await requireSession();
+  const user = await requireSession();
 
-  const cluster = await prisma.issueCluster.findUnique({
-    where: { id: clusterId },
+  const cluster = await prisma.issueCluster.findFirst({
+    where: {
+      id: clusterId,
+      site: {
+        workspace: {
+          organization: {
+            memberships: { some: { userId: user.id } },
+          },
+        },
+      },
+    },
     include: {
       site: { select: { name: true, domain: true } },
       findings: {
         include: {
           _count: { select: { occurrences: true } },
         },
-        orderBy: { occurrenceCount: 'desc' },
+        orderBy: { occurrenceCount: "desc" },
         take: 50,
       },
       suggestions: {
-        orderBy: { confidence: 'desc' },
+        orderBy: { confidence: "desc" },
         take: 10,
       },
     },
@@ -35,19 +44,21 @@ export default async function ClusterDetailPage({
     <div className="space-y-6">
       <div>
         <div className="flex items-center gap-2 text-sm text-slate-500 mb-1">
-          <Link href="/clusters" className="hover:text-brand-600">Clusters</Link>
+          <Link href="/clusters" className="hover:text-brand-600">
+            Clusters
+          </Link>
           <span>/</span>
         </div>
         <div className="flex items-center gap-3">
           <span
             className={`badge ${
-              cluster.severity === 'CRITICAL'
-                ? 'badge-critical'
-                : cluster.severity === 'SERIOUS'
-                ? 'badge-serious'
-                : cluster.severity === 'MODERATE'
-                ? 'badge-moderate'
-                : 'badge-minor'
+              cluster.severity === "CRITICAL"
+                ? "badge-critical"
+                : cluster.severity === "SERIOUS"
+                  ? "badge-serious"
+                  : cluster.severity === "MODERATE"
+                    ? "badge-moderate"
+                    : "badge-minor"
             }`}
           >
             {cluster.severity.toLowerCase()}
@@ -62,21 +73,29 @@ export default async function ClusterDetailPage({
       <div className="card grid grid-cols-3 gap-4">
         <div>
           <p className="text-xs text-slate-500 uppercase">Pages Affected</p>
-          <p className="text-2xl font-bold text-slate-900">{cluster.pageCount}</p>
+          <p className="text-2xl font-bold text-slate-900">
+            {cluster.pageCount}
+          </p>
         </div>
         <div>
           <p className="text-xs text-slate-500 uppercase">Findings</p>
-          <p className="text-2xl font-bold text-slate-900">{cluster.findingCount}</p>
+          <p className="text-2xl font-bold text-slate-900">
+            {cluster.findingCount}
+          </p>
         </div>
         <div>
           <p className="text-xs text-slate-500 uppercase">Site</p>
-          <p className="text-sm font-medium text-slate-900 mt-1">{cluster.site.name}</p>
+          <p className="text-sm font-medium text-slate-900 mt-1">
+            {cluster.site.name}
+          </p>
         </div>
       </div>
 
       {cluster.selectorPattern && (
         <div className="card">
-          <h2 className="text-sm font-medium text-slate-500 mb-2">Component Pattern</h2>
+          <h2 className="text-sm font-medium text-slate-500 mb-2">
+            Component Pattern
+          </h2>
           <code className="block bg-slate-100 rounded-lg p-3 text-sm text-slate-800 overflow-x-auto">
             {cluster.selectorPattern}
           </code>
@@ -95,36 +114,44 @@ export default async function ClusterDetailPage({
             Remediation Suggestions ({cluster.suggestions.length})
           </h2>
           <div className="space-y-4">
-            {cluster.suggestions.map((s: (typeof cluster.suggestions)[number]) => (
-              <div key={s.id} className="border border-slate-200 rounded-lg p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="badge bg-blue-100 text-blue-800">
-                    {s.type.toLowerCase().replace('_', ' ')}
-                  </span>
-                  <span className="text-sm text-slate-500">
-                    {Math.round(s.confidence * 100)}% confidence
-                  </span>
-                </div>
-                <p className="text-sm text-slate-600 mb-3">{s.rationale}</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <p className="text-xs text-slate-500 mb-1">Before</p>
-                    <pre className="bg-red-50 rounded p-2 text-xs overflow-x-auto">
-                      <code>{s.originalCode}</code>
-                    </pre>
+            {cluster.suggestions.map(
+              (s: (typeof cluster.suggestions)[number]) => (
+                <div
+                  key={s.id}
+                  className="border border-slate-200 rounded-lg p-4"
+                >
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="badge bg-blue-100 text-blue-800">
+                      {s.type.toLowerCase().replace("_", " ")}
+                    </span>
+                    <span className="text-sm text-slate-500">
+                      {Math.round(s.confidence * 100)}% confidence
+                    </span>
                   </div>
-                  <div>
-                    <p className="text-xs text-slate-500 mb-1">After</p>
-                    <pre className="bg-green-50 rounded p-2 text-xs overflow-x-auto">
-                      <code>{s.suggestedCode}</code>
-                    </pre>
+                  <p className="text-sm text-slate-600 mb-3">{s.rationale}</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-xs text-slate-500 mb-1">Before</p>
+                      <pre className="bg-red-50 rounded p-2 text-xs overflow-x-auto">
+                        <code>{s.originalCode}</code>
+                      </pre>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500 mb-1">After</p>
+                      <pre className="bg-green-50 rounded p-2 text-xs overflow-x-auto">
+                        <code>{s.suggestedCode}</code>
+                      </pre>
+                    </div>
                   </div>
+                  <Link
+                    href={`/remediation/${s.id}`}
+                    className="btn-secondary text-xs mt-3 inline-flex"
+                  >
+                    Review & Export
+                  </Link>
                 </div>
-                <Link href={`/remediation/${s.id}`} className="btn-secondary text-xs mt-3 inline-flex">
-                  Review & Export
-                </Link>
-              </div>
-            ))}
+              ),
+            )}
           </div>
         </div>
       )}
@@ -142,8 +169,12 @@ export default async function ClusterDetailPage({
                 className="flex items-center justify-between py-2 border-b border-slate-100 hover:bg-slate-50 px-2 rounded"
               >
                 <div>
-                  <span className="text-sm font-medium text-slate-900">{f.description}</span>
-                  <span className="text-xs text-slate-400 ml-2">{f.ruleId}</span>
+                  <span className="text-sm font-medium text-slate-900">
+                    {f.description}
+                  </span>
+                  <span className="text-xs text-slate-400 ml-2">
+                    {f.ruleId}
+                  </span>
                 </div>
                 <span className="text-xs text-slate-500">
                   {f._count.occurrences} occurrences

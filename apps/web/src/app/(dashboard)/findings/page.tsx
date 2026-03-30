@@ -289,6 +289,7 @@ export default async function FindingsPage({
 }
 
 function FindingRow({ finding }: { finding: FindingListRow }) {
+  const freshness = deriveFindingFreshness(finding);
   return (
     <Link
       href={`/findings/${finding.id}`}
@@ -312,6 +313,14 @@ function FindingRow({ finding }: { finding: FindingListRow }) {
             </span>
             <span className="text-xs text-slate-400">{finding.ruleId}</span>
             <EvidenceSourceBadge source={finding.evidenceSource} />
+            {freshness === "stale" && (
+              <span
+                className="badge bg-amber-50 text-amber-700 border border-amber-200"
+                title="Newer scan data exists but this finding has not been re-verified"
+              >
+                stale
+              </span>
+            )}
             {finding.cluster && (
               <span className="badge bg-purple-100 text-purple-800">
                 {finding.cluster.name}
@@ -325,6 +334,11 @@ function FindingRow({ finding }: { finding: FindingListRow }) {
             <span>{finding._count.occurrences} occurrences</span>
             <span>Site: {finding.site.name}</span>
             <span>First seen: {finding.firstSeenAt.toLocaleDateString()}</span>
+            {finding.lastVerifiedAt && (
+              <span>
+                Last verified: {finding.lastVerifiedAt.toLocaleDateString()}
+              </span>
+            )}
             {finding.wcagTags.length > 0 && (
               <span>WCAG: {finding.wcagTags.join(", ")}</span>
             )}
@@ -336,6 +350,19 @@ function FindingRow({ finding }: { finding: FindingListRow }) {
       </div>
     </Link>
   );
+}
+
+function deriveFindingFreshness(finding: {
+  lastVerifiedAt: Date | null;
+  lastSeenAt: Date;
+  evidenceSource: string;
+}): "current" | "stale" | "unknown" {
+  if (finding.evidenceSource !== "AUTOMATED_AXE") return "unknown";
+  if (!finding.lastVerifiedAt) return "stale";
+  const daysSinceVerified =
+    (Date.now() - finding.lastVerifiedAt.getTime()) / (1000 * 60 * 60 * 24);
+  if (daysSinceVerified > 30) return "stale";
+  return "current";
 }
 
 function EvidenceSourceBadge({ source }: { source: string }) {

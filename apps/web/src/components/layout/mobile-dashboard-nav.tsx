@@ -1,10 +1,14 @@
-'use client';
+"use client";
 
-import { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { DASHBOARD_NAV_ITEMS, NAV_ICON_MAP, type OrgInfo } from './dashboard-nav-config';
-import { useDashboardNav } from './dashboard-nav-context';
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  DASHBOARD_NAV_ITEMS,
+  NAV_ICON_MAP,
+  type OrgInfo,
+} from "./dashboard-nav-config";
+import { useDashboardNav } from "./dashboard-nav-context";
 
 interface MobileDashboardNavProps {
   orgs: OrgInfo[];
@@ -12,7 +16,11 @@ interface MobileDashboardNavProps {
   canViewSystem?: boolean;
 }
 
-export function MobileDashboardNav({ orgs, user, canViewSystem }: MobileDashboardNavProps) {
+export function MobileDashboardNav({
+  orgs,
+  user,
+  canViewSystem,
+}: MobileDashboardNavProps) {
   const pathname = usePathname();
   const { mobileNavOpen, closeMobileNav } = useDashboardNav();
   const [currentOrg, setCurrentOrg] = useState(orgs[0]);
@@ -34,21 +42,26 @@ export function MobileDashboardNav({ orgs, user, canViewSystem }: MobileDashboar
   useEffect(() => {
     if (!mobileNavOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') closeMobileNav();
+      if (e.key === "Escape") closeMobileNav();
     };
-    document.addEventListener('keydown', onKey);
-    document.body.style.overflow = 'hidden';
+    document.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
     queueMicrotask(() => firstLinkRef.current?.focus());
     return () => {
-      document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = '';
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
     };
   }, [mobileNavOpen, closeMobileNav]);
 
   if (!mobileNavOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true" aria-label="Main menu">
+    <div
+      className="fixed inset-0 z-50 md:hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Main menu"
+    >
       <button
         type="button"
         className="absolute inset-0 bg-slate-900/50"
@@ -58,10 +71,14 @@ export function MobileDashboardNav({ orgs, user, canViewSystem }: MobileDashboar
       <aside
         ref={panelRef}
         className="absolute left-0 top-0 flex h-full w-[min(20rem,88vw)] flex-col border-r border-slate-200 bg-white shadow-xl"
-        style={{ paddingTop: 'env(safe-area-inset-top)' }}
+        style={{ paddingTop: "env(safe-area-inset-top)" }}
       >
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 px-4">
-          <Link href="/dashboard" className="text-lg font-bold text-brand-600" onClick={closeMobileNav}>
+          <Link
+            href="/dashboard"
+            className="text-lg font-bold text-brand-600"
+            onClick={closeMobileNav}
+          >
             AROS
           </Link>
           <button
@@ -70,7 +87,7 @@ export function MobileDashboardNav({ orgs, user, canViewSystem }: MobileDashboar
             onClick={closeMobileNav}
             aria-label="Close navigation"
           >
-            <span aria-hidden="true">{NAV_ICON_MAP.Close}</span>
+            <NAV_ICON_MAP.Close className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
 
@@ -81,7 +98,7 @@ export function MobileDashboardNav({ orgs, user, canViewSystem }: MobileDashboar
           <select
             id="org-select-mobile"
             className="input text-sm"
-            value={currentOrg?.id ?? ''}
+            value={currentOrg?.id ?? ""}
             onChange={(e) => {
               const org = orgs.find((o) => o.id === e.target.value);
               if (org) setCurrentOrg(org);
@@ -99,7 +116,9 @@ export function MobileDashboardNav({ orgs, user, canViewSystem }: MobileDashboar
         <nav className="flex-1 overflow-y-auto p-3" aria-label="Main">
           <ul className="space-y-1" role="list">
             {DASHBOARD_NAV_ITEMS.map((item, i) => {
-              const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+              const isActive =
+                pathname === item.href || pathname.startsWith(item.href + "/");
+              const Icon = NAV_ICON_MAP[item.icon];
               return (
                 <li key={item.href}>
                   <Link
@@ -107,15 +126,15 @@ export function MobileDashboardNav({ orgs, user, canViewSystem }: MobileDashboar
                     href={item.href}
                     className={`flex min-h-[44px] items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                       isActive
-                        ? 'bg-brand-50 text-brand-700'
-                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                        ? "bg-brand-50 text-brand-700"
+                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                     }`}
-                    aria-current={isActive ? 'page' : undefined}
+                    aria-current={isActive ? "page" : undefined}
                     onClick={closeMobileNav}
                   >
-                    <span className="w-5 text-center" aria-hidden="true">
-                      {NAV_ICON_MAP[item.icon]}
-                    </span>
+                    {Icon && (
+                      <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                    )}
                     {item.label}
                   </Link>
                 </li>
@@ -126,16 +145,19 @@ export function MobileDashboardNav({ orgs, user, canViewSystem }: MobileDashboar
                 <Link
                   href="/system"
                   className={`flex min-h-[44px] items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                    pathname === '/system' || pathname.startsWith('/system/')
-                      ? 'bg-brand-50 text-brand-700'
-                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    pathname === "/system" || pathname.startsWith("/system/")
+                      ? "bg-brand-50 text-brand-700"
+                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                   }`}
-                  aria-current={pathname.startsWith('/system') ? 'page' : undefined}
+                  aria-current={
+                    pathname.startsWith("/system") ? "page" : undefined
+                  }
                   onClick={closeMobileNav}
                 >
-                  <span className="w-5 text-center" aria-hidden="true">
-                    {NAV_ICON_MAP.Server}
-                  </span>
+                  <NAV_ICON_MAP.Server
+                    className="h-4 w-4 shrink-0"
+                    aria-hidden="true"
+                  />
                   System
                 </Link>
               </li>
@@ -149,7 +171,9 @@ export function MobileDashboardNav({ orgs, user, canViewSystem }: MobileDashboar
               {(user.name ?? user.email).charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-slate-900">{user.name ?? 'User'}</p>
+              <p className="truncate text-sm font-medium text-slate-900">
+                {user.name ?? "User"}
+              </p>
               <p className="truncate text-xs text-slate-500">{user.email}</p>
             </div>
           </div>

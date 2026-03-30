@@ -30,7 +30,7 @@ test.describe('findings evidence workflow', () => {
     await statusSelect.selectOption('ACKNOWLEDGED');
     await page.getByRole('button', { name: 'Apply status & note' }).click();
     await expect(page).toHaveURL(/\/findings\/[^/]+$/);
-    await expect(page.getByText('Remediation history')).toBeVisible();
+    await expect(page.getByText('Ledger History')).toBeVisible();
 
     const summaryStatus = await page.evaluate(async () => {
       const r = await fetch('/api/findings/summary', { credentials: 'include' });

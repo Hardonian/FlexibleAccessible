@@ -1,9 +1,13 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { DASHBOARD_NAV_ITEMS, NAV_ICON_MAP, type OrgInfo } from './dashboard-nav-config';
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter, usePathname } from "next/navigation";
+import {
+  DASHBOARD_NAV_ITEMS,
+  NAV_ICON_MAP,
+  type OrgInfo,
+} from "./dashboard-nav-config";
 
 interface SidebarProps {
   orgs: OrgInfo[];
@@ -13,6 +17,7 @@ interface SidebarProps {
 
 export function Sidebar({ orgs, user, canViewSystem }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [currentOrg, setCurrentOrg] = useState(orgs[0]);
 
   useEffect(() => {
@@ -41,10 +46,13 @@ export function Sidebar({ orgs, user, canViewSystem }: SidebarProps) {
         </label>
         <select
           id="org-select"
-          value={currentOrg?.id ?? ''}
+          value={currentOrg?.id ?? ""}
           onChange={(e) => {
             const org = orgs.find((o) => o.id === e.target.value);
-            if (org) setCurrentOrg(org);
+            if (org) {
+              setCurrentOrg(org);
+              router.refresh();
+            }
           }}
           className="input text-sm"
         >
@@ -59,21 +67,23 @@ export function Sidebar({ orgs, user, canViewSystem }: SidebarProps) {
       <nav className="flex-1 overflow-y-auto p-3">
         <ul className="space-y-1" role="list">
           {DASHBOARD_NAV_ITEMS.map((item) => {
-            const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+            const isActive =
+              pathname === item.href || pathname.startsWith(item.href + "/");
+            const Icon = NAV_ICON_MAP[item.icon];
             return (
               <li key={item.href}>
                 <Link
                   href={item.href}
                   className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                     isActive
-                      ? 'bg-brand-50 text-brand-700'
-                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                      ? "bg-brand-50 text-brand-700"
+                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                   }`}
-                  aria-current={isActive ? 'page' : undefined}
+                  aria-current={isActive ? "page" : undefined}
                 >
-                  <span className="w-5 text-center" aria-hidden="true">
-                    {NAV_ICON_MAP[item.icon]}
-                  </span>
+                  {Icon && (
+                    <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  )}
                   {item.label}
                 </Link>
               </li>
@@ -84,15 +94,18 @@ export function Sidebar({ orgs, user, canViewSystem }: SidebarProps) {
               <Link
                 href="/system"
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                  pathname === '/system' || pathname.startsWith('/system/')
-                    ? 'bg-brand-50 text-brand-700'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  pathname === "/system" || pathname.startsWith("/system/")
+                    ? "bg-brand-50 text-brand-700"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                 }`}
-                aria-current={pathname.startsWith('/system') ? 'page' : undefined}
+                aria-current={
+                  pathname.startsWith("/system") ? "page" : undefined
+                }
               >
-                <span className="w-5 text-center" aria-hidden="true">
-                  {NAV_ICON_MAP.Server}
-                </span>
+                <NAV_ICON_MAP.Server
+                  className="h-4 w-4 shrink-0"
+                  aria-hidden="true"
+                />
                 System
               </Link>
             </li>
@@ -106,7 +119,9 @@ export function Sidebar({ orgs, user, canViewSystem }: SidebarProps) {
             {(user.name ?? user.email).charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-slate-900">{user.name ?? 'User'}</p>
+            <p className="truncate text-sm font-medium text-slate-900">
+              {user.name ?? "User"}
+            </p>
             <p className="truncate text-xs text-slate-500">{user.email}</p>
           </div>
         </div>

@@ -1,10 +1,11 @@
-'use client';
+"use client";
 
-import { useDashboardNav } from './dashboard-nav-context';
-import { NAV_ICON_MAP } from './dashboard-nav-config';
+import { useDashboardNav } from "./dashboard-nav-context";
+import { NAV_ICON_MAP } from "./dashboard-nav-config";
 
 export function MobileNavMenuButton() {
   const { toggleMobileNav, mobileNavOpen } = useDashboardNav();
+  const MenuIcon = NAV_ICON_MAP.Menu;
   return (
     <button
       type="button"
@@ -13,9 +14,7 @@ export function MobileNavMenuButton() {
       aria-label="Open main menu"
       aria-expanded={mobileNavOpen}
     >
-      <span className="text-lg" aria-hidden="true">
-        {NAV_ICON_MAP.Menu}
-      </span>
+      {MenuIcon && <MenuIcon className="h-5 w-5" aria-hidden="true" />}
     </button>
   );
 }

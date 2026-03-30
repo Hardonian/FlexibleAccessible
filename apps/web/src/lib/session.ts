@@ -1,7 +1,7 @@
-import { cookies } from 'next/headers';
-import { prisma } from './db';
+import { cookies } from "next/headers";
+import { prisma } from "./db";
 
-const SESSION_COOKIE = 'aros_session';
+const SESSION_COOKIE = "aros_session";
 const SESSION_MAX_AGE = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 export interface SessionUser {
@@ -28,7 +28,7 @@ export async function getSession(): Promise<SessionUser | null> {
 }
 
 export async function createSession(userId: string): Promise<string> {
-  const { generateToken } = await import('@aros/shared');
+  const { generateToken } = await import("@aros/shared");
   const token = generateToken();
   const expiresAt = new Date(Date.now() + SESSION_MAX_AGE);
 
@@ -39,10 +39,10 @@ export async function createSession(userId: string): Promise<string> {
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
     maxAge: SESSION_MAX_AGE / 1000,
-    path: '/',
+    path: "/",
   });
 
   return token;
@@ -60,7 +60,8 @@ export async function destroySession(): Promise<void> {
 export async function requireSession(): Promise<SessionUser> {
   const user = await getSession();
   if (!user) {
-    throw new Error('UNAUTHORIZED');
+    const { ApiError } = await import("@aros/shared");
+    throw ApiError.unauthorized();
   }
   return user;
 }
