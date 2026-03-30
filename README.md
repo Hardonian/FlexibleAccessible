@@ -59,6 +59,8 @@ npm run dev:worker
 
 Open http://localhost:3000
 
+**Progressive Web App (mobile):** Production builds register a service worker (`/sw.js`), expose a [Web App Manifest](https://developer.mozilla.org/en-US/docs/Web/Manifest) at `/manifest.webmanifest`, and use `/offline` as the document fallback when the network is unavailable. Install from the browser “Add to Home Screen” on iOS Safari or Android Chrome. Development mode disables the service worker so auth and hot reload behave normally.
+
 **Demo credentials:**
 - Email: `demo@aros.dev`
 - Password: `demo1234`

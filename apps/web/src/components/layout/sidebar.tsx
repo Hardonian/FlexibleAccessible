@@ -1,17 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import type { MemberRole } from '@aros/db';
-
-interface OrgInfo {
-  id: string;
-  name: string;
-  slug: string;
-  role: MemberRole;
-  workspaces: Array<{ id: string; name: string; slug: string }>;
-}
+import { DASHBOARD_NAV_ITEMS, NAV_ICON_MAP, type OrgInfo } from './dashboard-nav-config';
 
 interface SidebarProps {
   orgs: OrgInfo[];
@@ -19,32 +11,34 @@ interface SidebarProps {
   canViewSystem?: boolean;
 }
 
-const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
-  { href: '/sites', label: 'Sites', icon: 'Globe' },
-  { href: '/findings', label: 'Findings', icon: 'AlertTriangle' },
-  { href: '/clusters', label: 'Clusters', icon: 'Layers' },
-  { href: '/remediation', label: 'Remediation', icon: 'Wrench' },
-  { href: '/reviews', label: 'Reviews', icon: 'CheckSquare' },
-  { href: '/reports', label: 'Reports', icon: 'FileText' },
-  { href: '/settings', label: 'Settings', icon: 'Settings' },
-];
-
 export function Sidebar({ orgs, user, canViewSystem }: SidebarProps) {
   const pathname = usePathname();
   const [currentOrg, setCurrentOrg] = useState(orgs[0]);
 
+  useEffect(() => {
+    if (orgs.length === 0) return;
+    setCurrentOrg((prev) => {
+      if (prev && orgs.some((o) => o.id === prev.id)) return prev;
+      return orgs[0];
+    });
+  }, [orgs]);
+
   return (
-    <aside className="flex w-64 flex-col border-r border-slate-200 bg-white" role="navigation" aria-label="Main navigation">
+    <aside
+      className="hidden w-64 shrink-0 flex-col border-r border-slate-200 bg-white md:flex"
+      role="navigation"
+      aria-label="Main navigation"
+    >
       <div className="flex h-14 items-center border-b border-slate-200 px-4">
         <Link href="/dashboard" className="flex items-center gap-2">
           <span className="text-lg font-bold text-brand-600">AROS</span>
         </Link>
       </div>
 
-      {/* Org Switcher */}
       <div className="border-b border-slate-200 p-3">
-        <label htmlFor="org-select" className="sr-only">Select organization</label>
+        <label htmlFor="org-select" className="sr-only">
+          Select organization
+        </label>
         <select
           id="org-select"
           value={currentOrg?.id ?? ''}
@@ -62,10 +56,9 @@ export function Sidebar({ orgs, user, canViewSystem }: SidebarProps) {
         </select>
       </div>
 
-      {/* Navigation */}
       <nav className="flex-1 overflow-y-auto p-3">
         <ul className="space-y-1" role="list">
-          {navItems.map((item) => {
+          {DASHBOARD_NAV_ITEMS.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
             return (
               <li key={item.href}>
@@ -79,7 +72,7 @@ export function Sidebar({ orgs, user, canViewSystem }: SidebarProps) {
                   aria-current={isActive ? 'page' : undefined}
                 >
                   <span className="w-5 text-center" aria-hidden="true">
-                    {iconMap[item.icon]}
+                    {NAV_ICON_MAP[item.icon]}
                   </span>
                   {item.label}
                 </Link>
@@ -98,7 +91,7 @@ export function Sidebar({ orgs, user, canViewSystem }: SidebarProps) {
                 aria-current={pathname.startsWith('/system') ? 'page' : undefined}
               >
                 <span className="w-5 text-center" aria-hidden="true">
-                  {iconMap.Server}
+                  {NAV_ICON_MAP.Server}
                 </span>
                 System
               </Link>
@@ -107,16 +100,13 @@ export function Sidebar({ orgs, user, canViewSystem }: SidebarProps) {
         </ul>
       </nav>
 
-      {/* User */}
       <div className="border-t border-slate-200 p-3">
         <div className="flex items-center gap-3 rounded-lg px-3 py-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-sm font-medium text-brand-700">
             {(user.name ?? user.email).charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-slate-900">
-              {user.name ?? 'User'}
-            </p>
+            <p className="truncate text-sm font-medium text-slate-900">{user.name ?? 'User'}</p>
             <p className="truncate text-xs text-slate-500">{user.email}</p>
           </div>
         </div>
@@ -124,15 +114,3 @@ export function Sidebar({ orgs, user, canViewSystem }: SidebarProps) {
     </aside>
   );
 }
-
-const iconMap: Record<string, string> = {
-  LayoutDashboard: '\u25A0',
-  Globe: '\u25CB',
-  AlertTriangle: '\u26A0',
-  Layers: '\u2630',
-  Wrench: '\u2692',
-  CheckSquare: '\u2611',
-  FileText: '\u2637',
-  Settings: '\u2699',
-  Server: '\u229E',
-};

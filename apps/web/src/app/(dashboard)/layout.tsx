@@ -3,6 +3,8 @@ import { getSession } from '@/lib/session';
 import { prisma } from '@/lib/db';
 import { Sidebar } from '@/components/layout/sidebar';
 import { TopBar } from '@/components/layout/top-bar';
+import { DashboardNavProvider } from '@/components/layout/dashboard-nav-context';
+import { MobileDashboardNav } from '@/components/layout/mobile-dashboard-nav';
 import { hasPermission } from '@aros/config';
 import type { Prisma } from '@aros/db';
 import { getRoutePlatformTruth } from '@/lib/platform-truth-cache';
@@ -59,14 +61,16 @@ export default async function DashboardLayout({
   const shellAudience = canViewSystem ? 'operator' : 'user';
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50">
-      <Sidebar orgs={orgs} user={user} canViewSystem={canViewSystem} />
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <TopBar user={user} platformTruth={platformTruth} canViewSystem={canViewSystem} />
-        {platformTruth && (
-          <PlatformShellBanner truth={platformTruth} audience={shellAudience} canViewSystem={canViewSystem} />
-        )}
-        <main className="flex-1 overflow-y-auto p-6">
+    <DashboardNavProvider>
+      <div className="flex min-h-dvh overflow-hidden bg-slate-50 md:h-screen">
+        <Sidebar orgs={orgs} user={user} canViewSystem={canViewSystem} />
+        <MobileDashboardNav orgs={orgs} user={user} canViewSystem={canViewSystem} />
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <TopBar user={user} platformTruth={platformTruth} canViewSystem={canViewSystem} />
+          {platformTruth && (
+            <PlatformShellBanner truth={platformTruth} audience={shellAudience} canViewSystem={canViewSystem} />
+          )}
+          <main className="flex-1 overflow-y-auto p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4 md:p-6">
           {layoutDbError && (
             <RouteReliabilityNotice variant="error" title="Navigation data unavailable" showSystemLink={canViewSystem}>
               <p>
@@ -83,9 +87,10 @@ export default async function DashboardLayout({
               </p>
             </RouteReliabilityNotice>
           )}
-          {children}
-        </main>
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
+    </DashboardNavProvider>
   );
 }
