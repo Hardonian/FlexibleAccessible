@@ -1,25 +1,32 @@
-import { NextResponse } from 'next/server';
-import { requireSession } from '@/lib/session';
-import { prisma } from '@/lib/db';
-import { hasPermission } from '@aros/config';
-import { collectPlatformHealth, buildRoutePlatformTruth } from '@aros/core-services';
+import { NextResponse } from "next/server";
+import { requireSession } from "@/lib/session";
+import { prisma } from "@/lib/db";
+import { hasPermission } from "@aros/config";
+import {
+  collectPlatformHealth,
+  buildRoutePlatformTruth,
+} from "@aros/core-services";
 
 export async function GET(request: Request) {
   try {
     const user = await requireSession();
     const { searchParams } = new URL(request.url);
-    const siteId = searchParams.get('siteId');
-    const format = searchParams.get('format') ?? 'json';
+    const siteId = searchParams.get("siteId");
+    const format = searchParams.get("format") ?? "json";
 
+    const requestedOrgId = searchParams.get("organizationId");
     const membership = await prisma.membership.findFirst({
-      where: { userId: user.id },
+      where: {
+        userId: user.id,
+        ...(requestedOrgId ? { organizationId: requestedOrgId } : {}),
+      },
       select: { organizationId: true, role: true },
     });
     if (!membership) {
-      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
-    if (!hasPermission(membership.role, 'reports:export')) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (!hasPermission(membership.role, "reports:export")) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const where: Record<string, unknown> = {
@@ -46,14 +53,14 @@ export async function GET(request: Request) {
           take: 100,
         },
       },
-      orderBy: [{ impact: 'asc' }, { occurrenceCount: 'desc' }],
+      orderBy: [{ impact: "asc" }, { occurrenceCount: "desc" }],
     });
 
     const report = {
       generatedAt: new Date().toISOString(),
       generatedBy: user.email,
       disclaimer:
-        'This report provides evidence of accessibility testing and operator workflow. It does not constitute a guarantee of WCAG conformance.',
+        "This report provides evidence of accessibility testing and operator workflow. It does not constitute a guarantee of WCAG conformance.",
       platformTruth: {
         jobPipelinesHealthy: truth.flags.jobPipelinesHealthy,
         workerRunning: truth.flags.workerRunning,
@@ -62,15 +69,20 @@ export async function GET(request: Request) {
       summary: {
         totalFindings: findings.length,
         bySeverity: {
-          critical: findings.filter((f) => f.impact === 'CRITICAL').length,
-          serious: findings.filter((f) => f.impact === 'SERIOUS').length,
-          moderate: findings.filter((f) => f.impact === 'MODERATE').length,
-          minor: findings.filter((f) => f.impact === 'MINOR').length,
+          critical: findings.filter((f) => f.impact === "CRITICAL").length,
+          serious: findings.filter((f) => f.impact === "SERIOUS").length,
+          moderate: findings.filter((f) => f.impact === "MODERATE").length,
+          minor: findings.filter((f) => f.impact === "MINOR").length,
         },
         byEvidenceSource: {
-          automatedAxe: findings.filter((f) => f.evidenceSource === 'AUTOMATED_AXE').length,
-          manualReview: findings.filter((f) => f.evidenceSource === 'MANUAL_REVIEW').length,
-          imported: findings.filter((f) => f.evidenceSource === 'IMPORTED').length,
+          automatedAxe: findings.filter(
+            (f) => f.evidenceSource === "AUTOMATED_AXE",
+          ).length,
+          manualReview: findings.filter(
+            (f) => f.evidenceSource === "MANUAL_REVIEW",
+          ).length,
+          imported: findings.filter((f) => f.evidenceSource === "IMPORTED")
+            .length,
         },
       },
       findings: findings.map((f) => ({
@@ -95,31 +107,34 @@ export async function GET(request: Request) {
       })),
     };
 
-    if (format === 'csv') {
-      const lines = ['Rule ID,Impact,Status,Description,Occurrences,WCAG Tags'];
+    if (format === "csv") {
+      const lines = ["Rule ID,Impact,Status,Description,Occurrences,WCAG Tags"];
       for (const f of report.findings) {
         lines.push(
-          `"${f.ruleId}","${f.impact}","${f.status}","${f.description.replace(/"/g, '""')}",${f.occurrenceCount},"${f.wcagTags.join('; ')}"`
+          `"${f.ruleId}","${f.impact}","${f.status}","${f.description.replace(/"/g, '""')}",${f.occurrenceCount},"${f.wcagTags.join("; ")}"`,
         );
       }
-      return new NextResponse(lines.join('\n'), {
+      return new NextResponse(lines.join("\n"), {
         headers: {
-          'Content-Type': 'text/csv',
-          'Content-Disposition': `attachment; filename="aros-report-${new Date().toISOString().split('T')[0]}.csv"`,
+          "Content-Type": "text/csv",
+          "Content-Disposition": `attachment; filename="aros-report-${new Date().toISOString().split("T")[0]}.csv"`,
         },
       });
     }
 
     return NextResponse.json(report, {
       headers: {
-        'Content-Disposition': `attachment; filename="aros-report-${new Date().toISOString().split('T')[0]}.json"`,
+        "Content-Disposition": `attachment; filename="aros-report-${new Date().toISOString().split("T")[0]}.json"`,
       },
     });
   } catch (error) {
-    if (error instanceof Error && error.message === 'UNAUTHORIZED') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (error instanceof Error && error.message === "UNAUTHORIZED") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    console.error('Report generation error:', error);
-    return NextResponse.json({ error: 'Failed to generate report' }, { status: 500 });
+    console.error("Report generation error:", error);
+    return NextResponse.json(
+      { error: "Failed to generate report" },
+      { status: 500 },
+    );
   }
 }

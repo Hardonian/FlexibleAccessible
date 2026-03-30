@@ -1,11 +1,14 @@
-import { requireSession } from '@/lib/session';
-import { prisma } from '@/lib/db';
-import Link from 'next/link';
-import type { Prisma, Severity, FindingStatus, EvidenceSource } from '@aros/db';
-import { getRoutePlatformTruth } from '@/lib/platform-truth-cache';
-import { resolveDashboardOrgMembership, runOrgScopedQuery } from '@/lib/route-data-boundary';
-import { RouteReliabilityNotice } from '@/components/reliability/route-reliability-notice';
-import { hasPermission } from '@aros/config';
+import { requireSession } from "@/lib/session";
+import { prisma } from "@/lib/db";
+import Link from "next/link";
+import type { Prisma, Severity, FindingStatus, EvidenceSource } from "@aros/db";
+import { getRoutePlatformTruth } from "@/lib/platform-truth-cache";
+import {
+  resolveDashboardOrgMembership,
+  runOrgScopedQuery,
+} from "@/lib/route-data-boundary";
+import { RouteReliabilityNotice } from "@/components/reliability/route-reliability-notice";
+import { hasPermission } from "@aros/config";
 
 type FindingListRow = Prisma.CanonicalFindingGetPayload<{
   include: {
@@ -15,7 +18,7 @@ type FindingListRow = Prisma.CanonicalFindingGetPayload<{
   };
 }>;
 
-export const metadata = { title: 'Findings - AROS' };
+export const metadata = { title: "Findings - AROS" };
 
 interface SearchParams {
   page?: string;
@@ -36,45 +39,59 @@ export default async function FindingsPage({
   const platformTruth = await getRoutePlatformTruth();
   const canViewSystem = await prisma.membership
     .findMany({ where: { userId: user.id }, select: { role: true } })
-    .then((rows) => rows.some((m) => hasPermission(m.role, 'org:system:view')))
+    .then((rows) => rows.some((m) => hasPermission(m.role, "org:system:view")))
     .catch(() => false);
 
   const orgRes = await resolveDashboardOrgMembership(user.id, platformTruth);
 
-  if (orgRes.kind === 'platform_blocked') {
+  if (orgRes.kind === "platform_blocked") {
     return (
       <div className="space-y-6">
         <h1 className="text-2xl font-bold text-slate-900">Findings</h1>
-        <RouteReliabilityNotice variant="error" title="Findings require a working database" showSystemLink={canViewSystem}>
-          <p>Findings cannot be loaded until core data services are healthy. See the banner above for status.</p>
+        <RouteReliabilityNotice
+          variant="error"
+          title="Findings require a working database"
+          showSystemLink={canViewSystem}
+        >
+          <p>
+            Findings cannot be loaded until core data services are healthy. See
+            the banner above for status.
+          </p>
         </RouteReliabilityNotice>
       </div>
     );
   }
 
-  if (orgRes.kind === 'error') {
+  if (orgRes.kind === "error") {
     return (
       <div className="space-y-6">
         <h1 className="text-2xl font-bold text-slate-900">Findings</h1>
-        <RouteReliabilityNotice variant="error" title="Could not verify organization" showSystemLink={canViewSystem}>
+        <RouteReliabilityNotice
+          variant="error"
+          title="Could not verify organization"
+          showSystemLink={canViewSystem}
+        >
           <p>{orgRes.message}</p>
         </RouteReliabilityNotice>
       </div>
     );
   }
 
-  if (orgRes.kind === 'none') {
+  if (orgRes.kind === "none") {
     return (
       <div className="space-y-6">
         <h1 className="text-2xl font-bold text-slate-900">Findings</h1>
-        <RouteReliabilityNotice variant="info" title="No organization membership">
+        <RouteReliabilityNotice
+          variant="info"
+          title="No organization membership"
+        >
           <p>You need to belong to an organization to view findings.</p>
         </RouteReliabilityNotice>
       </div>
     );
   }
 
-  const page = parseInt(params.page ?? '1');
+  const page = parseInt(params.page ?? "1", 10);
   const limit = 20;
   const skip = (page - 1) * limit;
 
@@ -98,7 +115,12 @@ export default async function FindingsPage({
   if (params.ruleId) {
     where.ruleId = params.ruleId;
   }
-  if (params.evidenceSource && ['AUTOMATED_AXE', 'MANUAL_REVIEW', 'IMPORTED'].includes(params.evidenceSource)) {
+  if (
+    params.evidenceSource &&
+    ["AUTOMATED_AXE", "MANUAL_REVIEW", "IMPORTED"].includes(
+      params.evidenceSource,
+    )
+  ) {
     where.evidenceSource = params.evidenceSource as EvidenceSource;
   }
 
@@ -106,7 +128,7 @@ export default async function FindingsPage({
     const [findings, total] = await Promise.all([
       prisma.canonicalFinding.findMany({
         where,
-        orderBy: [{ impact: 'asc' }, { occurrenceCount: 'desc' }],
+        orderBy: [{ impact: "asc" }, { occurrenceCount: "desc" }],
         skip,
         take: limit,
         include: {
@@ -124,8 +146,14 @@ export default async function FindingsPage({
     return (
       <div className="space-y-6">
         <h1 className="text-2xl font-bold text-slate-900">Findings</h1>
-        <RouteReliabilityNotice variant="error" title="Findings list unavailable" showSystemLink={canViewSystem}>
-          <p>Could not load findings from the database ({listResult.message}).</p>
+        <RouteReliabilityNotice
+          variant="error"
+          title="Findings list unavailable"
+          showSystemLink={canViewSystem}
+        >
+          <p>
+            Could not load findings from the database ({listResult.message}).
+          </p>
         </RouteReliabilityNotice>
       </div>
     );
@@ -140,7 +168,8 @@ export default async function FindingsPage({
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Findings</h1>
           <p className="text-slate-500 mt-1">
-            {total} deduplicated finding{total === 1 ? '' : 's'} in your organization (not a legal conformance score).
+            {total} deduplicated finding{total === 1 ? "" : "s"} in your
+            organization (not a legal conformance score).
           </p>
         </div>
       </div>
@@ -151,7 +180,12 @@ export default async function FindingsPage({
             <label htmlFor="severity-filter" className="label">
               Severity
             </label>
-            <select id="severity-filter" name="severity" className="input" defaultValue={params.severity ?? ''}>
+            <select
+              id="severity-filter"
+              name="severity"
+              className="input"
+              defaultValue={params.severity ?? ""}
+            >
               <option value="">All</option>
               <option value="CRITICAL">Critical</option>
               <option value="SERIOUS">Serious</option>
@@ -163,7 +197,12 @@ export default async function FindingsPage({
             <label htmlFor="status-filter" className="label">
               Status
             </label>
-            <select id="status-filter" name="status" className="input" defaultValue={params.status ?? ''}>
+            <select
+              id="status-filter"
+              name="status"
+              className="input"
+              defaultValue={params.status ?? ""}
+            >
               <option value="">All</option>
               <option value="OPEN">Open</option>
               <option value="ACKNOWLEDGED">Acknowledged</option>
@@ -182,7 +221,7 @@ export default async function FindingsPage({
               id="source-filter"
               name="evidenceSource"
               className="input"
-              defaultValue={params.evidenceSource ?? ''}
+              defaultValue={params.evidenceSource ?? ""}
             >
               <option value="">All</option>
               <option value="AUTOMATED_AXE">Automated (axe)</option>
@@ -200,11 +239,13 @@ export default async function FindingsPage({
 
       {findings.length === 0 ? (
         <div className="card text-center py-12 space-y-2">
-          <p className="text-slate-700 font-medium">No findings match your filters</p>
+          <p className="text-slate-700 font-medium">
+            No findings match your filters
+          </p>
           <p className="text-sm text-slate-500">
             {total === 0
-              ? 'There are no findings for this organization yet, or none match the selected filters.'
-              : 'Try clearing filters or changing the page.'}
+              ? "There are no findings for this organization yet, or none match the selected filters."
+              : "Try clearing filters or changing the page."}
           </p>
         </div>
       ) : (
@@ -216,22 +257,27 @@ export default async function FindingsPage({
       )}
 
       {totalPages > 1 && (
-        <nav className="flex items-center justify-center gap-2" aria-label="Pagination">
+        <nav
+          className="flex items-center justify-center gap-2"
+          aria-label="Pagination"
+        >
           {page > 1 && (
             <Link
-              href={`/findings?page=${page - 1}&severity=${params.severity ?? ''}&status=${params.status ?? ''}&evidenceSource=${params.evidenceSource ?? ''}`}
+              href={`/findings?page=${page - 1}&severity=${params.severity ?? ""}&status=${params.status ?? ""}&evidenceSource=${params.evidenceSource ?? ""}`}
               className="btn-secondary text-sm"
+              aria-label={`Previous page, page ${page - 1} of ${totalPages}`}
             >
               Previous
             </Link>
           )}
-          <span className="text-sm text-slate-500">
+          <span className="text-sm text-slate-500" aria-current="page">
             Page {page} of {totalPages}
           </span>
           {page < totalPages && (
             <Link
-              href={`/findings?page=${page + 1}&severity=${params.severity ?? ''}&status=${params.status ?? ''}&evidenceSource=${params.evidenceSource ?? ''}`}
+              href={`/findings?page=${page + 1}&severity=${params.severity ?? ""}&status=${params.status ?? ""}&evidenceSource=${params.evidenceSource ?? ""}`}
               className="btn-secondary text-sm"
+              aria-label={`Next page, page ${page + 1} of ${totalPages}`}
             >
               Next
             </Link>
@@ -244,19 +290,22 @@ export default async function FindingsPage({
 
 function FindingRow({ finding }: { finding: FindingListRow }) {
   return (
-    <Link href={`/findings/${finding.id}`} className="card hover:shadow-md transition-shadow block">
+    <Link
+      href={`/findings/${finding.id}`}
+      className="card hover:shadow-md transition-shadow block"
+    >
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
             <span
               className={`badge ${
-                finding.impact === 'CRITICAL'
-                  ? 'badge-critical'
-                  : finding.impact === 'SERIOUS'
-                    ? 'badge-serious'
-                    : finding.impact === 'MODERATE'
-                      ? 'badge-moderate'
-                      : 'badge-minor'
+                finding.impact === "CRITICAL"
+                  ? "badge-critical"
+                  : finding.impact === "SERIOUS"
+                    ? "badge-serious"
+                    : finding.impact === "MODERATE"
+                      ? "badge-moderate"
+                      : "badge-minor"
               }`}
             >
               {finding.impact.toLowerCase()}
@@ -264,17 +313,21 @@ function FindingRow({ finding }: { finding: FindingListRow }) {
             <span className="text-xs text-slate-400">{finding.ruleId}</span>
             <EvidenceSourceBadge source={finding.evidenceSource} />
             {finding.cluster && (
-              <span className="badge bg-purple-100 text-purple-800">{finding.cluster.name}</span>
+              <span className="badge bg-purple-100 text-purple-800">
+                {finding.cluster.name}
+              </span>
             )}
           </div>
-          <p className="text-sm font-medium text-slate-900">{finding.description}</p>
+          <p className="text-sm font-medium text-slate-900">
+            {finding.description}
+          </p>
           <div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
             <span>{finding._count.occurrences} occurrences</span>
-            <span>
-              Site: {finding.site.name}
-            </span>
+            <span>Site: {finding.site.name}</span>
             <span>First seen: {finding.firstSeenAt.toLocaleDateString()}</span>
-            {finding.wcagTags.length > 0 && <span>WCAG: {finding.wcagTags.join(', ')}</span>}
+            {finding.wcagTags.length > 0 && (
+              <span>WCAG: {finding.wcagTags.join(", ")}</span>
+            )}
           </div>
         </div>
         <div>
@@ -287,9 +340,18 @@ function FindingRow({ finding }: { finding: FindingListRow }) {
 
 function EvidenceSourceBadge({ source }: { source: string }) {
   const label =
-    source === 'AUTOMATED_AXE' ? 'Automated' : source === 'MANUAL_REVIEW' ? 'Manual' : source === 'IMPORTED' ? 'Imported' : source;
+    source === "AUTOMATED_AXE"
+      ? "Automated"
+      : source === "MANUAL_REVIEW"
+        ? "Manual"
+        : source === "IMPORTED"
+          ? "Imported"
+          : source;
   return (
-    <span className="text-xs rounded px-1.5 py-0.5 bg-slate-100 text-slate-600" title="How this finding entered the system">
+    <span
+      className="text-xs rounded px-1.5 py-0.5 bg-slate-100 text-slate-600"
+      title="How this finding entered the system"
+    >
       {label}
     </span>
   );
@@ -297,17 +359,19 @@ function EvidenceSourceBadge({ source }: { source: string }) {
 
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
-    OPEN: 'bg-red-100 text-red-800',
-    ACKNOWLEDGED: 'bg-amber-100 text-amber-900',
-    IN_PROGRESS: 'bg-blue-100 text-blue-800',
-    RESOLVED: 'bg-green-100 text-green-800',
-    MITIGATED: 'bg-emerald-100 text-emerald-900',
-    WONT_FIX: 'bg-slate-100 text-slate-600',
-    FALSE_POSITIVE: 'bg-slate-100 text-slate-600',
+    OPEN: "bg-red-100 text-red-800",
+    ACKNOWLEDGED: "bg-amber-100 text-amber-900",
+    IN_PROGRESS: "bg-blue-100 text-blue-800",
+    RESOLVED: "bg-green-100 text-green-800",
+    MITIGATED: "bg-emerald-100 text-emerald-900",
+    WONT_FIX: "bg-slate-100 text-slate-600",
+    FALSE_POSITIVE: "bg-slate-100 text-slate-600",
   };
   return (
-    <span className={`badge ${styles[status] ?? 'bg-slate-100 text-slate-800'}`}>
-      {status.toLowerCase().replace('_', ' ')}
+    <span
+      className={`badge ${styles[status] ?? "bg-slate-100 text-slate-800"}`}
+    >
+      {status.toLowerCase().replace("_", " ")}
     </span>
   );
 }
