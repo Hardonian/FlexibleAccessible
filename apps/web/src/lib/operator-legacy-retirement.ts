@@ -1,4 +1,5 @@
 import { hasPermission } from '@aros/config';
+import type { MemberRole } from '@aros/db';
 import { prisma } from '@/lib/db';
 import {
   deriveLegacyDependenceStatus,
@@ -40,8 +41,8 @@ export async function evaluateLegacyRetirementForOperator(userId: string): Promi
     }),
   ]);
 
-  const manageableOrgIds = (memberships as Array<{ organizationId: string; role: string }>)
-    .filter((membership) => hasPermission(membership.role as any, 'org:system:manage'))
+  const manageableOrgIds = memberships
+    .filter((membership) => hasPermission(membership.role as MemberRole, 'org:system:manage'))
     .map((membership) => membership.organizationId);
 
   const flagsRecord =
