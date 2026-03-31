@@ -43,12 +43,12 @@ export type FeedbackPriority = (typeof FEEDBACK_PRIORITIES)[number];
 export const feedbackCreateSchema = z.object({
   stakeholderId: z.string().min(1),
   category: z.enum(FEEDBACK_CATEGORIES),
-  priority: z.enum(FEEDBACK_PRIORITIES).default("MEDIUM"),
+  priority: z.enum(FEEDBACK_PRIORITIES).optional(),
   title: z.string().min(1, "Title is required"),
   description: z.string().min(1, "Description is required"),
-  source: z.string().optional(), // e.g., 'survey', 'interview', 'forum'
-  tags: z.array(z.string()).default([]),
-  attachments: z.array(z.string()).default([]),
+  source: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  attachments: z.array(z.string()).optional(),
   metadata: z.record(z.unknown()).optional(),
 });
 
@@ -92,7 +92,6 @@ export interface FeedbackItem {
   updatedAt: Date;
 }
 
-// Lifecycle tracking for feedback
 export interface FeedbackLifecycleEvent {
   id: string;
   feedbackId: string;
@@ -103,16 +102,15 @@ export interface FeedbackLifecycleEvent {
   createdAt: Date;
 }
 
-// Summary metrics
 export interface FeedbackSummary {
   total: number;
-  byCategory: Record<FeedbackCategory, number>;
-  byStatus: Record<FeedbackStatus, number>;
-  byPriority: Record<FeedbackPriority, number>;
+  byCategory: Partial<Record<FeedbackCategory, number>>;
+  byStatus: Partial<Record<FeedbackStatus, number>>;
+  byPriority: Partial<Record<FeedbackPriority, number>>;
   averageResponseTimeDays: number | null;
   averageResolutionTimeDays: number | null;
-  closureRate: number; // % resolved/closed of total
-  feedbackCloseRate: number; // % with response
+  closureRate: number;
+  feedbackCloseRate: number;
   topCategories: { category: FeedbackCategory; count: number }[];
   lastUpdated: Date;
 }

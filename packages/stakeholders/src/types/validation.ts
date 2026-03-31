@@ -29,11 +29,11 @@ export type ValidationOutcome = (typeof VALIDATION_OUTCOMES)[number];
 // Zod schemas
 export const validationRecordSchema = z.object({
   method: z.enum(VALIDATION_METHODS),
-  target: z.string().min(1), // what is being validated
+  target: z.string().min(1),
   outcome: z.enum(VALIDATION_OUTCOMES),
-  findings: z.array(z.string()).default([]),
-  recommendations: z.array(z.string()).default([]),
-  evidence: z.array(z.string()).default([]),
+  findings: z.array(z.string()).optional(),
+  recommendations: z.array(z.string()).optional(),
+  evidence: z.array(z.string()).optional(),
   owner: z.string(),
   validatedAt: z.date(),
   nextValidation: z.date().optional(),
@@ -58,7 +58,6 @@ export interface ValidationRecord {
   updatedAt: Date;
 }
 
-// Triangulation data sources
 export interface TriangulationSource {
   id: string;
   name: string;
@@ -67,7 +66,6 @@ export interface TriangulationSource {
   lastAccessed: Date;
 }
 
-// Triangulation result
 export interface TriangulationResult {
   target: string;
   sources: TriangulationSource[];

@@ -3,25 +3,23 @@
 
 import { z } from "zod";
 
-// Bias dimensions relevant to accessibility stakeholder analysis
 export const BIAS_DIMENSIONS = [
-  "ACCESSIBILITY_VISIBLE", // Focus on visible disabilities, ignoring cognitive/invisible
-  "CONFIRMATION_BIAS", // Seeking evidence that confirms existing beliefs
-  "SURVIVORSHIP_BIAS", // Only studying successful cases
-  "TECHNOLOGY_BIAS", // Digital-first bias, ignoring analog alternatives
-  "INTERSECTIONAL_BIAS", // Ignoring compound barriers
-  "GEOGRAPHIC_BIAS", // Western/developed-world assumptions
-  "LANGUAGE_BIAS", // English-only analysis
-  "ECONOMIC_BIAS", // Tech-savvy, well-resourced assumptions
-  "AGE_BIAS", // Younger tech-focused bias
-  "PATTERN_COMPLETION_BIAS", // Filling gaps with assumptions
-  "ANCHORING_BIAS", // Over-relying on first data point
-  "SELECTION_BIAS", // Non-representative sample
+  "ACCESSIBILITY_VISIBLE",
+  "CONFIRMATION_BIAS",
+  "SURVIVORSHIP_BIAS",
+  "TECHNOLOGY_BIAS",
+  "INTERSECTIONAL_BIAS",
+  "GEOGRAPHIC_BIAS",
+  "LANGUAGE_BIAS",
+  "ECONOMIC_BIAS",
+  "AGE_BIAS",
+  "PATTERN_COMPLETION_BIAS",
+  "ANCHORING_BIAS",
+  "SELECTION_BIAS",
 ] as const;
 
 export type BiasDimension = (typeof BIAS_DIMENSIONS)[number];
 
-// Severity of bias finding
 export const BIAS_SEVERITIES = [
   "CRITICAL",
   "HIGH",
@@ -31,7 +29,6 @@ export const BIAS_SEVERITIES = [
 ] as const;
 export type BiasSeverity = (typeof BIAS_SEVERITIES)[number];
 
-// Status of bias mitigation
 export const BIAS_MITIGATION_STATUSES = [
   "IDENTIFIED",
   "ACKNOWLEDGED",
@@ -50,7 +47,7 @@ export const biasAuditEntrySchema = z.object({
   finding: z.string().min(1),
   evidence: z.string().optional(),
   mitigationPlan: z.string().optional(),
-  mitigationStatus: z.enum(BIAS_MITIGATION_STATUSES).default("IDENTIFIED"),
+  mitigationStatus: z.enum(BIAS_MITIGATION_STATUSES).optional(),
   owner: z.string().optional(),
   dueDate: z.date().optional(),
   metadata: z.record(z.unknown()).optional(),
@@ -79,7 +76,7 @@ export interface BiasAuditResult {
   auditedAt: Date;
   auditedBy: string;
   entries: BiasAuditEntry[];
-  overallScore: number; // 0-100, higher = less biased
+  overallScore: number;
   criticalFindings: number;
   mitigatedCount: number;
   acceptedRiskCount: number;
@@ -87,7 +84,6 @@ export interface BiasAuditResult {
   nextAuditDate: Date;
 }
 
-// Red team review protocol
 export interface RedTeamReview {
   id: string;
   analysisId: string;

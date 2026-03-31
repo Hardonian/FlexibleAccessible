@@ -16,10 +16,10 @@ export const GOVERNANCE_ROLES = [
 export type GovernanceRole = (typeof GOVERNANCE_ROLES)[number];
 
 export const ESCALATION_LEVELS = [
-  "LEVEL_1_PM", // Working group → PM
-  "LEVEL_2_SPONSOR", // PM → Executive Sponsor
-  "LEVEL_3_COUNCIL", // Sponsor → Stakeholder Council
-  "LEVEL_4_BOARD", // Council → External Advisory Board
+  "LEVEL_1_PM",
+  "LEVEL_2_SPONSOR",
+  "LEVEL_3_COUNCIL",
+  "LEVEL_4_BOARD",
 ] as const;
 
 export type EscalationLevel = (typeof ESCALATION_LEVELS)[number];
@@ -40,11 +40,11 @@ export const councilMemberSchema = z.object({
   email: z.string().email(),
   role: z.enum(GOVERNANCE_ROLES),
   organization: z.string().optional(),
-  isExternal: z.boolean().default(false),
-  termStart: z.date(),
+  isExternal: z.boolean().optional(),
+  termStart: z.date().optional(),
   termEnd: z.date().optional(),
-  attendanceCount: z.number().int().default(0),
-  totalMeetings: z.number().int().default(0),
+  attendanceCount: z.number().int().optional(),
+  totalMeetings: z.number().int().optional(),
 });
 
 export type CouncilMemberInput = z.infer<typeof councilMemberSchema>;
@@ -95,7 +95,6 @@ export interface EscalationRecord {
   updatedAt: Date;
 }
 
-// Ethical principles
 export const ETHICAL_PRINCIPLES = [
   "INCLUSIVITY",
   "TRANSPARENCY",
