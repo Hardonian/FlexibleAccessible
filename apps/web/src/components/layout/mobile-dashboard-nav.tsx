@@ -114,7 +114,7 @@ export function MobileDashboardNav({
               className="input text-sm"
               defaultValue={currentOrgId}
               disabled={isPending || orgs.length === 0}
-              aria-busy={isPending ? "true" : "false"}
+              {...(isPending ? { 'aria-busy': 'true' } : { 'aria-busy': 'false' })}
             >
               {orgs.map((org) => (
                 <option key={org.id} value={org.id}>

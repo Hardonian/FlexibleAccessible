@@ -151,7 +151,7 @@ export function OperatorControlPlaneClient({
       <div
         className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
         aria-live="polite"
-        aria-busy={pending}
+        {...(pending ? { 'aria-busy': 'true' } : { 'aria-busy': 'false' })}
       >
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1">
@@ -166,18 +166,21 @@ export function OperatorControlPlaneClient({
           </div>
         </div>
 
-        {(actionError || actionMessage) && (
+        {actionError ? (
           <div
-            className={`mt-4 rounded-lg border px-3 py-2 text-sm ${
-              actionError
-                ? 'border-red-200 bg-red-50 text-red-900'
-                : 'border-emerald-200 bg-emerald-50 text-emerald-900'
-            }`}
-            role={actionError ? 'alert' : 'status'}
+            className="mt-4 rounded-lg border px-3 py-2 text-sm border-red-200 bg-red-50 text-red-900"
+            role="alert"
           >
-            {actionError ?? actionMessage}
+            {actionError}
           </div>
-        )}
+        ) : actionMessage ? (
+          <div
+            className="mt-4 rounded-lg border px-3 py-2 text-sm border-emerald-200 bg-emerald-50 text-emerald-900"
+            role="status"
+          >
+            {actionMessage}
+          </div>
+        ) : null}
 
         <div className="mt-4 grid gap-3 lg:grid-cols-2">
           <ActionPanel

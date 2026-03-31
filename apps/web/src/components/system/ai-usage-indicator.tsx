@@ -10,7 +10,7 @@ interface AiUsageIndicatorProps {
 }
 
 export function AiUsageIndicator({
-  organizationId,
+  organizationId: _organizationId,
   aiEnabled,
   aiTokenLimit,
   usedTokens,
@@ -50,16 +50,11 @@ export function AiUsageIndicator({
         </span>
       </div>
       
-      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-        <div
-          className={`h-full transition-all duration-500 ${
-            isOverLimit
-              ? "bg-red-500"
-              : isNearLimit
-              ? "bg-amber-500"
-              : "bg-brand-600"
-          }`}
-          style={{ width: `${Math.min(100, percentage)}%` }}
+      <div className="mt-2">
+        <progress
+          className="h-1.5 w-full overflow-hidden rounded-full accent-brand-600 transition-all [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-bar]:bg-slate-100 [&::-webkit-progress-value]:bg-brand-600"
+          value={Math.min(100, percentage)}
+          max={100}
         />
       </div>
 

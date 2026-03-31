@@ -650,19 +650,28 @@ export class ArosMcpServer {
           .optional(),
         limit: z.number().default(50),
       },
-      async ({ organizationId, siteId, status, limit }) => {
+      async ({
+        organizationId,
+        siteId,
+        status,
+        limit,
+      }: {
+        organizationId: string;
+        siteId?: string;
+        status?: string;
+        limit: number;
+      }) => {
         const start = Date.now();
         this.orgId = organizationId;
 
         const suggestions = await prisma.remediationSuggestion.findMany({
           where: {
-            canonicalFinding: {
-              site: {
-                workspace: { organizationId },
-                ...(siteId ? { id: undefined, siteId } : {}),
-              },
-            },
-            ...(status ? { status } : {}),
+            ...(status ? { status: status as any } : {}),
+            ...(siteId
+              ? { canonicalFinding: { siteId } }
+              : {
+                  canonicalFinding: { site: { workspace: { organizationId } } },
+                }),
           },
           select: {
             id: true,
@@ -699,7 +708,15 @@ export class ArosMcpServer {
         format: z.enum(["json", "csv"]).default("json"),
         status: z.string().optional(),
       },
-      async ({ organizationId, siteId, format }) => {
+      async ({
+        organizationId,
+        siteId,
+        format,
+      }: {
+        organizationId: string;
+        siteId: string;
+        format: string;
+      }) => {
         const start = Date.now();
         this.orgId = organizationId;
 
