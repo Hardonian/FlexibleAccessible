@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 
 interface Props {
   className?: string;
@@ -10,7 +11,7 @@ interface Props {
  * ArosMeshVisualization
  * 
  * Provides a premium 3D-styled visualization of the AROS system state.
- * Uses a pre-rendered 3D asset with CSS-based micro-animations and
+ * Uses a pre-rendered 3D asset with Tailwind-based micro-animations and
  * robust accessibility considerations.
  */
 export function ArosMeshVisualization({ className = '' }: Props) {
@@ -29,16 +30,17 @@ export function ArosMeshVisualization({ className = '' }: Props) {
         <div className="relative h-64 w-64 shrink-0 overflow-hidden rounded-2xl ring-1 ring-white/10 shadow-2xl">
           {/* 
             3D Asset: Pre-rendered Blender Cycles output.
-            Animation: Floating 'breath' effect using CSS keyframes.
+            Animation: Floating 'breath' effect using Tailwind mesh-float.
           */}
-          <img
-            src="/aros_system_mesh.png"
-            alt="3D crystalline orbital mesh representing accessibility data remediation."
-            className="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
-            style={{ 
-              animation: 'mesh-float 6s ease-in-out infinite' 
-            }}
-          />
+          <div className="w-full h-full motion-safe:animate-mesh-float">
+            <Image
+              src="/aros_system_mesh.png"
+              alt="3D crystalline orbital mesh representing accessibility data remediation."
+              width={256}
+              height={256}
+              className="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
+            />
+          </div>
           
           {/* Glassmorphism overlays */}
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950/40 via-transparent to-transparent pointer-events-none" />
@@ -51,7 +53,7 @@ export function ArosMeshVisualization({ className = '' }: Props) {
               Neural Remediation Mesh
             </h4>
             <p className="text-sm leading-relaxed text-slate-400">
-              Visualizing real-time propagation of accessibility fixes across your organization's digital topography.
+              Visualizing real-time propagation of accessibility fixes across your organization&apos;s digital topography.
             </p>
           </div>
 
@@ -65,33 +67,11 @@ export function ArosMeshVisualization({ className = '' }: Props) {
             className="flex items-center gap-2 text-[10px] font-medium uppercase tracking-widest text-emerald-400/80"
             aria-hidden="true"
           >
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500 motion-reduce:animate-none" />
             Operational Awareness Active
           </div>
         </div>
       </div>
-
-      <style jsx global>{`
-        @keyframes mesh-float {
-          0%, 100% {
-            transform: translateY(0) scale(1);
-          }
-          50% {
-            transform: translateY(-8px) scale(1.02);
-          }
-        }
-        
-        /* Respect user preference for reduced motion */
-        @media (prefers-reduced-motion: reduce) {
-          img {
-            animation: none !important;
-            transition: none !important;
-          }
-          .animate-pulse {
-            animation: none !important;
-          }
-        }
-      `}</style>
     </div>
   );
 }

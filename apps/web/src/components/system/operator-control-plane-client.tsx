@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useCallback, useState, useTransition, type ReactNode } from 'react';
 import type { PlatformDiagnosticIssue } from '@aros/core-services';
+import { ArosMeshVisualization } from './aros-mesh-visualization';
 
 interface Props {
   organizationId: string;
@@ -182,7 +183,11 @@ export function OperatorControlPlaneClient({
           </div>
         ) : null}
 
-        <div className="mt-4 grid gap-3 lg:grid-cols-2">
+        <div className="mt-6">
+          <ArosMeshVisualization />
+        </div>
+
+        <div className="mt-6 grid gap-3 lg:grid-cols-2">
           <ActionPanel
             title="Recheck readiness"
             eyebrow="Runtime truth"
