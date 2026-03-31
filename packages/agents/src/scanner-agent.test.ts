@@ -28,20 +28,20 @@ vi.mock('bullmq', () => ({
 }));
 
 describe('ScannerAgent', () => {
-  const mockContext = { siteId: 'site-abc', organizationId: 'org-xyz' };
+  const mockContext = { siteId: 'site-abc', organizationId: 'org-xyz', metadata: {} };
 
   beforeEach(() => {
     vi.resetAllMocks();
-    (prisma.site.findUnique as vi.Mock).mockResolvedValue({ id: 'site-abc' });
-    (prisma.canonicalFinding.count as vi.Mock).mockResolvedValue(10);
+    (prisma.site.findUnique as any).mockResolvedValue({ id: 'site-abc' });
+    (prisma.canonicalFinding.count as any).mockResolvedValue(10);
   });
 
   it('should schedule a scan if the last scan is stale', async () => {
     // Arrange
     const staleDate = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000); // 2 days ago
-    (prisma.scanRun.findFirst as vi.Mock).mockResolvedValue({ completedAt: staleDate });
-    (prisma.scanRun.create as vi.Mock).mockResolvedValue({ id: 'scan-run-123' });
-    (prisma.canonicalFinding.findMany as vi.Mock).mockResolvedValue([]);
+    (prisma.scanRun.findFirst as any).mockResolvedValue({ completedAt: staleDate });
+    (prisma.scanRun.create as any).mockResolvedValue({ id: 'scan-run-123' });
+    (prisma.canonicalFinding.findMany as any).mockResolvedValue([]);
 
     const agent = new ScannerAgent();
 
@@ -60,8 +60,8 @@ describe('ScannerAgent', () => {
   it('should skip scan if a recent scan exists', async () => {
     // Arrange
     const recentDate = new Date(); // Now
-    (prisma.scanRun.findFirst as vi.Mock).mockResolvedValue({ completedAt: recentDate });
-    (prisma.canonicalFinding.findMany as vi.Mock).mockResolvedValue([]);
+    (prisma.scanRun.findFirst as any).mockResolvedValue({ completedAt: recentDate });
+    (prisma.canonicalFinding.findMany as any).mockResolvedValue([]);
 
     const agent = new ScannerAgent();
 
@@ -76,9 +76,9 @@ describe('ScannerAgent', () => {
 
   it('should trigger remediation for open findings without suggestions', async () => {
     // Arrange
-    (prisma.scanRun.findFirst as vi.Mock).mockResolvedValue({ completedAt: new Date() });
+    (prisma.scanRun.findFirst as any).mockResolvedValue({ completedAt: new Date() });
     const findingsToRemediate = [{ id: 'finding-1' }, { id: 'finding-2' }];
-    (prisma.canonicalFinding.findMany as vi.Mock).mockResolvedValue(findingsToRemediate);
+    (prisma.canonicalFinding.findMany as any).mockResolvedValue(findingsToRemediate);
 
     const agent = new ScannerAgent();
 
@@ -100,7 +100,7 @@ describe('ScannerAgent', () => {
     const agent = new ScannerAgent();
 
     // Act
-    const result = await agent.execute({ organizationId: 'org-xyz' });
+    const result = await agent.execute({ organizationId: 'org-xyz', metadata: {} } as any);
 
     // Assert
     expect(result.success).toBe(false);

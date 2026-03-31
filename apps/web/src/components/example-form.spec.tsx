@@ -1,11 +1,12 @@
-import { test, expect } from '@playwright/experimental-ct-react';
+import { test, expect, type MountResult } from '@playwright/experimental-ct-react';
+import type { Page } from '@playwright/test';
 import { ExampleForm } from './example-form';
 import AxeBuilder from '@axe-core/playwright';
 
 test.use({ viewport: { width: 500, height: 600 } });
 
 test.describe('ExampleForm', () => {
-  test('should fill out and submit the form successfully', async ({ mount }) => {
+  test('should fill out and submit the form successfully', async ({ mount }: { mount: any }) => {
     const component = await mount(<ExampleForm />);
 
     // 1. Interacting with text inputs: Use `fill` targeting the associated label.

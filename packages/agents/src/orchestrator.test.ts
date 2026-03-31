@@ -30,12 +30,12 @@ describe('AgentOrchestrator', () => {
     // Pass the mock event handler to capture lifecycle events
     (orchestrator as any).onEvent = onEvent;
 
-    (ScannerAgent.prototype.execute as vi.Mock).mockResolvedValue({ success: true, output: 'scan-output' });
-    (ReporterAgent.prototype.execute as vi.Mock).mockResolvedValue({ success: true, output: 'report-output' });
+    (ScannerAgent.prototype.execute as any).mockResolvedValue({ success: true, output: 'scan-output' });
+    (ReporterAgent.prototype.execute as any).mockResolvedValue({ success: true, output: 'report-output' });
     
     // Mock 2 open findings to trigger 2 remediation agent executions
-    (prisma.canonicalFinding.findMany as vi.Mock).mockResolvedValue([{ id: 'finding-1' }, { id: 'finding-2' }]);
-    (RemediationAgent.prototype.execute as vi.Mock).mockResolvedValue({ success: true, output: 'remediation-output' });
+    (prisma.canonicalFinding.findMany as any).mockResolvedValue([{ id: 'finding-1' }, { id: 'finding-2' }]);
+    (RemediationAgent.prototype.execute as any).mockResolvedValue({ success: true, output: 'remediation-output' });
 
     // Act
     const result = await orchestrator.runFullPipeline(mockContext);

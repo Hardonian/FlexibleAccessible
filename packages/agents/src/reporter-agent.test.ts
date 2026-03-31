@@ -23,17 +23,17 @@ describe('ReporterAgent', () => {
 
   it('should aggregate data, compute metrics, and generate a report', async () => {
     // Arrange: Mock the database queries
-    (prisma.canonicalFinding.findMany as vi.Mock).mockResolvedValue([
+    (prisma.canonicalFinding.findMany as any).mockResolvedValue([
       { ruleId: 'image-alt', impact: 'SERIOUS', status: 'OPEN' }, // Auto-fixable
       { ruleId: 'color-contrast', impact: 'MODERATE', status: 'RESOLVED' } // Not auto-fixable
     ]);
-    (prisma.issueCluster.findMany as vi.Mock).mockResolvedValue([{ name: 'Nav', severity: 'SERIOUS', pageCount: 10 }]);
-    (prisma.scanRun.findMany as vi.Mock).mockResolvedValue([{ id: 'scan-1' }]);
-    (prisma.remediationSuggestion.findMany as vi.Mock).mockResolvedValue([
+    (prisma.issueCluster.findMany as any).mockResolvedValue([{ name: 'Nav', severity: 'SERIOUS', pageCount: 10 }]);
+    (prisma.scanRun.findMany as any).mockResolvedValue([{ id: 'scan-1' }]);
+    (prisma.remediationSuggestion.findMany as any).mockResolvedValue([
       { status: 'APPROVED', confidence: 0.9, type: 'CODE' },
       { status: 'PENDING', confidence: 0.8, type: 'CODE' }
     ]);
-    (prisma.report.create as vi.Mock).mockResolvedValue({ id: 'report-123', summary: 'Mock Summary' });
+    (prisma.report.create as any).mockResolvedValue({ id: 'report-123', summary: 'Mock Summary' });
 
     const agent = new ReporterAgent();
 

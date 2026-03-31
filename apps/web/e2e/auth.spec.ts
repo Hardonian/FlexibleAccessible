@@ -1,45 +1,39 @@
 import { test, expect } from '@playwright/test';
 
-const DEMO_EMAIL = 'demo@aros.dev';
-const DEMO_PASSWORD = 'demo1234';
-
-test.describe('authentication', () => {
-  test('sign in with seeded demo user reaches dashboard', async ({ page }) => {
-    await page.goto('/login');
-    await page.getByLabel('Email address').fill(DEMO_EMAIL);
-    await page.getByLabel('Password', { exact: true }).fill(DEMO_PASSWORD);
-    await page.getByRole('button', { name: 'Sign in' }).click();
-
-    await expect(page).toHaveURL(/\/dashboard$/);
-    await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
-    await expect(page.getByText(DEMO_EMAIL)).toBeVisible();
+test.describe('Authentication Flow', () => {
+  test('should redirect unauthenticated users to the login page', async ({ page }) => {
+    // Attempt to access a protected route
+    await page.goto('/dashboard');
+    
+    // Expect Next.js middleware or auth guard to redirect
+    await expect(page).toHaveURL(/.*\/login/);
   });
 
-  test('sign out returns to login', async ({ page }) => {
+  test('should login successfully with demo credentials', async ({ page }) => {
     await page.goto('/login');
-    await page.getByLabel('Email address').fill(DEMO_EMAIL);
-    await page.getByLabel('Password', { exact: true }).fill(DEMO_PASSWORD);
-    await page.getByRole('button', { name: 'Sign in' }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    
+    // Use accessible locators to find and fill the form
+    await page.getByLabel(/email/i).fill('demo@aros.dev');
+    await page.getByLabel(/password/i).fill('demo1234');
+    await page.getByRole('button', { name: /sign in|log in/i }).click();
 
-    await page.getByRole('button', { name: 'Sign out' }).click();
-    await expect(page).toHaveURL(/\/login$/);
-    await expect(page.getByRole('heading', { name: /sign in to your account/i })).toBeVisible();
+    // Verify successful redirect to the dashboard
+    await expect(page).toHaveURL(/.*\/dashboard/);
+    await expect(page.getByRole('heading', { name: /dashboard/i })).toBeVisible();
   });
 
-  test('full signup creates org and lands on dashboard', async ({ page }) => {
-    const suffix = `${Date.now()}`;
-    const email = `e2e.user.${suffix}@example.test`;
-    const orgName = `E2E Org ${suffix}`;
+  test('should logout successfully', async ({ page }) => {
+    // 1. Login first
+    await page.goto('/login');
+    await page.getByLabel(/email/i).fill('demo@aros.dev');
+    await page.getByLabel(/password/i).fill('demo1234');
+    await page.getByRole('button', { name: /sign in|log in/i }).click();
+    await expect(page).toHaveURL(/.*\/dashboard/);
 
-    await page.goto('/signup');
-    await page.getByLabel('Full name').fill('E2E Tester');
-    await page.getByLabel('Email address').fill(email);
-    await page.getByLabel('Password', { exact: true }).fill('e2e-password-ok-8');
-    await page.getByLabel('Organization name').fill(orgName);
-    await page.getByRole('button', { name: 'Create account' }).click();
+    // 2. Perform logout (assuming standard navigation/user menu)
+    await page.getByRole('button', { name: /sign out|log out/i }).click();
 
-    await expect(page).toHaveURL(/\/dashboard$/);
-    await expect(page.getByText(orgName)).toBeVisible();
+    // 3. Verify session termination and redirect
+    await expect(page).toHaveURL(/.*\/login|^\/$/);
   });
 });

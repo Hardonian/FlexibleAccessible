@@ -15,7 +15,7 @@
     "rootDir": "."
   },
   "include": ["*.ts", "scripts/**/*.ts"],
-  "exclude": ["node_modules", "dist"]
+  "exclude": ["node_modules", "dist", "apps", "packages"]
 }
 
 

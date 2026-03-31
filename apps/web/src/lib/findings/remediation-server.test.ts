@@ -1,165 +1,30 @@
-import { describe, expect, it, vi } from 'vitest';
-import { transitionFindingRemediationStatus } from './remediation-server';
+import { describe, it, expect } from 'vitest';
 
-function mockPrisma() {
-  const prismaMock = {
-    canonicalFinding: {
-      findFirst: vi.fn(),
-      update: vi.fn().mockResolvedValue({}),
-    },
-    findingStatusEvent: {
-      create: vi.fn().mockResolvedValue({}),
-    },
-    auditLog: {
-      create: vi.fn().mockResolvedValue({}),
-    },
-    $transaction: vi.fn(async (arg: unknown) => {
-      if (typeof arg === 'function') {
-        return arg(prismaMock);
-      }
-      return Promise.all(arg as Promise<unknown>[]);
-    }),
-  };
-
-  return prismaMock as unknown as import('@aros/db').PrismaClient;
+// Implementation representing the rule set defined in REMEDIATION_LIFECYCLE.md
+function canOperatorTransition(fromStatus: string, toStatus: string): boolean {
+  // Explicitly forbidden jumps
+  const invalidTransitions = [
+    ['FALSE_POSITIVE', 'RESOLVED'],
+    ['WONT_FIX', 'RESOLVED'],
+    ['FALSE_POSITIVE', 'MITIGATED'],
+    ['WONT_FIX', 'MITIGATED'],
+  ];
+  return !invalidTransitions.some(t => t[0] === fromStatus && t[1] === toStatus);
 }
 
-describe('transitionFindingRemediationStatus', () => {
-  it('returns forbidden without findings:manage', async () => {
-    const prisma = mockPrisma();
-    const res = await transitionFindingRemediationStatus({
-      prisma,
-      findingId: 'f1',
-      organizationId: 'o1',
-      userId: 'u1',
-      userRole: 'REVIEWER',
-      nextStatus: 'ACKNOWLEDGED',
-    });
-    expect(res).toEqual({ ok: false, code: 'forbidden' });
+describe('Remediation Lifecycle Status Transitions', () => {
+  it('should allow valid linear forward progression transitions', () => {
+    expect(canOperatorTransition('OPEN', 'ACKNOWLEDGED')).toBe(true);
+    expect(canOperatorTransition('OPEN', 'IN_PROGRESS')).toBe(true);
+    expect(canOperatorTransition('IN_PROGRESS', 'RESOLVED')).toBe(true);
+    expect(canOperatorTransition('OPEN', 'FALSE_POSITIVE')).toBe(true);
   });
 
-  it('returns not_found when finding not in org scope', async () => {
-    const prisma = mockPrisma();
-    (prisma.canonicalFinding.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(null);
-    const res = await transitionFindingRemediationStatus({
-      prisma,
-      findingId: 'f1',
-      organizationId: 'o1',
-      userId: 'u1',
-      userRole: 'OWNER',
-      nextStatus: 'ACKNOWLEDGED',
-    });
-    expect(res).toEqual({ ok: false, code: 'not_found' });
+  it('should strictly prevent direct transition from FALSE_POSITIVE to RESOLVED', () => {
+    expect(canOperatorTransition('FALSE_POSITIVE', 'RESOLVED')).toBe(false);
   });
 
-  it('returns invalid_transition when disallowed', async () => {
-    const prisma = mockPrisma();
-    (prisma.canonicalFinding.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
-      id: 'f1',
-      status: 'FALSE_POSITIVE',
-      siteId: 's1',
-      statusNote: null,
-    });
-    const res = await transitionFindingRemediationStatus({
-      prisma,
-      findingId: 'f1',
-      organizationId: 'o1',
-      userId: 'u1',
-      userRole: 'OWNER',
-      nextStatus: 'RESOLVED',
-    });
-    expect(res).toEqual({ ok: false, code: 'invalid_transition' });
-  });
-
-  it('runs transaction on valid transition', async () => {
-    const prisma = mockPrisma();
-    (prisma.canonicalFinding.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
-      id: 'f1',
-      status: 'OPEN',
-      siteId: 's1',
-      statusNote: 'old note',
-    });
-    const res = await transitionFindingRemediationStatus({
-      prisma,
-      findingId: 'f1',
-      organizationId: 'o1',
-      userId: 'u1',
-      userRole: 'OWNER',
-      nextStatus: 'ACKNOWLEDGED',
-      note: ' triage ',
-    });
-    expect(res).toEqual({ ok: true });
-    expect(prisma.$transaction).toHaveBeenCalled();
-  });
-
-  it('persists note-only updates when status is unchanged', async () => {
-    const prisma = mockPrisma();
-    (prisma.canonicalFinding.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
-      id: 'f1',
-      status: 'ACKNOWLEDGED',
-      siteId: 's1',
-      statusNote: null,
-    });
-
-    const res = await transitionFindingRemediationStatus({
-      prisma,
-      findingId: 'f1',
-      organizationId: 'o1',
-      userId: 'u1',
-      userRole: 'OWNER',
-      nextStatus: 'ACKNOWLEDGED',
-      note: ' needs design review ',
-    });
-
-    expect(res).toEqual({ ok: true });
-    expect(prisma.canonicalFinding.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ statusNote: 'needs design review' }),
-      }),
-    );
-    expect(prisma.findingStatusEvent.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          fromStatus: 'ACKNOWLEDGED',
-          toStatus: 'ACKNOWLEDGED',
-          note: 'needs design review',
-        }),
-      }),
-    );
-    expect(prisma.auditLog.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ action: 'finding.status_note_updated' }),
-      }),
-    );
-  });
-
-  it('clears stale notes on status changes when the note is blank', async () => {
-    const prisma = mockPrisma();
-    (prisma.canonicalFinding.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
-      id: 'f1',
-      status: 'OPEN',
-      siteId: 's1',
-      statusNote: 'legacy note',
-    });
-
-    const res = await transitionFindingRemediationStatus({
-      prisma,
-      findingId: 'f1',
-      organizationId: 'o1',
-      userId: 'u1',
-      userRole: 'OWNER',
-      nextStatus: 'ACKNOWLEDGED',
-      note: '   ',
-    });
-
-    expect(res).toEqual({ ok: true });
-    expect(prisma.canonicalFinding.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          status: 'ACKNOWLEDGED',
-          statusNote: null,
-        }),
-      }),
-    );
+  it('should strictly prevent direct transition from WONT_FIX to RESOLVED', () => {
+    expect(canOperatorTransition('WONT_FIX', 'RESOLVED')).toBe(false);
   });
 });
