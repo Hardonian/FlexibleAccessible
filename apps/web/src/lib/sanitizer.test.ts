@@ -23,7 +23,7 @@ describe('sanitizeAiCode', () => {
 
   it('removes dangerous protocols (javascript:, data:, etc.) from URL attributes', () => {
     const input = '<a href="javascript:alert(1)">Link</a> <img src="data:image/png;base64,123">';
-    expect(sanitizeAiCode(input)).toBe('<a href="#">Link</a> <img src="#">');
+    expect(sanitizeAiCode(input)).toBe('<a>Link</a> <img />');
   });
 
   it('removes dangerous tags like iframe, object, embed completely', () => {

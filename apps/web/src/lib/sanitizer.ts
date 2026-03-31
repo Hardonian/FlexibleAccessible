@@ -1,46 +1,34 @@
+import sanitizeHtml from 'sanitize-html';
+
 /**
- * Extreme Security Sanitizer for AI-generated code snippets.
+ * Robust Security Sanitizer for AI-generated code snippets.
  * Perfection means Zero-XSS risk in the dashboard.
  * Use this before rendering any 'suggestedCode' in the UI.
- *
- * NOTE: Regex-based sanitization is brittle and should not be considered
- * a complete security solution. For robust protection, use a library like
- * DOMPurify in a browser environment. This sanitizer serves as a
- * strong first-line defense in a server-side context.
  */
 export function sanitizeAiCode(codeSnippet: string): string {
   if (!codeSnippet) return "";
 
-  // 1. Strip all <script> tags and their content.
-  let sanitized = codeSnippet.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "");
-
-  // 2. Strip <style> tags and their content to prevent CSS injection.
-  sanitized = sanitized.replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "");
-
-  // 3. Remove 'on*' event handlers. This handles single, double, or no quotes.
-  sanitized = sanitized.replace(/\s+on[a-z]+\s*=\s*(?:(?:"[^"]*")|(?:'[^']*')|(?:[^\s>]+))/gi, "");
-
-  // 4. Remove dangerous protocols from attributes like href, src, data, action, formaction.
-  sanitized = sanitized.replace(
-    /(href|src|data|action|formaction)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi,
-    (match, attr, value) => {
-      const cleanValue = value.replace(/^["']|["']$/g, "").trim().toLowerCase();
-      if (
-        cleanValue.startsWith("javascript:") ||
-        cleanValue.startsWith("data:") ||
-        cleanValue.startsWith("vbscript:") ||
-        cleanValue.startsWith("file:")
-      ) {
-        return `${attr}="#"`;
-      }
-      return match;
+  return sanitizeHtml(codeSnippet, {
+    // Allow basic safe HTML elements and common UI/accessibility elements
+    allowedTags: sanitizeHtml.defaults.allowedTags.concat([
+      'img', 'button', 'input', 'label', 'form', 'header', 'nav', 'main', 'footer', 'section', 'article', 'aside', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'svg', 'path'
+    ]),
+    // Allow global ARIA/data attributes, plus specific semantic attributes
+    allowedAttributes: {
+      '*': ['class', 'id', 'aria-*', 'data-*', 'role', 'tabindex', 'title', 'lang', 'dir', 'hidden'],
+      'a': ['href', 'name', 'target'],
+      'img': ['src', 'alt', 'width', 'height'],
+      'button': ['type', 'disabled', 'name', 'value'],
+      'input': ['type', 'name', 'value', 'placeholder', 'disabled', 'checked', 'readonly', 'required', 'aria-describedby', 'aria-labelledby'],
+      'label': ['for'],
+      'svg': ['xmlns', 'viewBox', 'width', 'height', 'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin'],
+      'path': ['d', 'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin']
     },
-  );
-
-  // 5. Remove other potentially dangerous tags completely.
-  sanitized = sanitized.replace(/<\/?(iframe|object|embed|form|base|meta|link|applet|math)\b[^>]*>/gi, "");
-
-  return sanitized;
+    // Explicitly deny dangerous schemes
+    allowedSchemes: ['http', 'https', 'mailto', 'tel'],
+    allowProtocolRelative: false,
+    enforceHtmlBoundary: true,
+  });
 }
 
 /**
