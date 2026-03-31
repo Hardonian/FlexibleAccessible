@@ -119,23 +119,31 @@ export abstract class BaseAgent {
     return result;
   }
 
-  /**
-   * Logs AI usage to the database for monetization and auditing.
-   */
+  protected recordTokenUsage(tokens: number): void {
+    if (tokens < 0) return;
+    this.tokensUsed += tokens;
+  }
+
   protected async logUsage(purpose: string, status: string, tokens: number) {
     if (tokens <= 0 || !this.context) return;
-
     try {
+      const model = (this.context.metadata?.model as string) || "gpt-4o";
+      const rates: Record<string, number> = {
+        "gpt-4o": 0.000005,
+        "gpt-4o-mini": 0.00000015,
+        "claude-3-5-sonnet": 0.000003,
+      };
+      const cost = tokens * (rates[model] || 0.00001);
       await prisma.aiUsageLog.create({
         data: {
           organizationId: this.context.organizationId,
           userId: (this.context.metadata?.userId as string) || null,
-          model: (this.context.metadata?.model as string) || "gpt-4o",
-          promptTokens: Math.floor(tokens * 0.4),
-          completionTokens: Math.floor(tokens * 0.6),
+          model,
+          promptTokens: Math.floor(tokens * 0.7),
+          completionTokens: Math.floor(tokens * 0.3),
           totalTokens: tokens,
           purpose: `${purpose} (${status})`,
-          cost: tokens * 0.00001,
+          cost,
         },
       });
     } catch (err) {
