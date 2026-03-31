@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/experimental-ct-react';
+import { resolve } from 'path';
 
 /**
  * Playwright Component Testing Configuration
@@ -17,6 +18,19 @@ export default defineConfig({
   use: {
     trace: 'on-first-retry',
     ctPort: 3100, // Port for the local dev server hosting the components
+    ctViteConfig: {
+      resolve: {
+        alias: {
+          // Mock Next.js specifics
+          'next/image': resolve(__dirname, './playwright/mocks/next-image.tsx'),
+          'next/link': resolve(__dirname, './playwright/mocks/next-link.tsx'),
+          'next/navigation': resolve(__dirname, './playwright/mocks/next-navigation.ts'),
+          'next/router': resolve(__dirname, './playwright/mocks/next-navigation.ts'), // For legacy pages router
+          // Standardize path aliases (matching tsconfig.json)
+          '@': resolve(__dirname, './src'),
+        },
+      },
+    },
   },
   projects: [
     {
