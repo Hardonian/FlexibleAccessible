@@ -21,10 +21,10 @@ export class ReporterAgent {
     const startTime = Date.now();
     const steps: AgentStep[] = [];
 
-    const runStep = async (
+    const runStep = async <T>(
       name: string,
-      handler: () => Promise<unknown>,
-    ): Promise<unknown> => {
+      handler: () => Promise<T>,
+    ): Promise<T> => {
       const step: AgentStep = {
         name,
         status: "running",
@@ -35,7 +35,7 @@ export class ReporterAgent {
       try {
         const output = await handler();
         step.status = "completed";
-        step.output = output;
+        step.output = output as any;
         step.completedAt = new Date();
         step.durationMs =
           step.completedAt.getTime() - (step.startedAt?.getTime() ?? 0);
