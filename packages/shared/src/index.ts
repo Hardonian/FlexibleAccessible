@@ -10,7 +10,7 @@ export { ApiError, AppError } from './errors';
 export type { PaginatedResult, PaginationParams } from './pagination';
 export { paginationSchema, buildPaginationMeta } from './pagination';
 export { wcagCriteriaMap, getWcagLevel } from './wcag';
-export { bullmqConnectionOptions } from './redis-connection';
+export { bullmqConnectionOptions, getRedisClient } from './redis-connection';
 export { SCAN_QUEUE_NAME, getSharedScanQueue } from './scan-queue';
 export {
   FINDING_STATUSES,

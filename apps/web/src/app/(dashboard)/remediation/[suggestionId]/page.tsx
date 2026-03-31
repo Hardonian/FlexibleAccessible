@@ -12,6 +12,9 @@ import { RouteReliabilityNotice } from "@/components/reliability/route-reliabili
 import { hasPermission } from "@aros/config";
 import { getRoutePlatformTruth } from "@/lib/platform-truth-cache";
 import { resolveDashboardOrgMembership } from "@/lib/route-data-boundary";
+import { sanitizeAiCode } from "@/lib/sanitizer";
+import { AiUpsell } from "@/components/monetization/ai-upsell";
+
 
 export default async function SuggestionDetailPage({
   params,
@@ -64,13 +67,45 @@ export default async function SuggestionDetailPage({
       ],
     },
     include: {
-      finding: {
-        include: { _count: { select: { occurrences: true } } },
-      },
-      cluster: { select: { id: true, name: true, pageCount: true } },
       reviewTask: true,
+      finding: {
+        include: {
+          page: {
+            include: {
+              site: {
+                include: {
+                  workspace: {
+                    include: {
+                      organization: {
+                        include: { subscription: true },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          _count: { select: { occurrences: true } },
+        },
+      },
+      cluster: {
+        include: {
+          site: {
+            include: {
+              workspace: {
+                include: {
+                  organization: {
+                    include: { subscription: true },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     },
   });
+
 
   if (!suggestion) notFound();
 
@@ -174,11 +209,12 @@ export default async function SuggestionDetailPage({
               Suggested Fix
             </h3>
             <pre className="bg-green-50 border border-green-200 rounded-lg p-4 text-sm overflow-x-auto max-h-[400px] whitespace-pre-wrap">
-              <code>{suggestion.suggestedCode}</code>
+              <code>{sanitizeAiCode(suggestion.suggestedCode)}</code>
             </pre>
           </div>
         </div>
       </div>
+
 
       {suggestion.validationResult && (
         <div className="card">
@@ -191,57 +227,70 @@ export default async function SuggestionDetailPage({
         </div>
       )}
 
-      {(canApprove || canExport) && (
-        <div className="card">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4">Actions</h2>
-          <div className="flex flex-wrap gap-3">
-            {canApprove &&
-              (suggestion.status === "DRAFT" ||
-                suggestion.status === "VALIDATED") && (
-                <form action={approveSuggestionAction}>
-                  <input
-                    type="hidden"
-                    name="suggestionId"
-                    value={suggestionId}
-                  />
-                  <button type="submit" className="btn-primary">
-                    Approve Suggestion
-                  </button>
-                </form>
-              )}
+      {(() => {
+        const sub = suggestion.finding?.page.site.workspace.organization.subscription 
+          || suggestion.cluster?.site.workspace.organization.subscription;
+          
+        if (!sub?.aiEnabled) {
+          return <AiUpsell reason="disabled" />;
+        }
+        
+        // Final gate for approval
+        if (!(canApprove || canExport)) return null;
 
-            {canApprove &&
-              suggestion.status !== "REJECTED" &&
-              suggestion.status !== "APPLIED" && (
-                <form action={rejectSuggestionAction}>
-                  <input
-                    type="hidden"
-                    name="suggestionId"
-                    value={suggestionId}
-                  />
-                  <button type="submit" className="btn-danger">
-                    Reject
-                  </button>
-                </form>
-              )}
+        return (
+          <div className="card">
+            <h2 className="text-lg font-semibold text-slate-900 mb-4">Actions</h2>
+            <div className="flex flex-wrap gap-3">
+              {canApprove &&
+                (suggestion.status === "DRAFT" ||
+                  suggestion.status === "VALIDATED") && (
+                  <form action={approveSuggestionAction}>
+                    <input
+                      type="hidden"
+                      name="suggestionId"
+                      value={suggestionId}
+                    />
+                    <button type="submit" className="btn-primary">
+                      Approve Suggestion
+                    </button>
+                  </form>
+                )}
 
-            {canExport &&
-              (suggestion.status === "APPROVED" ||
-                suggestion.status === "VALIDATED") && (
-                <form action={exportSnippetAction}>
-                  <input
-                    type="hidden"
-                    name="suggestionId"
-                    value={suggestionId}
-                  />
-                  <button type="submit" className="btn-secondary">
-                    Export as Snippet
-                  </button>
-                </form>
-              )}
+              {canApprove &&
+                suggestion.status !== "REJECTED" &&
+                suggestion.status !== "APPLIED" && (
+                  <form action={rejectSuggestionAction}>
+                    <input
+                      type="hidden"
+                      name="suggestionId"
+                      value={suggestionId}
+                    />
+                    <button type="submit" className="btn-danger">
+                      Reject
+                    </button>
+                  </form>
+                )}
+
+              {canExport &&
+                (suggestion.status === "APPROVED" ||
+                  suggestion.status === "VALIDATED") && (
+                  <form action={exportSnippetAction}>
+                    <input
+                      type="hidden"
+                      name="suggestionId"
+                      value={suggestionId}
+                    />
+                    <button type="submit" className="btn-secondary">
+                      Export as Snippet
+                    </button>
+                  </form>
+                )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
+
     </div>
   );
 }

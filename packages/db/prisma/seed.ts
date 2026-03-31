@@ -60,6 +60,8 @@ async function main() {
       maxPagesPerCrawl: 1000,
       maxScansPerMonth: 50,
       maxSeats: 10,
+      aiEnabled: true,
+      aiTokenLimit: 100000,
     },
     update: {},
   });
