@@ -70,18 +70,11 @@ export default async function SuggestionDetailPage({
       reviewTask: true,
       finding: {
         include: {
-          page: {
+          occurrences: {
+            take: 1,
             include: {
-              site: {
-                include: {
-                  workspace: {
-                    include: {
-                      organization: {
-                        include: { subscription: true },
-                      },
-                    },
-                  },
-                },
+              page: {
+                include: { site: true },
               },
             },
           },
@@ -90,17 +83,7 @@ export default async function SuggestionDetailPage({
       },
       cluster: {
         include: {
-          site: {
-            include: {
-              workspace: {
-                include: {
-                  organization: {
-                    include: { subscription: true },
-                  },
-                },
-              },
-            },
-          },
+          site: true,
         },
       },
     },
@@ -228,11 +211,8 @@ export default async function SuggestionDetailPage({
       )}
 
       {(() => {
-        const sub = suggestion.finding?.page.site.workspace.organization.subscription 
-          || suggestion.cluster?.site.workspace.organization.subscription;
-          
-        if (!sub?.aiEnabled) {
-          return <AiUpsell reason="disabled" />;
+        if (!subscription?.aiEnabled) {
+          return <AiUpsell reason={subscription ? "tier_limit" : "disabled"} />;
         }
         
         // Final gate for approval

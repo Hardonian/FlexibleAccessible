@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // ─── AUTH & TENANCY ──────────────────────────────────────────
@@ -59,6 +58,13 @@ model Organization {
   auditLogs         AuditLog[]
   aiUsageLogs       AiUsageLog[]
   integrationConnections IntegrationConnection[]
+  apiKeys           ApiKey[]
+  mcpUsageLogs      McpUsageLog[]
+
+  // MCP API monetization
+  mcpEnabled         Boolean  @default(false)
+  mcpTokenLimit      Int      @default(0)
+  mcpUsageThisPeriod Int      @default(0)
 
   @@map("organizations")
 }
@@ -726,4 +732,68 @@ model AiUsageLog {
   @@index([organizationId])
   @@index([createdAt])
   @@map("ai_usage_logs")
+}
+
+// ─── MCP API KEYS & BILLING ─────────────────────────────────
+
+model ApiKey {
+  id                  String   @id @default(cuid())
+  organizationId      String
+  keyHash             String   @unique
+  name                String
+  scopes              Json     @default("[\"*\"]")
+  rateLimitPerMinute  Int      @default(60)
+  isActive            Boolean  @default(true)
+  lastUsedAt          DateTime?
+  expiresAt           DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  mcpUsageLogs   McpUsageLog[]
+
+  @@index([organizationId])
+  @@index([keyHash])
+  @@map("api_keys")
+}
+
+model McpUsageLog {
+  id             String   @id @default(cuid())
+  organizationId String
+  apiKeyId       String
+  toolName       String
+  inputTokens    Int
+  outputTokens   Int
+  totalTokens    Int
+  durationMs     Int
+  cost           Float
+  success        Boolean
+  errorMessage   String?
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  apiKey       ApiKey       @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([apiKeyId])
+  @@index([toolName])
+  @@index([createdAt])
+  @@map("mcp_usage_logs")
+}
+
+// ─── REPORTS ────────────────────────────────────────────────
+
+model Report {
+  id        String   @id @default(cuid())
+  siteId    String
+  type      String
+  title     String
+  content   Json
+  summary   String?
+  createdAt DateTime @default(now())
+
+  site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([siteId])
+  @@map("reports")
 }
