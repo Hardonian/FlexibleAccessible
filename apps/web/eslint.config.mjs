@@ -50,6 +50,14 @@ export default [
         {
           selector: "CallExpression[callee.object.name='router'][callee.property.name=/^(push|replace|prefetch)$/] > TemplateLiteral.arguments:first-child > TemplateElement:first-child:not([value.cooked=/^(\\/|http)/])",
           message: "⚠️ Routing Violation: `router.push()` template strings should start with `/` to prevent relative routing bugs."
+        },
+        {
+          selector: "ExportNamedDeclaration > FunctionDeclaration[id.name=/^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)$/] > BlockStatement:not(:has(> TryStatement))",
+          message: "⚠️ Route Handler Violation: Exported Route Handlers (GET, POST, etc.) must wrap their logic in a top-level try/catch block to ensure errors are handled gracefully."
+        },
+        {
+          selector: "ExportNamedDeclaration > VariableDeclaration > VariableDeclarator[id.name=/^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)$/] > ArrowFunctionExpression > BlockStatement:not(:has(> TryStatement))",
+          message: "⚠️ Route Handler Violation: Exported Route Handlers (GET, POST, etc.) must wrap their logic in a top-level try/catch block to ensure errors are handled gracefully."
         }
       ]
     }

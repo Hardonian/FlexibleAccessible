@@ -1,6 +1,5 @@
 // ─── Stakeholder Registry Service ──────────────────────────────────────
 // Complete stakeholder identification and lifecycle management
-// Fills gap: No formal stakeholder registry, no categorization, no lifecycle tracking
 
 import type {
   Stakeholder,
@@ -22,7 +21,6 @@ import {
   ACCESSIBILITY_NEEDS,
 } from "../types/stakeholder";
 
-// In-memory store (replace with Prisma in production)
 const stakeholders = new Map<string, Stakeholder>();
 let nextId = 1;
 
@@ -31,18 +29,28 @@ function generateId(): string {
 }
 
 export class StakeholderRegistry {
-  // ── CRUD Operations ─────────────────────────────────────────────────
-
   async create(input: StakeholderCreateInput): Promise<Stakeholder> {
     const id = generateId();
     const now = new Date();
     const stakeholder: Stakeholder = {
       id,
-      ...input,
-      accessibilityNeeds: input.accessibilityNeeds || [],
-      tags: input.tags || [],
-      underrepresentedGroups: input.underrepresentedGroups || [],
-      language: input.language || "en",
+      name: input.name,
+      role: input.role,
+      segment: input.segment,
+      power: input.power,
+      interest: input.interest,
+      email: input.email,
+      organization: input.organization,
+      engagementStatus: input.engagementStatus ?? "NOT_CONTACTED",
+      phone: input.phone,
+      preferredChannel: input.preferredChannel,
+      accessibilityNeeds: input.accessibilityNeeds ?? [],
+      notes: input.notes,
+      tags: input.tags ?? [],
+      underrepresentedGroups: input.underrepresentedGroups ?? [],
+      region: input.region,
+      language: input.language ?? "en",
+      metadata: input.metadata,
       createdAt: now,
       updatedAt: now,
     };
@@ -70,16 +78,20 @@ export class StakeholderRegistry {
     return stakeholders.delete(id);
   }
 
-  async list(filter: StakeholderFilter): Promise<{
+  async list(filter: Partial<StakeholderFilter>): Promise<{
     data: Stakeholder[];
     total: number;
     page: number;
     pageSize: number;
     totalPages: number;
   }> {
+    const sortBy = filter.sortBy ?? "name";
+    const sortOrder = filter.sortOrder ?? "asc";
+    const page = filter.page ?? 1;
+    const pageSize = filter.pageSize ?? 20;
+
     let data = Array.from(stakeholders.values());
 
-    // Apply filters
     if (filter.segment) {
       data = data.filter((s) => s.segment === filter.segment);
     }
@@ -113,29 +125,26 @@ export class StakeholderRegistry {
       );
     }
 
-    // Sort
     data.sort((a, b) => {
-      const aVal = a[filter.sortBy] as string;
-      const bVal = b[filter.sortBy] as string;
+      const aVal = (a as Record<string, unknown>)[sortBy] as string;
+      const bVal = (b as Record<string, unknown>)[sortBy] as string;
       const cmp = aVal.localeCompare(bVal);
-      return filter.sortOrder === "asc" ? cmp : -cmp;
+      return sortOrder === "asc" ? cmp : -cmp;
     });
 
     const total = data.length;
-    const totalPages = Math.ceil(total / filter.pageSize);
-    const start = (filter.page - 1) * filter.pageSize;
-    const paged = data.slice(start, start + filter.pageSize);
+    const totalPages = Math.ceil(total / pageSize);
+    const start = (page - 1) * pageSize;
+    const paged = data.slice(start, start + pageSize);
 
     return {
       data: paged,
       total,
-      page: filter.page,
-      pageSize: filter.pageSize,
+      page,
+      pageSize,
       totalPages,
     };
   }
-
-  // ── Bulk Operations ─────────────────────────────────────────────────
 
   async bulkCreate(inputs: StakeholderCreateInput[]): Promise<Stakeholder[]> {
     const results: Stakeholder[] = [];
@@ -167,8 +176,6 @@ export class StakeholderRegistry {
     const tags = existing.tags.filter((t) => t !== tag);
     return this.update({ id, tags });
   }
-
-  // ── Analysis & Summary ──────────────────────────────────────────────
 
   async getSummary(): Promise<StakeholderSummary> {
     const all = Array.from(stakeholders.values());
@@ -232,8 +239,6 @@ export class StakeholderRegistry {
     };
   }
 
-  // ── Interdependency Mapping ─────────────────────────────────────────
-
   async getInterdependencies(): Promise<{
     connections: { from: string; to: string; relationship: string }[];
     clusters: { name: string; members: string[] }[];
@@ -243,7 +248,6 @@ export class StakeholderRegistry {
       [];
     const clusterMap = new Map<string, string[]>();
 
-    // Build connections based on organization
     const byOrg = new Map<string, Stakeholder[]>();
     for (const s of all) {
       if (s.organization) {
@@ -269,7 +273,6 @@ export class StakeholderRegistry {
       }
     }
 
-    // Build connections based on shared tags
     const byTag = new Map<string, Stakeholder[]>();
     for (const s of all) {
       for (const tag of s.tags) {
@@ -297,8 +300,6 @@ export class StakeholderRegistry {
 
     return { connections, clusters };
   }
-
-  // ── Export / Import ──────────────────────────────────────────────────
 
   async exportAll(): Promise<Stakeholder[]> {
     return Array.from(stakeholders.values());

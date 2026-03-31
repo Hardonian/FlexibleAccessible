@@ -62,7 +62,7 @@ export const stakeholderCreateSchema = z.object({
   segment: z.enum(STAKEHOLDER_SEGMENTS),
   power: z.enum(POWER_LEVELS_SCHEMA),
   interest: z.enum(INTEREST_LEVELS_SCHEMA),
-  engagementStatus: z.enum(ENGAGEMENT_STATUSES).optional(),
+  engagementStatus: z.enum(ENGAGEMENT_STATUSES).default("NOT_CONTACTED"),
   phone: z.string().optional(),
   preferredChannel: z.string().optional(),
   accessibilityNeeds: z.array(z.enum(ACCESSIBILITY_NEEDS)).optional(),
@@ -88,8 +88,8 @@ export const stakeholderFilterSchema = z.object({
   underrepresentedGroups: z.array(z.string()).optional(),
   tags: z.array(z.string()).optional(),
   search: z.string().optional(),
-  page: z.number().int().positive().optional(),
-  pageSize: z.number().int().positive().max(100).optional(),
+  page: z.number().int().positive().default(1),
+  pageSize: z.number().int().positive().max(100).default(10),
   sortBy: z
     .enum([
       "name",
@@ -99,8 +99,8 @@ export const stakeholderFilterSchema = z.object({
       "engagementStatus",
       "createdAt",
     ] as const)
-    .optional(),
-  sortOrder: z.enum(["asc", "desc"]).optional(),
+    .default("name"),
+  sortOrder: z.enum(["asc", "desc"]).default("asc"),
 });
 
 // Inferred types from schemas
