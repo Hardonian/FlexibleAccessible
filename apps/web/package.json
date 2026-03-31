@@ -31,7 +31,7 @@
     "zod": "^3.24.0"
   },
   "devDependencies": {
-    "@ducanh2912/next-pwa": "^10.2.6",
+    "@ducanh2912/next-pwa": "^10.2.9",
     "@eslint/eslintrc": "^3.2.0",
     "@playwright/test": "^1.49.0",
     "@types/react": "^19.0.0",
@@ -40,8 +40,9 @@
     "eslint": "^9.0.0",
     "eslint-config-next": "^15.1.0",
     "eslint-plugin-security": "^3.0.1",
+    "eslint-plugin-vitest": "^0.5.4",
     "sharp": "^0.33.5",
     "typescript": "^5.7.0",
-    "vitest": "^4.1.2"
+    "vitest": "^2.1.0"
   }
 }

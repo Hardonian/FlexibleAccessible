@@ -1,3 +1,4 @@
+import { prisma } from "@aros/db";
 import type {
   AgentContext,
   AgentResult,
@@ -15,8 +16,10 @@ export abstract class BaseAgent {
   protected steps: AgentStep[] = [];
   protected startTime: number = 0;
   protected tokensUsed: number = 0;
+  protected context: AgentContext;
 
-  constructor(onEvent?: AgentEventHandler) {
+  constructor(context: AgentContext, onEvent?: AgentEventHandler) {
+    this.context = context;
     this.onEvent = onEvent;
   }
 
