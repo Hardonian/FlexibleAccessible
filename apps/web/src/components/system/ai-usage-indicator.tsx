@@ -9,12 +9,8 @@ interface AiUsageIndicatorProps {
   usedTokens: number;
 }
 
-export function AiUsageIndicator({
-  organizationId: _organizationId,
-  aiEnabled,
-  aiTokenLimit,
-  usedTokens,
-}: AiUsageIndicatorProps) {
+export function AiUsageIndicator(props: AiUsageIndicatorProps) {
+  const { aiEnabled, aiTokenLimit, usedTokens } = props;
   if (!aiEnabled) {
     return (
       <div className="mt-4 rounded-lg border border-brand-200 bg-brand-50 p-3 shadow-sm transition-all hover:shadow-md">
