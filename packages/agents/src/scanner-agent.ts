@@ -117,7 +117,7 @@ export class ScannerAgent {
               where: {
                 siteId: context.siteId!,
                 status: "OPEN",
-                remediationSuggestions: { none: {} } as any,
+                suggestions: { none: {} },
               },
               select: { id: true },
               take: 20,

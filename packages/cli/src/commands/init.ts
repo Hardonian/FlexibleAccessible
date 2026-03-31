@@ -1,15 +1,15 @@
 import fs from "fs";
 import path from "path";
+import crypto from "crypto";
 
-export async function run(args: string[]) {
+export async function run(_args: string[]) {
   const cwd = process.cwd();
-  const packageJsonPath = path.join(cwd, "package.json");
+  const projectId = crypto.randomUUID().slice(0, 8);
 
   console.log("[AROS] Initializing AROS in current project...");
 
-  // Create .aros.json config
   const arosConfig = {
-    projectId: generateId(),
+    projectId,
     siteName: path.basename(cwd),
     scanConfig: {
       include: ["/"],
@@ -29,7 +29,6 @@ export async function run(args: string[]) {
   );
   console.log("[AROS] Created .aros.json");
 
-  // Create .github/workflows/aros.yml for CI
   const workflowsDir = path.join(cwd, ".github", "workflows");
   if (!fs.existsSync(workflowsDir)) {
     fs.mkdirSync(workflowsDir, { recursive: true });
