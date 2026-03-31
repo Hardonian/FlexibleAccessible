@@ -54,7 +54,7 @@ export class ReporterAgent {
       if (!context.siteId) throw new Error("siteId required");
 
       // Step 1: Aggregate findings
-      const data = await runStep("aggregate", async () => {
+      const data = (await runStep("aggregate", async () => {
         const findings = await prisma.canonicalFinding.findMany({
           where: { siteId: context.siteId! },
           select: {
@@ -97,10 +97,10 @@ export class ReporterAgent {
         });
 
         return { findings, clusters, scanRuns, suggestions };
-      });
+      })) as any;
 
       // Step 2: Compute metrics
-      const metrics = await runStep("compute_metrics", async () => {
+      const metrics = (await runStep("compute_metrics", async () => {
         const findings = data.findings as Array<{
           impact: string;
           status: string;
@@ -170,10 +170,10 @@ export class ReporterAgent {
           ).length,
           avgConfidence: Math.round(avgConfidence * 100),
         };
-      });
+      })) as any;
 
       // Step 3: Generate report
-      const report = await runStep("generate_report", async () => {
+      const report = (await runStep("generate_report", async () => {
         const report = await (prisma as any).report.create({
           data: {
             siteId: context.siteId!,
@@ -205,12 +205,12 @@ export class ReporterAgent {
         });
 
         return { reportId: report.id, summary: report.summary };
-      });
+      })) as any;
 
       return {
         success: true,
         steps,
-        output: { metrics, report },
+        output: { metrics: metrics as any, report: report as any },
         totalDurationMs: Date.now() - startTime,
         tokensUsed: 0,
       };
