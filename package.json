@@ -25,9 +25,11 @@
     "clean": "rm -rf node_modules apps/*/node_modules packages/*/node_modules"
   },
   "devDependencies": {
-    "typescript": "^5.7.0",
+    "@axe-core/playwright": "^4.11.1",
+    "@playwright/experimental-ct-react": "^1.58.2",
+    "@types/node": "^22.10.0",
     "prettier": "^3.4.0",
-    "@types/node": "^22.10.0"
+    "typescript": "^5.7.0"
   },
   "engines": {
     "node": ">=20.0.0"
