@@ -20,6 +20,7 @@
     "@aros/core-services": "*",
     "@aros/db": "*",
     "@aros/shared": "*",
+    "@aros/stakeholders": "*",
     "autoprefixer": "^10.4.0",
     "bullmq": "^5.31.0",
     "clsx": "^2.1.0",
