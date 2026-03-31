@@ -697,7 +697,7 @@ export class ArosMcpServer {
         const suggestions = await prisma.remediationSuggestion.findMany({
           where: {
             ...(status ? { status: status as any } : {}),
-            ...(siteId ? { canonicalFinding: { siteId } } : {}),
+            ...(siteId ? { finding: { siteId } } : {}),
           },
           select: {
             id: true,
