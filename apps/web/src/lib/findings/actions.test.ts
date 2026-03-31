@@ -2,16 +2,16 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { getOrganizationMembers } from './actions';
 
 // Mock the dependencies at the top level of your test file
-vi.mock('@/lib/auth');
+vi.mock('@/lib/session');
 vi.mock('@/lib/platform-truth-cache');
 vi.mock('@/lib/route-data-boundary');
-vi.mock('@/lib/queries/org-scoped-queries');
+vi.mock('@/lib/findings/org-scoped-queries');
 
 // Import the mocked versions to gain type safety and access to mock functions
-import { requireSession } from '@/lib/auth';
+import { requireSession } from '@/lib/session';
 import { getRoutePlatformTruth } from '@/lib/platform-truth-cache';
 import { resolveDashboardOrgMembership } from '@/lib/route-data-boundary';
-import { getScopedMembers } from '@/lib/queries/org-scoped-queries';
+import { getScopedMembers } from '@/lib/findings/org-scoped-queries';
 
 describe('Server Action: getOrganizationMembers', () => {
   beforeEach(() => {

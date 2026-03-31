@@ -11,6 +11,9 @@ export {
   type StakeholderUpdateInput,
   type StakeholderFilter,
   type StakeholderSummary,
+  stakeholderCreateSchema,
+  stakeholderUpdateSchema,
+  stakeholderFilterSchema,
 } from "./types/stakeholder";
 
 export {

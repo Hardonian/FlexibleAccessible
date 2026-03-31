@@ -1,9 +1,9 @@
 'use server';
 
-import { requireSession } from '@/lib/auth'; // Assuming this exists
-import { getRoutePlatformTruth } from '@/lib/platform-truth-cache'; // Assuming this exists
+import { requireSession } from '@/lib/session';
+import { getRoutePlatformTruth } from '@/lib/platform-truth-cache';
 import { resolveDashboardOrgMembership } from '@/lib/route-data-boundary';
-import { getScopedMembers } from '@/lib/queries/org-scoped-queries';
+import { getScopedMembers } from '@/lib/findings/org-scoped-queries';
 
 export async function getOrganizationMembers() {
   try {

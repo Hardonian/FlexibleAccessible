@@ -209,7 +209,7 @@ export class ValidationFramework {
       return `High confidence validation for "${target}": Multiple sources agree with no contradictions detected.`;
     }
     if (confidence === "HIGH" && contradictions.length > 0) {
-      return `High confidence with contradictions for "${target}": Strong agreement but ${contradiction.length} contradictions require investigation.`;
+      return `High confidence with contradictions for "${target}": Strong agreement but ${contradictions.length} contradictions require investigation.`;
     }
     if (confidence === "MEDIUM") {
       return `Medium confidence validation for "${target}": Some agreement but gaps in data exist. Additional sources recommended.`;
