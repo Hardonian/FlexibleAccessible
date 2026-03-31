@@ -137,13 +137,11 @@ export class UnderrepresentedGroupTracker {
       (r) => r.group === group,
     );
 
-    const outreachMethods = Object.fromEntries(
-      OUTREACH_METHODS.map((m) => [m, 0]),
-    ) as Record<OutreachMethod, number>;
+    const outreachMethods = {} as Record<OutreachMethod, number>;
+    OUTREACH_METHODS.forEach((m) => (outreachMethods[m] = 0));
 
-    const statusBreakdown = Object.fromEntries(
-      OUTREACH_STATUSES.map((s) => [s, 0]),
-    ) as Record<OutreachStatus, number>;
+    const statusBreakdown = {} as Record<OutreachStatus, number>;
+    OUTREACH_STATUSES.forEach((s) => (statusBreakdown[s] = 0));
 
     const barriersReported: string[] = [];
     let accessibilityNeedsMet = 0;
@@ -205,12 +203,13 @@ export class UnderrepresentedGroupTracker {
     let totalAccessibilityMet = 0;
     const allBarriers: string[] = [];
 
-    const methodEffectiveness = Object.fromEntries(
-      OUTREACH_METHODS.map((m) => [m, { attempted: 0, engaged: 0, rate: 0 }]),
-    ) as Record<
+    const methodEffectiveness = {} as Record<
       OutreachMethod,
       { attempted: number; engaged: number; rate: number }
     >;
+    OUTREACH_METHODS.forEach((m) => {
+      methodEffectiveness[m] = { attempted: 0, engaged: 0, rate: 0 };
+    });
 
     for (const group of UNDERREPRESENTED_GROUPS) {
       const status = await this.getGroupStatus(group);

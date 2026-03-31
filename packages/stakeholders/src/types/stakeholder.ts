@@ -98,7 +98,7 @@ export const stakeholderFilterSchema = z.object({
       "interest",
       "engagementStatus",
       "createdAt",
-    ])
+    ] as const)
     .default("name"),
   sortOrder: z.enum(["asc", "desc"]).default("asc"),
 });

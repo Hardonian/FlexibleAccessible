@@ -1,29 +1,42 @@
 {
   "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@aros/shared": ["packages/shared/src"],
+      "@aros/db": ["packages/db/src"],
+      "@aros/config": ["packages/config/src"],
+      "@aros/stakeholders": ["packages/stakeholders/src"]
+    },
     "target": "ES2022",
-    "lib": ["ES2022"],
-    "module": "ESNext",
-    "moduleResolution": "bundler",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
+    "types": ["node", "vitest/globals"],
+    "composite": true,
     "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "rootDir": "."
+    "declarationMap": true
   },
   "files": [],
   "references": [
-    { "path": "./apps/web" },
-    { "path": "./apps/worker" },
-    { "path": "./packages/config" },
-    { "path": "./packages/db" },
-    { "path": "./packages/stakeholders" }
-  ]
+    { "path": "apps/web" },
+    { "path": "apps/worker" },
+    { "path": "packages/agents" },
+    { "path": "packages/cli" },
+    { "path": "packages/clustering" },
+    { "path": "packages/config" },
+    { "path": "packages/core-services" },
+    { "path": "packages/db" },
+    { "path": "packages/integrations" },
+    { "path": "packages/mcp-server" },
+    { "path": "packages/rag" },
+    { "path": "packages/remediation" },
+    { "path": "packages/scan-engine" },
+    { "path": "packages/shared" },
+    { "path": "packages/stakeholders" },
+    { "path": "packages/ui" }
+  ],
+  "exclude": ["node_modules", "dist"]
 }
-
-
-
-

@@ -173,27 +173,23 @@ export class StakeholderRegistry {
   async getSummary(): Promise<StakeholderSummary> {
     const all = Array.from(stakeholders.values());
 
-    const bySegment = Object.fromEntries(
-      STAKEHOLDER_SEGMENTS.map((s) => [s, 0]),
-    ) as Record<StakeholderSegment, number>;
+    const bySegment = {} as Record<StakeholderSegment, number>;
+    STAKEHOLDER_SEGMENTS.forEach((s) => (bySegment[s] = 0));
 
-    const byPower = Object.fromEntries(
-      POWER_LEVELS_SCHEMA.map((p) => [p, 0]),
-    ) as Record<PowerLevel, number>;
+    const byPower = {} as Record<PowerLevel, number>;
+    POWER_LEVELS_SCHEMA.forEach((p) => (byPower[p] = 0));
 
-    const byInterest = Object.fromEntries(
-      INTEREST_LEVELS_SCHEMA.map((i) => [i, 0]),
-    ) as Record<InterestLevel, number>;
+    const byInterest = {} as Record<InterestLevel, number>;
+    INTEREST_LEVELS_SCHEMA.forEach((i) => (byInterest[i] = 0));
 
-    const byEngagementStatus = Object.fromEntries(
-      ENGAGEMENT_STATUSES.map((e) => [e, 0]),
-    ) as Record<EngagementStatus, number>;
+    const byEngagementStatus = {} as Record<EngagementStatus, number>;
+    ENGAGEMENT_STATUSES.forEach((e) => (byEngagementStatus[e] = 0));
 
     const byUnderrepresentedGroup: Record<string, number> = {};
     const byRegion: Record<string, number> = {};
-    const byAccessibilityNeed = Object.fromEntries(
-      ACCESSIBILITY_NEEDS.map((n) => [n, 0]),
-    ) as Record<AccessibilityNeed, number>;
+
+    const byAccessibilityNeed = {} as Record<AccessibilityNeed, number>;
+    ACCESSIBILITY_NEEDS.forEach((n) => (byAccessibilityNeed[n] = 0));
 
     for (const s of all) {
       bySegment[s.segment]++;
