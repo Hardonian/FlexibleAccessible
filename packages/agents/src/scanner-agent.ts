@@ -30,6 +30,7 @@ export class ScannerAgent extends BaseAgent {
   }
 
   async execute(context: AgentContext): Promise<AgentResult> {
+    this.context = context;
     this.startTime = Date.now();
 
     try {

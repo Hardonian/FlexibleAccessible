@@ -16,10 +16,9 @@ export abstract class BaseAgent {
   protected steps: AgentStep[] = [];
   protected startTime: number = 0;
   protected tokensUsed: number = 0;
-  protected context: AgentContext;
+  protected context?: AgentContext;
 
-  constructor(context: AgentContext, onEvent?: AgentEventHandler) {
-    this.context = context;
+  constructor(onEvent?: AgentEventHandler) {
     this.onEvent = onEvent;
   }
 
@@ -75,7 +74,7 @@ export abstract class BaseAgent {
   }
 
   /**
-   * Creates a successful AgentResult.
+   * Creates a successful AgentResult and logs usage.
    * @param output The final output of the agent execution.
    * @returns A successful AgentResult.
    */
@@ -87,23 +86,60 @@ export abstract class BaseAgent {
       totalDurationMs: Date.now() - this.startTime,
       tokensUsed: this.tokensUsed,
     };
+    
+    // Fire and forget usage logging
+    this.logUsage("AGENT_EXECUTION", "success", this.tokensUsed).catch(err => {
+      console.error("[BaseAgent] Failed to log usage:", err);
+    });
+
     this.emit({ type: "plan_complete", result });
     return result;
   }
 
   /**
-   * Creates a failed AgentResult.
+   * Creates a failed AgentResult and logs usage.
    * @param err The error that caused the failure.
    * @returns A failed AgentResult.
    */
   protected createFailureResult(err: unknown): AgentResult {
-    return {
+    const error = err instanceof Error ? err.message : String(err);
+    const result: AgentResult = {
       success: false,
       steps: this.steps,
       output: null,
-      error: err instanceof Error ? err.message : String(err),
+      error,
       totalDurationMs: Date.now() - this.startTime,
       tokensUsed: this.tokensUsed,
     };
+
+    this.logUsage("AGENT_EXECUTION", "failure", this.tokensUsed).catch(logErr => {
+        console.error("[BaseAgent] Failed to log usage for error:", logErr);
+    });
+
+    return result;
+  }
+
+  /**
+   * Logs AI usage to the database for monetization and auditing.
+   */
+  protected async logUsage(purpose: string, status: string, tokens: number) {
+    if (tokens <= 0 || !this.context) return;
+
+    try {
+      await prisma.aiUsageLog.create({
+        data: {
+          organizationId: this.context.organizationId,
+          userId: (this.context.metadata?.userId as string) || null,
+          model: (this.context.metadata?.model as string) || "gpt-4o",
+          promptTokens: Math.floor(tokens * 0.4),
+          completionTokens: Math.floor(tokens * 0.6),
+          totalTokens: tokens,
+          purpose: `${purpose} (${status})`,
+          cost: tokens * 0.00001,
+        },
+      });
+    } catch (err) {
+      console.error("[BaseAgent] usage log persist failed", err);
+    }
   }
 }

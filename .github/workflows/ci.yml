@@ -47,6 +47,9 @@ jobs:
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
 
+      - name: Run Playwright Component Tests
+        run: npm run test:ct
+
       - name: Run Playwright E2E Tests
         env:
           DATABASE_URL: postgresql://aros_user:aros_password@localhost:5432/aros_test?schema=public
