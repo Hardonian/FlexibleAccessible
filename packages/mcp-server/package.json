@@ -13,16 +13,16 @@
     "start": "tsx src/index.ts"
   },
   "dependencies": {
+    "@aros/config": "*",
     "@aros/db": "*",
     "@aros/shared": "*",
-    "@aros/config": "*",
     "@modelcontextprotocol/sdk": "^1.0.0",
-    "zod": "^3.24.0",
-    "bullmq": "^5.31.0"
+    "bullmq": "^5.31.0",
+    "zod": "^3.24.0"
   },
   "devDependencies": {
+    "tsx": "^4.19.0",
     "typescript": "^5.7.0",
-    "vitest": "^2.1.0",
-    "tsx": "^4.19.0"
+    "vitest": "^4.1.2"
   }
 }
