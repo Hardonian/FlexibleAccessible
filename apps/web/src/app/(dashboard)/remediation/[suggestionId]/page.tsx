@@ -103,6 +103,18 @@ export default async function SuggestionDetailPage({
       }[sp.error] ?? "An error occurred.")
     : null;
 
+  const subscription = await prisma.subscription.findUnique({
+    where: { organizationId: orgRes.organizationId },
+  });
+
+  const occurrence = suggestion.finding?.occurrences[0];
+  const page = occurrence?.page;
+  const site = page?.site || suggestion.cluster?.site;
+
+  if (!site) {
+    notFound();
+  }
+
   return (
     <div className="space-y-6">
       <div>

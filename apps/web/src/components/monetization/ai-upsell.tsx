@@ -2,7 +2,7 @@ import Link from "next/link";
 import { LucideShieldAlert, LucideZap } from "lucide-react";
 
 interface AiUpsellProps {
-  reason: "disabled" | "quota_exceeded";
+  reason: "disabled" | "quota_exceeded" | "tier_limit";
 }
 
 /**
@@ -10,9 +10,11 @@ interface AiUpsellProps {
  * Perfection means never hitting a dead end — always a path to more value.
  */
 export function AiUpsell({ reason }: AiUpsellProps) {
-  const title = reason === "disabled" ? "Unlock AI Remediation" : "AI Quota Exceeded";
+  const title = reason === "disabled" ? "Unlock AI Remediation" : reason === "tier_limit" ? "Upgrade for AI Features" : "AI Quota Exceeded";
   const description = reason === "disabled" 
     ? "Automate your accessibility fixes with GPT-4o powered suggestions. Reduce human labor by up to 90%."
+    : reason === "tier_limit"
+    ? "Your current tier does not support automated AI suggestions. Upgrade to Professional to unlock high-margin remediation speed."
     : "You've reached your monthly AI token limit. Upgrade to a higher tier to keep printing money with automated fixes.";
 
   return (

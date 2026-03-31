@@ -136,6 +136,7 @@ model Site {
   issueClusters IssueCluster[]
   githubRepoMapping GitHubRepoMapping?
   canonicalFindings CanonicalFinding[]
+  reports           Report[]
 
   @@index([workspaceId])
   @@map("sites")
