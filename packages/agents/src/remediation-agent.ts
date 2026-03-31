@@ -1,11 +1,36 @@
 import { prisma } from "@aros/db";
 import { generateFix, validateFix } from "@aros/remediation";
+import type { FixResult } from "@aros/remediation";
 import type {
   AgentContext,
   AgentResult,
-  AgentStep,
   AgentEventHandler,
 } from "./types";
+import { BaseAgent } from "./base-agent";
+
+// Define interfaces for step outputs to improve type safety
+interface AnalysisOutput {
+  ruleId: string;
+  impact: string;
+  description: string;
+  elementHtml: string;
+  selector: string;
+  occurrenceCount: number;
+  clusterInfo: { selectorPattern: string | null; pageCount: number | null } | null;
+  isClusterWide: boolean;
+}
+
+interface DecisionOutput {
+  autoApprove: boolean;
+  escalateToReview: boolean;
+  reason: string;
+}
+
+interface FinalizeOutput {
+  suggestionId: string;
+  status: "APPROVED" | "VALIDATED" | "FAILED_VALIDATION";
+  autoApproved: boolean;
+}
 
 /**
  * RemediationAgent: Autonomous agent that analyzes findings,
@@ -14,53 +39,17 @@ import type {
  *
  * State machine: analyze → generate → validate → decide → finalize
  */
-export class RemediationAgent {
-  private onEvent?: AgentEventHandler;
-
+export class RemediationAgent extends BaseAgent {
   constructor(onEvent?: AgentEventHandler) {
-    this.onEvent = onEvent;
+    super(onEvent);
   }
 
   async execute(context: AgentContext): Promise<AgentResult> {
-    const startTime = Date.now();
-    const steps: AgentStep[] = [];
-    let tokensUsed = 0;
-
-    const runStep = async <T>(
-      name: string,
-      handler: () => Promise<T>,
-    ): Promise<T> => {
-      const step: AgentStep = {
-        name,
-        status: "running",
-        startedAt: new Date(),
-      };
-      steps.push(step);
-      this.onEvent?.({ type: "step_start", step: name });
-
-      try {
-        const output = await handler();
-        step.status = "completed";
-        step.output = output as any;
-        step.completedAt = new Date();
-        step.durationMs =
-          step.completedAt.getTime() - (step.startedAt?.getTime() ?? 0);
-        this.onEvent?.({ type: "step_complete", step: name, output });
-        return output;
-      } catch (err) {
-        step.status = "failed";
-        step.error = err instanceof Error ? err.message : String(err);
-        step.completedAt = new Date();
-        step.durationMs =
-          step.completedAt.getTime() - (step.startedAt?.getTime() ?? 0);
-        this.onEvent?.({ type: "step_error", step: name, error: step.error });
-        throw err;
-      }
-    };
+    this.startTime = Date.now();
 
     try {
       // Step 1: Analyze — fetch finding and context
-      const analysis = (await runStep("analyze", async () => {
+      const analysis = await this.runStep("analyze", async (): Promise<AnalysisOutput> => {
         if (!context.findingId) throw new Error("findingId required");
         const finding = await prisma.canonicalFinding.findUnique({
           where: { id: context.findingId },
@@ -84,10 +73,10 @@ export class RemediationAgent {
           clusterInfo: finding.cluster,
           isClusterWide: (finding.cluster?.pageCount ?? 0) > 5,
         };
-      })) as any;
+      });
 
       // Step 2: Generate fix
-      const fix = (await runStep("generate", async () => {
+      const fix = await this.runStep("generate", async (): Promise<FixResult> => {
         const result = generateFix({
           ruleId: analysis.ruleId,
           elementHtml: analysis.elementHtml,
@@ -95,21 +84,20 @@ export class RemediationAgent {
         });
         if (!result)
           throw new Error(`No fix handler for rule ${analysis.ruleId}`);
-        tokensUsed += 100;
+        this.tokensUsed += 100; // Mock token usage
         return result;
-      })) as any;
+      });
 
       // Step 3: Validate
-      const validation = (await runStep("validate", async () => {
+      const validation = await this.runStep("validate", async () => {
         return validateFix(fix.suggestedCode);
-      })) as any;
+      });
 
       // Step 4: Decide — auto-approve or escalate
-      const decision = (await runStep("decide", async () => {
+      const decision = await this.runStep("decide", async (): Promise<DecisionOutput> => {
         const highConfidence = fix.confidence >= 0.8;
         const passesValidation = validation.valid;
         const noWarnings = validation.warnings.length === 0;
-        const lowImpact = ["MINOR", "MODERATE"].includes(analysis.impact);
 
         const autoApprove = highConfidence && passesValidation && noWarnings;
         const escalateToReview = !autoApprove;
@@ -119,12 +107,12 @@ export class RemediationAgent {
           escalateToReview,
           reason: autoApprove
             ? "High confidence, valid fix, no warnings"
-            : `Escalating: confidence=${fix.confidence}, valid=${passesValidation}, warnings=${validation.warnings.length}`,
+            : `Escalating: confidence=${fix.confidence.toFixed(2)}, valid=${passesValidation}, warnings=${validation.warnings.length}`,
         };
-      })) as any;
+      });
 
       // Step 5: Finalize — persist suggestion
-      const result = (await runStep("finalize", async () => {
+      const result = await this.runStep("finalize", async (): Promise<FinalizeOutput> => {
         const status = decision.autoApprove
           ? "APPROVED"
           : validation.valid
@@ -134,7 +122,7 @@ export class RemediationAgent {
         const suggestion = await prisma.remediationSuggestion.create({
           data: {
             canonicalFindingId: context.findingId!,
-            type: fix.type as any,
+            type: fix.type,
             status,
             originalCode: analysis.elementHtml,
             suggestedCode: fix.suggestedCode,
@@ -143,7 +131,7 @@ export class RemediationAgent {
             validationResult: {
               ...validation,
               agentDecision: decision,
-            } as any,
+            } as any, // Prisma's JSON type requires `any` or a specific input type
           },
         });
 
@@ -163,27 +151,11 @@ export class RemediationAgent {
           status,
           autoApproved: decision.autoApprove,
         };
-      })) as any;
+      });
 
-      const totalDurationMs = Date.now() - startTime;
-      const agentResult: AgentResult = {
-        success: true,
-        steps,
-        output: result,
-        totalDurationMs,
-        tokensUsed,
-      };
-      this.onEvent?.({ type: "plan_complete", result: agentResult });
-      return agentResult;
+      return this.createSuccessResult(result);
     } catch (err) {
-      return {
-        success: false,
-        steps,
-        output: null,
-        error: err instanceof Error ? err.message : String(err),
-        totalDurationMs: Date.now() - startTime,
-        tokensUsed,
-      };
+      return this.createFailureResult(err);
     }
   }
 }

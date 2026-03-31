@@ -2,145 +2,129 @@ import { prisma } from "@aros/db";
 import type {
   AgentContext,
   AgentResult,
-  AgentStep,
   AgentEventHandler,
 } from "./types";
+import { BaseAgent } from "./base-agent";
+import type { CanonicalFinding, IssueCluster, RemediationSuggestion, ScanRun } from "@aros/db";
+
+// Define interfaces for step outputs
+type AggregateData = {
+  findings: Pick<CanonicalFinding, 'ruleId' | 'impact' | 'status' | 'wcagTags' | 'occurrenceCount' | 'description'>[];
+  clusters: Pick<IssueCluster, 'name' | 'severity' | 'pageCount' | 'findingCount'>[];
+  scanRuns: Pick<ScanRun, 'id' | 'status' | 'violationsFound' | 'pagesScanned' | 'completedAt' | 'createdAt'>[];
+  suggestions: Pick<RemediationSuggestion, 'status' | 'confidence' | 'type'>[];
+};
+
+type ReportMetrics = {
+  totalFindings: number;
+  openFindings: number;
+  resolvedFindings: number;
+  resolutionRate: number;
+  byImpact: {
+    critical: number;
+    serious: number;
+    moderate: number;
+    minor: number;
+  };
+  autoFixableFindings: number;
+  autoFixableRate: number;
+  totalSuggestions: number;
+  approvedSuggestions: number;
+  avgConfidence: number;
+};
+
+// Could be moved to a shared config file
+const AUTO_FIXABLE_RULES = [
+  "image-alt",
+  "button-name",
+  "link-name",
+  "label",
+  "html-has-lang",
+  "document-title",
+  "heading-order",
+];
 
 /**
  * ReporterAgent: Generates conformance reports, executive summaries,
  * and evidence packages for accessibility audits.
  */
-export class ReporterAgent {
-  private onEvent?: AgentEventHandler;
-
+export class ReporterAgent extends BaseAgent {
   constructor(onEvent?: AgentEventHandler) {
-    this.onEvent = onEvent;
+    super(onEvent);
   }
 
   async execute(context: AgentContext): Promise<AgentResult> {
-    const startTime = Date.now();
-    const steps: AgentStep[] = [];
-
-    const runStep = async <T>(
-      name: string,
-      handler: () => Promise<T>,
-    ): Promise<T> => {
-      const step: AgentStep = {
-        name,
-        status: "running",
-        startedAt: new Date(),
-      };
-      steps.push(step);
-      this.onEvent?.({ type: "step_start", step: name });
-      try {
-        const output = await handler();
-        step.status = "completed";
-        step.output = output as any;
-        step.completedAt = new Date();
-        step.durationMs =
-          step.completedAt.getTime() - (step.startedAt?.getTime() ?? 0);
-        this.onEvent?.({ type: "step_complete", step: name, output });
-        return output;
-      } catch (err) {
-        step.status = "failed";
-        step.error = err instanceof Error ? err.message : String(err);
-        step.completedAt = new Date();
-        this.onEvent?.({ type: "step_error", step: name, error: step.error });
-        throw err;
-      }
-    };
+    this.startTime = Date.now();
 
     try {
       if (!context.siteId) throw new Error("siteId required");
 
       // Step 1: Aggregate findings
-      const data = (await runStep("aggregate", async () => {
-        const findings = await prisma.canonicalFinding.findMany({
-          where: { siteId: context.siteId! },
-          select: {
-            ruleId: true,
-            impact: true,
-            status: true,
-            wcagTags: true,
-            occurrenceCount: true,
-            description: true,
-          },
-        });
-
-        const clusters = await prisma.issueCluster.findMany({
-          where: { siteId: context.siteId! },
-          select: {
-            name: true,
-            severity: true,
-            pageCount: true,
-            findingCount: true,
-          },
-        });
-
-        const scanRuns = await prisma.scanRun.findMany({
-          where: { siteId: context.siteId! },
-          orderBy: { createdAt: "desc" },
-          take: 10,
-          select: {
-            id: true,
-            status: true,
-            violationsFound: true,
-            pagesScanned: true,
-            completedAt: true,
-            createdAt: true,
-          },
-        });
-
-        const suggestions = await prisma.remediationSuggestion.findMany({
-          where: { finding: { siteId: context.siteId! } },
-          select: { status: true, confidence: true, type: true },
-        });
+      const data = await this.runStep("aggregate", async (): Promise<AggregateData> => {
+        const [findings, clusters, scanRuns, suggestions] = await Promise.all([
+          prisma.canonicalFinding.findMany({
+            where: { siteId: context.siteId! },
+            select: {
+              ruleId: true,
+              impact: true,
+              status: true,
+              wcagTags: true,
+              occurrenceCount: true,
+              description: true,
+            },
+          }),
+          prisma.issueCluster.findMany({
+            where: { siteId: context.siteId! },
+            select: {
+              name: true,
+              severity: true,
+              pageCount: true,
+              findingCount: true,
+            },
+          }),
+          prisma.scanRun.findMany({
+            where: { siteId: context.siteId! },
+            orderBy: { createdAt: "desc" },
+            take: 10,
+            select: {
+              id: true,
+              status: true,
+              violationsFound: true,
+              pagesScanned: true,
+              completedAt: true,
+              createdAt: true,
+            },
+          }),
+          prisma.remediationSuggestion.findMany({
+            where: { finding: { siteId: context.siteId! } },
+            select: { status: true, confidence: true, type: true },
+          }),
+        ]);
 
         return { findings, clusters, scanRuns, suggestions };
-      })) as any;
+      });
 
       // Step 2: Compute metrics
-      const metrics = (await runStep("compute_metrics", async () => {
-        const findings = data.findings as Array<{
-          impact: string;
-          status: string;
-          ruleId: string;
-          occurrenceCount: number;
-        }>;
-        const suggestions = data.suggestions as Array<{
-          status: string;
-          confidence: number;
-        }>;
+      const metrics = await this.runStep("compute_metrics", async (): Promise<ReportMetrics> => {
+        const { findings, suggestions } = data;
 
         const total = findings.length;
         
-        const byStatus = findings.reduce((acc: Record<string, any[]>, f) => {
-          acc[f.status] = acc[f.status] || [];
-          acc[f.status].push(f);
-          return acc;
-        }, {});
+        const byStatus: Record<string, number> = {};
+        const byImpact: Record<string, number> = {};
 
-        const byImpact = findings.reduce((acc: Record<string, any[]>, f) => {
-          acc[f.impact] = acc[f.impact] || [];
-          acc[f.impact].push(f);
-          return acc;
-        }, {});
+        for (const f of findings) {
+          byStatus[f.status] = (byStatus[f.status] || 0) + 1;
+          byImpact[f.impact] = (byImpact[f.impact] || 0) + 1;
+        }
 
         const autoFixable = findings.filter((f) =>
-          [
-            "image-alt",
-            "button-name",
-            "link-name",
-            "label",
-            "html-has-lang",
-            "document-title",
-            "heading-order",
-          ].includes(f.ruleId),
+          AUTO_FIXABLE_RULES.includes(f.ruleId),
         ).length;
 
         const resolvedCount =
-          (byStatus["RESOLVED"]?.length ?? 0) +
-          (byStatus["MITIGATED"]?.length ?? 0);
+          (byStatus["RESOLVED"] ?? 0) + (byStatus["MITIGATED"] ?? 0);
+        
         const avgConfidence =
           suggestions.length > 0
             ? suggestions.reduce((sum, s) => sum + s.confidence, 0) /
@@ -150,16 +134,15 @@ export class ReporterAgent {
         return {
           totalFindings: total,
           openFindings:
-            (byStatus["OPEN"]?.length ?? 0) +
-            (byStatus["IN_PROGRESS"]?.length ?? 0),
+            (byStatus["OPEN"] ?? 0) + (byStatus["IN_PROGRESS"] ?? 0),
           resolvedFindings: resolvedCount,
           resolutionRate:
             total > 0 ? Math.round((resolvedCount / total) * 100) : 0,
           byImpact: {
-            critical: byImpact["CRITICAL"]?.length ?? 0,
-            serious: byImpact["SERIOUS"]?.length ?? 0,
-            moderate: byImpact["MODERATE"]?.length ?? 0,
-            minor: byImpact["MINOR"]?.length ?? 0,
+            critical: byImpact["CRITICAL"] ?? 0,
+            serious: byImpact["SERIOUS"] ?? 0,
+            moderate: byImpact["MODERATE"] ?? 0,
+            minor: byImpact["MINOR"] ?? 0,
           },
           autoFixableFindings: autoFixable,
           autoFixableRate:
@@ -170,11 +153,11 @@ export class ReporterAgent {
           ).length,
           avgConfidence: Math.round(avgConfidence * 100),
         };
-      })) as any;
+      });
 
       // Step 3: Generate report
-      const report = (await runStep("generate_report", async () => {
-        const report = await (prisma as any).report.create({
+      const report = await this.runStep("generate_report", async () => {
+        const report = await (prisma as any).report.create({ // Assuming 'report' model exists
           data: {
             siteId: context.siteId!,
             type: "CONFORMANCE",
@@ -182,47 +165,21 @@ export class ReporterAgent {
             content: {
               generatedAt: new Date().toISOString(),
               metrics,
-              clusters: (
-                data.clusters as Array<{
-                  name: string;
-                  severity: string;
-                  pageCount: number;
-                }>
-              ).slice(0, 20),
-              recentScans: (
-                data.scanRuns as Array<{
-                  id: string;
-                  status: string;
-                  violationsFound: number;
-                  pagesScanned: number;
-                }>
-              ).slice(0, 5),
+              clusters: data.clusters.slice(0, 20),
+              recentScans: data.scanRuns.slice(0, 5),
               disclaimer:
                 "Automated scanning detects approximately 30-40% of WCAG 2.2 criteria. Manual expert review is required for full conformance assessment.",
-            } as any,
+            } as any, // Prisma JSON
             summary: `${metrics.totalFindings} findings (${metrics.openFindings} open, ${metrics.resolvedFindings} resolved). ${metrics.resolutionRate}% resolution rate. ${metrics.autoFixableRate}% auto-fixable.`,
           },
         });
 
         return { reportId: report.id, summary: report.summary };
-      })) as any;
+      });
 
-      return {
-        success: true,
-        steps,
-        output: { metrics: metrics as any, report: report as any },
-        totalDurationMs: Date.now() - startTime,
-        tokensUsed: 0,
-      };
+      return this.createSuccessResult({ metrics, report });
     } catch (err) {
-      return {
-        success: false,
-        steps,
-        output: null,
-        error: err instanceof Error ? err.message : String(err),
-        totalDurationMs: Date.now() - startTime,
-        tokensUsed: 0,
-      };
+      return this.createFailureResult(err);
     }
   }
 }

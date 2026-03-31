@@ -1,65 +1,42 @@
 import { prisma } from "@aros/db";
+import type { Site, ScanRun } from "@aros/db";
 import { getSharedScanQueue } from "@aros/shared";
 import type {
   AgentContext,
   AgentResult,
-  AgentStep,
   AgentEventHandler,
 } from "./types";
+import { BaseAgent } from "./base-agent";
+
+const SCAN_STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000; // 24 hours
+const REMEDIATION_TRIGGER_LIMIT = 20;
+
+interface AssessmentOutput {
+  site: (Site & { _count: { pages: number; canonicalFindings: number } }) | null;
+  lastScan: Pick<ScanRun, 'status' | 'completedAt' | 'violationsFound'> | null;
+  openFindings: number;
+  needsScan: boolean;
+}
 
 /**
  * ScannerAgent: Decides what to scan, schedules crawls,
  * monitors scan health, and triggers remediation for new findings.
  *
- * State machine: assess → schedule → monitor → trigger_remediation
+ * State machine: assess → schedule → trigger_remediation
  */
-export class ScannerAgent {
-  private onEvent?: AgentEventHandler;
-
+export class ScannerAgent extends BaseAgent {
   constructor(onEvent?: AgentEventHandler) {
-    this.onEvent = onEvent;
+    super(onEvent);
   }
 
   async execute(context: AgentContext): Promise<AgentResult> {
-    const startTime = Date.now();
-    const steps: AgentStep[] = [];
-
-    const runStep = async <T>(
-      name: string,
-      handler: () => Promise<T>,
-    ): Promise<T> => {
-      const step: AgentStep = {
-        name,
-        status: "running",
-        startedAt: new Date(),
-      };
-      steps.push(step);
-      this.onEvent?.({ type: "step_start", step: name });
-      try {
-        const output = await handler();
-        step.status = "completed";
-        step.output = output as any;
-        step.completedAt = new Date();
-        step.durationMs =
-          step.completedAt.getTime() - (step.startedAt?.getTime() ?? 0);
-        this.onEvent?.({ type: "step_complete", step: name, output });
-        return output;
-      } catch (err) {
-        step.status = "failed";
-        step.error = err instanceof Error ? err.message : String(err);
-        step.completedAt = new Date();
-        step.durationMs =
-          step.completedAt.getTime() - (step.startedAt?.getTime() ?? 0);
-        this.onEvent?.({ type: "step_error", step: name, error: step.error });
-        throw err;
-      }
-    };
+    this.startTime = Date.now();
 
     try {
       if (!context.siteId) throw new Error("siteId required");
 
       // Step 1: Assess current state
-      const assessment = (await runStep("assess", async () => {
+      const assessment = await this.runStep("assess", async (): Promise<AssessmentOutput> => {
         const site = await prisma.site.findUnique({
           where: { id: context.siteId! },
           include: {
@@ -77,28 +54,32 @@ export class ScannerAgent {
           where: { siteId: context.siteId!, status: "OPEN" },
         });
 
-        const staleThreshold = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const staleThreshold = new Date(Date.now() - SCAN_STALE_THRESHOLD_MS);
         const needsScan =
           !lastScan ||
           lastScan.completedAt === null ||
           lastScan.completedAt < staleThreshold;
 
         return { site, lastScan, openFindings, needsScan };
-      })) as any;
+      });
 
       // Step 2: Schedule scan if needed
-      const scheduleResult = (await runStep("schedule", async () => {
+      const scheduleResult = await this.runStep("schedule", async () => {
         if (!assessment.needsScan) {
+          // Manually update step status as it's being skipped, not failed.
+          const step = this.steps.find(s => s.name === 'schedule');
+          if (step) step.status = 'skipped';
           return { action: "skipped", reason: "Recent scan exists" };
         }
 
         const scanRun = await prisma.scanRun.create({
           data: {
             siteId: context.siteId!,
-            status: "QUEUED" as any,
+            status: "QUEUED",
           },
         });
 
+        // Assuming getSharedScanQueue is a reliable way to get the queue instance
         const queue = getSharedScanQueue();
         await queue.add("scan", {
           scanRunId: scanRun.id,
@@ -106,10 +87,10 @@ export class ScannerAgent {
         });
 
         return { action: "queued", scanRunId: scanRun.id };
-      })) as any;
+      });
 
       // Step 3: Trigger remediation for unresolved findings
-      const remediationResult = (await runStep(
+      const remediationResult = await this.runStep(
         "trigger_remediation",
         async () => {
           const findingsWithoutSuggestions =
@@ -120,49 +101,43 @@ export class ScannerAgent {
                 suggestions: { none: {} },
               },
               select: { id: true },
-              take: 20,
+              take: REMEDIATION_TRIGGER_LIMIT,
             });
 
-          const { bullmqConnectionOptions } = await import("@aros/shared");
-          const { Queue } = await import("bullmq");
-          const remQueue = new Queue("remediation", {
-            connection: (bullmqConnectionOptions as any)(),
-          });
-
-          let queued = 0;
-          for (const finding of findingsWithoutSuggestions) {
-            await remQueue.add("remediation", {
-              findingId: finding.id,
-              siteId: context.siteId,
-            });
-            queued++;
+          if (findingsWithoutSuggestions.length === 0) {
+            return { remediationJobsQueued: 0, reason: "No open findings need suggestions." };
           }
 
-          return { remediationJobsQueued: queued };
-        },
-      )) as any;
+          // Lazily import queue dependencies to keep agent startup light.
+          const { bullmqConnectionOptions } = await import("@aros/shared");
+          const { Queue } = await import("bullmq");
+          const remediationQueue = new Queue("remediation", {
+            connection: bullmqConnectionOptions(),
+          });
 
-      return {
-        success: true,
-        steps,
-        output: {
-          assessment,
-          schedule: scheduleResult,
-          remediation: remediationResult,
+          const jobs = findingsWithoutSuggestions.map(finding => ({
+            name: "remediation",
+            data: {
+              findingId: finding.id,
+              siteId: context.siteId,
+            }
+          }));
+
+          await remediationQueue.addBulk(jobs);
+          // It's good practice to close the queue connection if it's not a shared singleton.
+          await remediationQueue.close();
+
+          return { remediationJobsQueued: jobs.length };
         },
-        totalDurationMs: Date.now() - startTime,
-        tokensUsed: 0,
-      };
+      );
+
+      return this.createSuccessResult({
+        assessment,
+        schedule: scheduleResult,
+        remediation: remediationResult,
+      });
     } catch (err) {
-      return {
-        success: false,
-        steps,
-        output: null,
-        error: err instanceof Error ? err.message : String(err),
-        totalDurationMs: Date.now() - startTime,
-        tokensUsed: 0,
-      };
+      return this.createFailureResult(err);
     }
   }
 }
-
