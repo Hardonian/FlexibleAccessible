@@ -39,6 +39,7 @@ export async function loadFindingScopedToOrg(
       id: true,
       status: true,
       siteId: true,
+      statusNote: true,
     },
   });
 }
@@ -72,38 +73,78 @@ export async function transitionFindingRemediationStatus(input: {
 
   const from = finding.status as FindingStatusValue;
   const to = input.nextStatus as FindingStatusValue;
+  const nextStatus = input.nextStatus as FindingStatus;
+  const noteTrimmed = input.note?.trim() || null;
+  const noteChanged = noteTrimmed !== (finding.statusNote ?? null);
 
   if (!canOperatorTransition(from, to)) {
     return { ok: false, code: 'invalid_transition' };
   }
 
   if (from === to) {
+    if (!noteChanged) {
+      return { ok: true };
+    }
+
+    await input.prisma.$transaction(async (tx) => {
+      await tx.canonicalFinding.update({
+        where: { id: finding.id },
+        data: {
+          statusNote: noteTrimmed,
+        },
+      });
+      await tx.auditLog.create({
+        data: {
+          organizationId: input.organizationId,
+          userId: input.userId,
+          action: 'finding.status_note_updated',
+          entityType: 'CanonicalFinding',
+          entityId: finding.id,
+          metadata: {
+            status: from,
+            siteId: finding.siteId,
+            noteCleared: noteTrimmed === null,
+          },
+        },
+      });
+
+      if (noteTrimmed) {
+        await tx.findingStatusEvent.create({
+          data: {
+            canonicalFindingId: finding.id,
+            fromStatus: from,
+            toStatus: nextStatus,
+            note: noteTrimmed,
+            userId: input.userId,
+          },
+        });
+      }
+    });
     return { ok: true };
   }
 
   const now = new Date();
-  const noteTrimmed = input.note?.trim() || null;
 
-  await input.prisma.$transaction([
-    input.prisma.canonicalFinding.update({
+  await input.prisma.$transaction(async (tx) => {
+    await tx.canonicalFinding.update({
       where: { id: finding.id },
       data: {
-        status: input.nextStatus,
+        status: nextStatus,
         statusChangedAt: now,
         statusChangedById: input.userId,
-        ...(noteTrimmed ? { statusNote: noteTrimmed } : {}),
+        statusNote: noteTrimmed,
       },
-    }),
-    input.prisma.findingStatusEvent.create({
+    });
+    await tx.findingStatusEvent.create({
       data: {
         canonicalFindingId: finding.id,
         fromStatus: from,
-        toStatus: input.nextStatus,
+        toStatus: nextStatus,
         note: noteTrimmed,
         userId: input.userId,
       },
-    }),
-    input.prisma.auditLog.create({
+    });
+    await tx.auditLog.create({
       data: {
         organizationId: input.organizationId,
         userId: input.userId,
@@ -112,12 +153,12 @@ export async function transitionFindingRemediationStatus(input: {
         entityId: finding.id,
         metadata: {
           fromStatus: from,
-          toStatus: input.nextStatus,
+          toStatus: nextStatus,
           siteId: finding.siteId,
         },
       },
-    }),
-  ]);
+    });
+  });
 
   return { ok: true };
 }

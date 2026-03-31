@@ -35,7 +35,7 @@ describe('POST /api/org/[organizationId]/platform/legacy-retirement', () => {
     evaluateMock.mockResolvedValueOnce({
       inventory: [{ organizationId: 'orgA', dependence: 'legacy_fallback', requiresRepair: true }],
       readiness: {
-        evaluationScope: 'operator_manage_scope',
+        evaluationScope: 'organization_scope',
         status: 'fallback_detected',
         inspectedOrganizationCount: 1,
         fallbackOrganizationCount: 1,
@@ -54,6 +54,7 @@ describe('POST /api/org/[organizationId]/platform/legacy-retirement', () => {
     const body = await response.json();
     expect(body.success).toBe(true);
     expect(body.data.prune.allowed).toBe(false);
+    expect(evaluateMock).toHaveBeenCalledWith('user1', { organizationId: 'orgA' });
     expect(logActionMock).toHaveBeenCalledTimes(2);
   });
 });

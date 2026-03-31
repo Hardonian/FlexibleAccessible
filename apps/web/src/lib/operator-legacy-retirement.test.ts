@@ -41,6 +41,7 @@ describe('evaluateLegacyRetirementForOperator', () => {
       { organizationId: 'orgA', dependence: 'legacy_fallback', requiresRepair: true },
       { organizationId: 'orgB', dependence: 'scoped_clean', requiresRepair: false },
     ]);
+    expect(result.readiness.evaluationScope).toBe('operator_manage_scope');
     expect(result.readiness.status).toBe('fallback_detected');
     expect(result.readiness.fallbackOrganizationIds).toEqual(['orgA']);
     expect(result.readiness.canSafelyPruneLegacyKeys).toBe(false);
@@ -54,7 +55,34 @@ describe('evaluateLegacyRetirementForOperator', () => {
     const result = await evaluateLegacyRetirementForOperator('user2');
 
     expect(result.inventory).toEqual([]);
+    expect(result.readiness.evaluationScope).toBe('operator_manage_scope');
     expect(result.readiness.status).toBe('unknown');
     expect(result.readiness.inspectedOrganizationCount).toBe(0);
+  });
+
+  it('supports strict organization-scoped evaluation to avoid cross-org inventory leakage', async () => {
+    findManyMock.mockResolvedValueOnce([
+      { organizationId: 'orgA', role: 'OWNER' },
+      { organizationId: 'orgB', role: 'ADMIN' },
+    ]);
+    findUniqueMock.mockResolvedValueOnce({
+      productFlags: {
+        operatorPrefs: { suppressedOptionalDiagnosticIds: ['svc:stripe-billing'] },
+        operatorPrefsByOrg: {
+          orgB: { suppressedOptionalDiagnosticIds: [] },
+        },
+      },
+    });
+
+    const { evaluateLegacyRetirementForOperator } = await import('./operator-legacy-retirement');
+    const result = await evaluateLegacyRetirementForOperator('user1', { organizationId: 'orgB' });
+
+    expect(result.inventory).toEqual([
+      { organizationId: 'orgB', dependence: 'scoped_clean', requiresRepair: false },
+    ]);
+    expect(result.readiness.evaluationScope).toBe('organization_scope');
+    expect(result.readiness.inspectedOrganizationCount).toBe(1);
+    expect(result.readiness.fallbackOrganizationIds).toEqual([]);
+    expect(result.readiness.reason).toContain('requested organization');
   });
 });

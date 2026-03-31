@@ -8,7 +8,7 @@ import { getRoutePlatformTruth } from "@/lib/platform-truth-cache";
 import { resolveDashboardOrgMembership } from "@/lib/route-data-boundary";
 import { RouteReliabilityNotice } from "@/components/reliability/route-reliability-notice";
 import { hasPermission } from "@aros/config";
-import { deriveAutomationEvidenceFreshness } from "@aros/shared";
+import { getAutomationEvidenceFreshnessDescriptor } from "@/lib/findings/evidence-freshness";
 import {
   ArrowLeft,
   ExternalLink,
@@ -206,14 +206,12 @@ export default async function FindingDetailPage({
     select: { completedAt: true },
   });
 
-  const automationFreshness =
-    finding.evidenceSource === "AUTOMATED_AXE"
-      ? deriveAutomationEvidenceFreshness({
-          lastVerifiedAt: finding.lastVerifiedAt,
-          latestCompletedScanCompletedAt: latestCompleted?.completedAt ?? null,
-          jobPipelinesHealthy: platformTruth.flags.jobPipelinesHealthy,
-        })
-      : null;
+  const automationFreshness = getAutomationEvidenceFreshnessDescriptor({
+    evidenceSource: finding.evidenceSource,
+    lastVerifiedAt: finding.lastVerifiedAt,
+    latestCompletedScanCompletedAt: latestCompleted?.completedAt ?? null,
+    jobPipelinesHealthy: platformTruth.flags.jobPipelinesHealthy,
+  });
 
   const remediationError =
     sp.remediation === "forbidden"
@@ -260,6 +258,26 @@ export default async function FindingDetailPage({
   };
 
   const ImpactIcon = impactConfig.icon;
+  const freshnessPanelStyles = automationFreshness
+    ? automationFreshness.tone === "success"
+      ? {
+          container: "bg-emerald-50 border-emerald-100 text-emerald-800",
+          icon: CheckCircle2,
+          iconClass: "text-emerald-600",
+        }
+      : automationFreshness.tone === "warning"
+        ? {
+            container: "bg-amber-50 border-amber-200 text-amber-800",
+            icon: AlertTriangle,
+            iconClass: "text-amber-600",
+          }
+        : {
+            container: "bg-slate-100 border-slate-200 text-slate-700",
+            icon: Info,
+            iconClass: "text-slate-500",
+          }
+    : null;
+  const FreshnessIcon = freshnessPanelStyles?.icon;
 
   return (
     <div className="space-y-6 pb-20">
@@ -664,27 +682,26 @@ export default async function FindingDetailPage({
                   <span className="text-xs font-medium text-slate-500 block mb-1.5">
                     Freshness Status
                   </span>
-                  {automationFreshness === "current" ? (
-                    <div className="flex p-2.5 bg-emerald-50 border border-emerald-100 rounded-lg text-emerald-800 text-xs">
-                      <CheckCircle2 className="h-4 w-4 mr-2 shrink-0 mt-0.5" />
+                  {automationFreshness && freshnessPanelStyles && FreshnessIcon && (
+                    <div
+                      className={`flex rounded-lg border p-2.5 text-xs shadow-sm ${freshnessPanelStyles.container}`}
+                    >
+                      <FreshnessIcon
+                        className={`mt-0.5 mr-2 h-4 w-4 shrink-0 ${freshnessPanelStyles.iconClass}`}
+                      />
                       <span>
-                        Data is highly synced. Last verified:{" "}
-                        {finding.lastVerifiedAt?.toLocaleDateString()}.
+                        <strong className="uppercase tracking-wide">
+                          {automationFreshness.badgeLabel}:
+                        </strong>{" "}
+                        {automationFreshness.detail}
+                        {finding.lastVerifiedAt && (
+                          <>
+                            {" "}
+                            Last verified:{" "}
+                            {finding.lastVerifiedAt.toLocaleDateString()}.
+                          </>
+                        )}
                       </span>
-                    </div>
-                  ) : automationFreshness === "stale_newer_scan_exists" ? (
-                    <div className="flex p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-xs shadow-sm">
-                      <AlertTriangle className="h-4 w-4 mr-2 shrink-0 text-amber-600 mt-0.5" />
-                      <span>
-                        <strong>Stale Ledger:</strong> A newer scan has
-                        completed since this was last verified (
-                        {finding.lastVerifiedAt?.toLocaleDateString()}).
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="flex p-2.5 bg-slate-100 border border-slate-200 rounded-lg text-slate-700 text-xs">
-                      <Info className="h-4 w-4 mr-2 shrink-0 mt-0.5 text-slate-500" />
-                      <span>Status unverified by recent pipeline hooks.</span>
                     </div>
                   )}
                 </div>
@@ -714,11 +731,9 @@ export default async function FindingDetailPage({
                       <div className="flex flex-col gap-1 text-sm">
                         <div className="flex items-center gap-2 flex-wrap text-xs">
                           <span className="font-semibold text-slate-900">
-                            {ev.fromStatus ?? "—"}{" "}
-                            <span className="text-slate-400 font-normal mx-0.5">
-                              →
-                            </span>{" "}
-                            {ev.toStatus}
+                            {ev.fromStatus === ev.toStatus
+                              ? `${ev.toStatus} note updated`
+                              : `${ev.fromStatus ?? "—"} → ${ev.toStatus}`}
                           </span>
                           <span className="text-slate-400">•</span>
                           <span className="text-slate-500 tabular-nums font-mono text-[10px]">

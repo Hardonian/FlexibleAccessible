@@ -61,10 +61,13 @@ export function apiError(error: unknown) {
 export function withErrorHandler(
   handler: (
     req: Request,
-    context?: { params: Record<string, string> },
+    context?: { params: Promise<Record<string, string>> },
   ) => Promise<NextResponse>,
 ) {
-  return async (req: Request, context?: { params: Record<string, string> }) => {
+  return async (
+    req: Request,
+    context?: { params: Promise<Record<string, string>> },
+  ) => {
     try {
       return await handler(req, context);
     } catch (error) {

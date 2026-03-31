@@ -70,7 +70,7 @@ export default async function ClusterDetailPage({
         )}
       </div>
 
-      <div className="card grid grid-cols-3 gap-4">
+      <div className="card grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
           <p className="text-xs text-slate-500 uppercase">Pages Affected</p>
           <p className="text-2xl font-bold text-slate-900">
@@ -129,7 +129,7 @@ export default async function ClusterDetailPage({
                     </span>
                   </div>
                   <p className="text-sm text-slate-600 mb-3">{s.rationale}</p>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <p className="text-xs text-slate-500 mb-1">Before</p>
                       <pre className="bg-red-50 rounded p-2 text-xs overflow-x-auto">
@@ -161,28 +161,34 @@ export default async function ClusterDetailPage({
         <h2 className="text-lg font-semibold text-slate-900 mb-4">
           Related Findings ({cluster.findings.length})
         </h2>
-        <ul className="space-y-2" role="list">
-          {cluster.findings.map((f: (typeof cluster.findings)[number]) => (
-            <li key={f.id}>
-              <Link
-                href={`/findings/${f.id}`}
-                className="flex items-center justify-between py-2 border-b border-slate-100 hover:bg-slate-50 px-2 rounded"
-              >
-                <div>
-                  <span className="text-sm font-medium text-slate-900">
-                    {f.description}
+        {cluster.findings.length === 0 ? (
+          <p className="text-sm text-slate-500">
+            No findings assigned to this cluster yet.
+          </p>
+        ) : (
+          <ul className="space-y-2" role="list">
+            {cluster.findings.map((f: (typeof cluster.findings)[number]) => (
+              <li key={f.id}>
+                <Link
+                  href={`/findings/${f.id}`}
+                  className="flex items-center justify-between py-2 border-b border-slate-100 hover:bg-slate-50 px-2 rounded"
+                >
+                  <div>
+                    <span className="text-sm font-medium text-slate-900">
+                      {f.description}
+                    </span>
+                    <span className="text-xs text-slate-400 ml-2">
+                      {f.ruleId}
+                    </span>
+                  </div>
+                  <span className="text-xs text-slate-500">
+                    {f._count.occurrences} occurrences
                   </span>
-                  <span className="text-xs text-slate-400 ml-2">
-                    {f.ruleId}
-                  </span>
-                </div>
-                <span className="text-xs text-slate-500">
-                  {f._count.occurrences} occurrences
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );

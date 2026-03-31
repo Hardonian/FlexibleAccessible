@@ -11,7 +11,7 @@ export function MobileNavMenuButton() {
       type="button"
       className="btn-ghost min-h-[44px] min-w-[44px] shrink-0 md:hidden"
       onClick={toggleMobileNav}
-      aria-label="Open main menu"
+      aria-label={mobileNavOpen ? "Close main menu" : "Open main menu"}
       aria-expanded={mobileNavOpen}
     >
       {MenuIcon && <MenuIcon className="h-5 w-5" aria-hidden="true" />}

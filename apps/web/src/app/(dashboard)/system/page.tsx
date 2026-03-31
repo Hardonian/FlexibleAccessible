@@ -83,6 +83,14 @@ export default async function SystemPage() {
     console.error('[system] platform health failed', e);
   }
 
+  const summary = payload?.diagnostics.summary ?? null;
+  const criticalIssueCount = summary?.criticalBlockers.length ?? 0;
+  const recoverableIssueCount = summary?.recoverableIssues.length ?? 0;
+  const warningIssueCount = summary?.warnings.length ?? 0;
+  const optionalIssueCount = summary?.optionalUnavailable.length ?? 0;
+  const unhealthyServiceCount =
+    payload?.report.services.filter((svc) => !['running', 'ready', 'disabled'].includes(svc.healthState)).length ?? 0;
+
   return (
     <div className="space-y-8">
       <div>
@@ -123,6 +131,146 @@ export default async function SystemPage() {
 
       {payload && (
         <>
+          <section
+            className="grid gap-4 xl:grid-cols-[minmax(0,1.7fr)_minmax(19rem,1fr)]"
+            aria-labelledby="overview-heading"
+          >
+            <div className="overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 text-slate-50 shadow-sm">
+              <div className="space-y-5 p-6">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
+                      Operator control plane
+                    </p>
+                    <h2 id="overview-heading" className="text-2xl font-semibold tracking-tight">
+                      Current platform truth for {membership.organization.name}
+                    </h2>
+                    <p className="max-w-2xl text-sm text-slate-300">
+                      This summary is derived from live dependency checks, queue pressure, and worker heartbeat evidence.
+                      Acknowledgements may reduce noise, but they never change the underlying health model.
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-right">
+                    <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Checked</p>
+                    <p className="mt-1 text-sm font-medium text-white">{formatIsoDateTime(payload.report.checkedAt)}</p>
+                    <p className="mt-1 text-xs text-slate-400">
+                      Route shell blocker: {platformTruth?.shellBlocker ?? 'not available'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <SummaryMetric
+                    label="Readiness"
+                    value={payload.report.bootstrap.readiness}
+                    hint={payload.report.bootstrap.installed ? 'Bootstrap installed' : 'Installation incomplete'}
+                  />
+                  <SummaryMetric
+                    label="Critical blockers"
+                    value={String(criticalIssueCount)}
+                    hint={criticalIssueCount === 0 ? 'No blocker-level diagnostics' : 'Immediate operator attention'}
+                  />
+                  <SummaryMetric
+                    label="Unhealthy services"
+                    value={String(unhealthyServiceCount)}
+                    hint={unhealthyServiceCount === 0 ? 'All core services nominal' : 'Includes degraded and failed states'}
+                  />
+                  <SummaryMetric
+                    label="Optional issues"
+                    value={String(optionalIssueCount)}
+                    hint={optionalIssueCount === 0 ? 'No optional gaps surfaced' : 'Core workflows may still continue'}
+                  />
+                </div>
+
+                <div className="grid gap-3 lg:grid-cols-3">
+                  <TruthCallout
+                    title="Operator pressure"
+                    value={
+                      criticalIssueCount > 0
+                        ? `${criticalIssueCount} blocker${criticalIssueCount === 1 ? '' : 's'}`
+                        : recoverableIssueCount > 0
+                          ? `${recoverableIssueCount} recoverable issue${recoverableIssueCount === 1 ? '' : 's'}`
+                          : 'No active blockers'
+                    }
+                    detail={
+                      criticalIssueCount > 0
+                        ? 'Core flows may be impaired. Work top-down from blockers before polishing optional integrations.'
+                        : 'The operator queue is focused on recoverable warnings and optional service gaps.'
+                    }
+                  />
+                  <TruthCallout
+                    title="User-facing risk"
+                    value={payload.routePlatformTruth.userImpactSummary.length > 0 ? 'Degraded paths exist' : 'No active impact surfaced'}
+                    detail={
+                      payload.routePlatformTruth.userImpactSummary[0] ??
+                      'No user-safe impact statements were generated from the latest report.'
+                    }
+                  />
+                  <TruthCallout
+                    title="Operator hints"
+                    value={warningIssueCount > 0 ? `${warningIssueCount} warning${warningIssueCount === 1 ? '' : 's'}` : 'No active warnings'}
+                    detail={
+                      payload.routePlatformTruth.operatorRemediationHints[0] ??
+                      'Route-level remediation hints are clear at the moment.'
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+
+            <section className="card space-y-4" aria-labelledby="operator-focus-heading">
+              <div>
+                <h2 id="operator-focus-heading" className="text-lg font-semibold text-slate-900">
+                  Focus next
+                </h2>
+                <p className="mt-1 text-sm text-slate-600">
+                  A compact operator handoff from live data so the next action is explicit on desktop and mobile.
+                </p>
+              </div>
+              <ul className="space-y-3 text-sm">
+                <FocusRow
+                  label="Fix first"
+                  value={
+                    criticalIssueCount > 0
+                      ? `${criticalIssueCount} blocker${criticalIssueCount === 1 ? '' : 's'} still block readiness`
+                      : 'No blocker-level issues are currently open'
+                  }
+                />
+                <FocusRow
+                  label="Repair path"
+                  value={
+                    payload.operatorFlagsStatus.requiresRepair
+                      ? 'Legacy operator-flag fallback is active for this org'
+                      : 'No org-scoped flag repair is currently required'
+                  }
+                />
+                <FocusRow
+                  label="Worker truth"
+                  value={
+                    payload.routePlatformTruth.flags.workerRunning
+                      ? 'Workers are reporting live heartbeat data'
+                      : 'Workers are not currently reporting healthy heartbeat data'
+                  }
+                />
+                <FocusRow
+                  label="Queue truth"
+                  value={
+                    payload.routePlatformTruth.flags.jobPipelinesHealthy
+                      ? 'Job pipelines are processing or degraded-but-running'
+                      : 'Job pipelines are not healthy enough to trust automation freshness'
+                  }
+                />
+              </ul>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+                <p className="font-medium text-slate-900">JSON and audit trail</p>
+                <p className="mt-1">
+                  The authenticated JSON API and organization-scoped audit feed below remain the canonical operator
+                  evidence surfaces for repeat checks and release sign-off.
+                </p>
+              </div>
+            </section>
+          </section>
+
           <section className="card space-y-4" aria-labelledby="setup-heading">
             <h2 id="setup-heading" className="text-lg font-semibold text-slate-900">
               First-run &amp; setup checklist
@@ -156,31 +304,50 @@ export default async function SystemPage() {
           </section>
 
           <section className="card space-y-4" aria-labelledby="operator-actions-heading">
-            <h2 id="operator-actions-heading" className="text-lg font-semibold text-slate-900">
-              Operator actions
-            </h2>
-            <ul className="text-sm text-slate-600 space-y-1 list-disc list-inside">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 id="operator-actions-heading" className="text-lg font-semibold text-slate-900">
+                  Operator actions
+                </h2>
+                <p className="mt-1 text-sm text-slate-600">
+                  In-product actions are constrained to organization-scoped truth. Deployment-managed configuration is
+                  summarized here but never edited from this screen.
+                </p>
+              </div>
+              <div className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700">
+                {canRunOperatorActions ? 'Manage enabled' : 'View-only mode'}
+              </div>
+            </div>
+            <div className="grid gap-3 lg:grid-cols-2">
               {payload.operatorActions.map((a) => (
-                <li key={a.id}>
-                  <span className="font-medium text-slate-800">{a.label}</span> — {a.description}
-                </li>
+                <div key={a.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm">
+                  <p className="font-medium text-slate-900">{a.label}</p>
+                  <p className="mt-1 text-slate-600">{a.description}</p>
+                  <p className="mt-2 font-mono text-[11px] text-slate-500">
+                    {a.method} {a.pathSuffix}
+                  </p>
+                </div>
               ))}
-            </ul>
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
-              <p>
-                Operator flag state source:{' '}
-                <span className="font-mono text-xs">{payload.operatorFlagsStatus.source}</span>
-                {payload.operatorFlagsStatus.requiresRepair
-                  ? ' (legacy fallback active; backfill recommended).'
-                  : ' (organization-scoped state or no operator flags detected).'}
-              </p>
-              <p className="mt-1">
-                Legacy retirement dependence:{' '}
-                <span className="font-mono text-xs">{payload.legacyRetirement.currentOrganization.dependence}</span>
-                {payload.legacyRetirement.currentOrganization.requiresRepair
-                  ? ' (this org still depends on compatibility fallback).'
-                  : ' (this org is not currently using legacy fallback).'}
-              </p>
+            </div>
+            <div className="grid gap-3 lg:grid-cols-2">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+                <p className="font-medium text-slate-900">Operator flag state source</p>
+                <p className="mt-1">
+                  <span className="font-mono text-xs">{payload.operatorFlagsStatus.source}</span>
+                  {payload.operatorFlagsStatus.requiresRepair
+                    ? ' — legacy fallback is still active for this organization.'
+                    : ' — organization-scoped state is in use, or no operator flags are present.'}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+                <p className="font-medium text-slate-900">Legacy retirement dependence</p>
+                <p className="mt-1">
+                  <span className="font-mono text-xs">{payload.legacyRetirement.currentOrganization.dependence}</span>
+                  {payload.legacyRetirement.currentOrganization.requiresRepair
+                    ? ' — this org still needs compatibility-fallback repair.'
+                    : ' — this org is not currently depending on compatibility fallback.'}
+                </p>
+              </div>
             </div>
             {canRunOperatorActions ? (
               <OperatorControlPlaneClient
@@ -215,10 +382,13 @@ export default async function SystemPage() {
             ) : (
               <ul className="divide-y divide-slate-100 text-sm">
                 {payload.recentPlatformActions.map((row: (typeof payload.recentPlatformActions)[number]) => (
-                  <li key={row.id} className="py-2 flex flex-wrap gap-2 justify-between">
-                    <span className="font-mono text-xs text-slate-700">{row.action}</span>
-                    <time className="text-slate-500 text-xs" dateTime={row.createdAt.toISOString()}>
-                      {row.createdAt.toISOString()}
+                  <li key={row.id} className="flex flex-wrap items-start justify-between gap-3 py-3">
+                    <div>
+                      <p className="font-mono text-xs text-slate-700">{row.action}</p>
+                      <p className="mt-1 text-xs text-slate-500">Organization-scoped control-plane event</p>
+                    </div>
+                    <time className="text-right text-xs text-slate-500" dateTime={row.createdAt.toISOString()}>
+                      {formatIsoDateTime(row.createdAt.toISOString())}
                     </time>
                   </li>
                 ))}
@@ -572,4 +742,61 @@ function DependencyRow({
       </span>
     </li>
   );
+}
+
+function SummaryMetric({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  hint: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+      <p className="text-xs uppercase tracking-[0.14em] text-slate-400">{label}</p>
+      <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
+      <p className="mt-1 text-xs text-slate-300">{hint}</p>
+    </div>
+  );
+}
+
+function TruthCallout({
+  title,
+  value,
+  detail,
+}: {
+  title: string;
+  value: string;
+  detail: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+      <p className="text-xs uppercase tracking-[0.14em] text-slate-400">{title}</p>
+      <p className="mt-2 text-sm font-semibold text-white">{value}</p>
+      <p className="mt-2 text-sm text-slate-300">{detail}</p>
+    </div>
+  );
+}
+
+function FocusRow({ label, value }: { label: string; value: string }) {
+  return (
+    <li className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{label}</p>
+      <p className="mt-1 text-sm text-slate-800">{value}</p>
+    </li>
+  );
+}
+
+function formatIsoDateTime(value: string) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat('en-CA', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(parsed);
 }

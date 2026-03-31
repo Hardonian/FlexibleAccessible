@@ -14,7 +14,7 @@ export interface LegacyRetirementOrgInventoryRow {
 }
 
 export interface LegacyRetirementReadiness {
-  evaluationScope: 'operator_manage_scope';
+  evaluationScope: 'operator_manage_scope' | 'organization_scope';
   status: 'fallback_detected' | 'no_fallback_observed' | 'unknown';
   inspectedOrganizationCount: number;
   fallbackOrganizationCount: number;
@@ -28,7 +28,14 @@ export interface LegacyRetirementEvaluation {
   readiness: LegacyRetirementReadiness;
 }
 
-export async function evaluateLegacyRetirementForOperator(userId: string): Promise<LegacyRetirementEvaluation> {
+interface EvaluateLegacyRetirementOptions {
+  organizationId?: string;
+}
+
+export async function evaluateLegacyRetirementForOperator(
+  userId: string,
+  options?: EvaluateLegacyRetirementOptions
+): Promise<LegacyRetirementEvaluation> {
   const [memberships, platformRow] = await Promise.all([
     prisma.membership.findMany({
       where: { userId },
@@ -44,13 +51,17 @@ export async function evaluateLegacyRetirementForOperator(userId: string): Promi
   const manageableOrgIds = memberships
     .filter((membership) => hasPermission(membership.role as MemberRole, 'org:system:manage'))
     .map((membership) => membership.organizationId);
+  const evaluationOrgIds = options?.organizationId
+    ? manageableOrgIds.filter((organizationId) => organizationId === options.organizationId)
+    : manageableOrgIds;
+  const evaluationScope = options?.organizationId ? 'organization_scope' : 'operator_manage_scope';
 
   const flagsRecord =
     platformRow?.productFlags && typeof platformRow.productFlags === 'object' && !Array.isArray(platformRow.productFlags)
       ? (platformRow.productFlags as Record<string, unknown>)
       : {};
 
-  const inventory = manageableOrgIds.map((organizationId) => {
+  const inventory = evaluationOrgIds.map((organizationId) => {
     const resolution = resolveOperatorFlagsForOrganization(flagsRecord, organizationId);
     const dependence = deriveLegacyDependenceStatus(resolution);
     return {
@@ -67,14 +78,18 @@ export async function evaluateLegacyRetirementForOperator(userId: string): Promi
     inspectedOrganizationCount === 0 ? 'unknown' : fallbackOrganizationCount > 0 ? 'fallback_detected' : 'no_fallback_observed';
 
   const reason =
-    status === 'unknown'
-      ? 'No organizations with org:system:manage were inspectable for this operator.'
-      : 'Evaluation is limited to organizations this operator can manage; global prune safety is intentionally not asserted.';
+    status === 'unknown' && options?.organizationId
+      ? 'Requested organization is not inspectable with org:system:manage for this operator.'
+      : status === 'unknown'
+        ? 'No organizations with org:system:manage were inspectable for this operator.'
+        : options?.organizationId
+          ? 'Evaluation is scoped to the requested organization; global prune safety is intentionally not asserted.'
+          : 'Evaluation is limited to organizations this operator can manage; global prune safety is intentionally not asserted.';
 
   return {
     inventory,
     readiness: {
-      evaluationScope: 'operator_manage_scope',
+      evaluationScope,
       status,
       inspectedOrganizationCount,
       fallbackOrganizationCount,

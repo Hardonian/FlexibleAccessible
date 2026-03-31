@@ -10,6 +10,7 @@ import {
 import { RouteReliabilityNotice } from "@/components/reliability/route-reliability-notice";
 import { hasPermission } from "@aros/config";
 import { StatusBadge } from "@aros/ui";
+import { getAutomationEvidenceFreshnessDescriptor } from "@/lib/findings/evidence-freshness";
 
 type FindingListRow = Prisma.CanonicalFindingGetPayload<{
   include: {
@@ -96,37 +97,44 @@ export default async function FindingsPage({
   const limit = 20;
   const skip = (page - 1) * limit;
 
-  const where: Record<string, unknown> = {
-    occurrences: {
-      some: {
-        page: {
-          site: { workspace: { organizationId: orgRes.organizationId } },
-          ...(params.siteId ? { siteId: params.siteId } : {}),
+  const buildFindingsWhere = (
+    organizationId: string,
+  ): Prisma.CanonicalFindingWhereInput => {
+    const where: Prisma.CanonicalFindingWhereInput = {
+      occurrences: {
+        some: {
+          page: {
+            site: { workspace: { organizationId } },
+            ...(params.siteId ? { siteId: params.siteId } : {}),
+          },
         },
       },
-    },
+    };
+
+    if (params.severity) {
+      where.impact = params.severity as Severity;
+    }
+    if (params.status) {
+      where.status = params.status as FindingStatus;
+    }
+    if (params.ruleId) {
+      where.ruleId = params.ruleId;
+    }
+    if (
+      params.evidenceSource &&
+      ["AUTOMATED_AXE", "MANUAL_REVIEW", "IMPORTED"].includes(
+        params.evidenceSource,
+      )
+    ) {
+      where.evidenceSource = params.evidenceSource as EvidenceSource;
+    }
+
+    return where;
   };
 
-  if (params.severity) {
-    where.impact = params.severity as Severity;
-  }
-  if (params.status) {
-    where.status = params.status as FindingStatus;
-  }
-  if (params.ruleId) {
-    where.ruleId = params.ruleId;
-  }
-  if (
-    params.evidenceSource &&
-    ["AUTOMATED_AXE", "MANUAL_REVIEW", "IMPORTED"].includes(
-      params.evidenceSource,
-    )
-  ) {
-    where.evidenceSource = params.evidenceSource as EvidenceSource;
-  }
-
-  const listResult = await runOrgScopedQuery(orgRes, async () => {
-    const [findings, total] = await Promise.all([
+  const listResult = await runOrgScopedQuery(orgRes, async (organizationId) => {
+    const where = buildFindingsWhere(organizationId);
+    const [findings, total, latestCompletedScan] = await Promise.all([
       prisma.canonicalFinding.findMany({
         where,
         orderBy: [{ impact: "asc" }, { occurrenceCount: "desc" }],
@@ -139,8 +147,21 @@ export default async function FindingsPage({
         },
       }),
       prisma.canonicalFinding.count({ where }),
+      prisma.scanRun.findFirst({
+        where: {
+          status: "COMPLETED",
+          completedAt: { not: null },
+          site: { workspace: { organizationId } },
+        },
+        orderBy: { completedAt: "desc" },
+        select: { completedAt: true },
+      }),
     ]);
-    return { findings, total };
+    return {
+      findings,
+      total,
+      latestCompletedScanCompletedAt: latestCompletedScan?.completedAt ?? null,
+    };
   });
 
   if (!listResult.ok) {
@@ -160,7 +181,7 @@ export default async function FindingsPage({
     );
   }
 
-  const { findings, total } = listResult.data;
+  const { findings, total, latestCompletedScanCompletedAt } = listResult.data;
   const totalPages = Math.ceil(total / limit);
 
   return (
@@ -174,6 +195,20 @@ export default async function FindingsPage({
           </p>
         </div>
       </div>
+
+      {!platformTruth.flags.jobPipelinesHealthy && (
+        <RouteReliabilityNotice
+          variant="warning"
+          title="Automation freshness is degraded"
+          showSystemLink={canViewSystem}
+        >
+          <p>
+            Findings still reflect stored organization data, but workers or
+            queues are degraded. Automated evidence freshness is shown as
+            degraded until pipelines recover.
+          </p>
+        </RouteReliabilityNotice>
+      )}
 
       <div className="card">
         <form className="flex flex-wrap gap-4" method="GET">
@@ -252,7 +287,12 @@ export default async function FindingsPage({
       ) : (
         <div className="space-y-3">
           {findings.map((finding) => (
-            <FindingRow key={finding.id} finding={finding} />
+            <FindingRow
+              key={finding.id}
+              finding={finding}
+              latestCompletedScanCompletedAt={latestCompletedScanCompletedAt}
+              jobPipelinesHealthy={platformTruth.flags.jobPipelinesHealthy}
+            />
           ))}
         </div>
       )}
@@ -289,8 +329,27 @@ export default async function FindingsPage({
   );
 }
 
-function FindingRow({ finding }: { finding: FindingListRow }) {
-  const freshness = deriveFindingFreshness(finding);
+function FindingRow({
+  finding,
+  latestCompletedScanCompletedAt,
+  jobPipelinesHealthy,
+}: {
+  finding: FindingListRow;
+  latestCompletedScanCompletedAt: Date | null;
+  jobPipelinesHealthy: boolean;
+}) {
+  const freshness = getAutomationEvidenceFreshnessDescriptor({
+    evidenceSource: finding.evidenceSource,
+    lastVerifiedAt: finding.lastVerifiedAt,
+    latestCompletedScanCompletedAt,
+    jobPipelinesHealthy,
+  });
+
+  const freshnessToneClass =
+    freshness?.tone === "warning"
+      ? "bg-amber-50 text-amber-700 border border-amber-200"
+      : "bg-slate-100 text-slate-700 border border-slate-200";
+
   return (
     <Link
       href={`/findings/${finding.id}`}
@@ -314,12 +373,13 @@ function FindingRow({ finding }: { finding: FindingListRow }) {
             </span>
             <span className="text-xs text-slate-400">{finding.ruleId}</span>
             <EvidenceSourceBadge source={finding.evidenceSource} />
-            {freshness === "stale" && (
+            {freshness && freshness.freshness !== "current" && (
               <span
-                className="badge bg-amber-50 text-amber-700 border border-amber-200"
-                title="Newer scan data exists but this finding has not been re-verified"
+                className={`badge ${freshnessToneClass}`}
+                title={freshness.detail}
+                aria-label={`Automation evidence freshness: ${freshness.badgeLabel}. ${freshness.detail}`}
               >
-                stale
+                {freshness.badgeLabel}
               </span>
             )}
             {finding.cluster && (
@@ -351,19 +411,6 @@ function FindingRow({ finding }: { finding: FindingListRow }) {
       </div>
     </Link>
   );
-}
-
-function deriveFindingFreshness(finding: {
-  lastVerifiedAt: Date | null;
-  lastSeenAt: Date;
-  evidenceSource: string;
-}): "current" | "stale" | "unknown" {
-  if (finding.evidenceSource !== "AUTOMATED_AXE") return "unknown";
-  if (!finding.lastVerifiedAt) return "stale";
-  const daysSinceVerified =
-    (Date.now() - finding.lastVerifiedAt.getTime()) / (1000 * 60 * 60 * 24);
-  if (daysSinceVerified > 30) return "stale";
-  return "current";
 }
 
 function EvidenceSourceBadge({ source }: { source: string }) {

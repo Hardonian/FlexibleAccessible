@@ -40,7 +40,8 @@ export async function PATCH(
     }
 
     const ids = parsedBody.data.suppressedOptionalDiagnosticIds;
-    const validation = validateSuppressedOptionalDiagnosticIds(ids);
+    const normalizedIds = [...new Set(ids)];
+    const validation = validateSuppressedOptionalDiagnosticIds(normalizedIds);
     if (!validation.ok) {
       const invalid = validation.invalid;
       await logOperatorPlatformAction({
@@ -67,7 +68,7 @@ export async function PATCH(
       ...current,
       prefs: {
         ...current.prefs,
-        suppressedOptionalDiagnosticIds: [...new Set(ids)],
+        suppressedOptionalDiagnosticIds: normalizedIds,
       },
     }));
 
@@ -76,11 +77,14 @@ export async function PATCH(
       userId: ctx.user.id,
       action: 'platform.operator_prefs.updated',
       outcome: 'success',
-      metadata: { count: ids.length },
+      metadata: { count: normalizedIds.length },
     });
 
     const payload = await getPlatformHealthPayload(organizationId, ctx.user.id);
-    return NextResponse.json({ success: true, data: { suppressedOptionalDiagnosticIds: ids, payload } });
+    return NextResponse.json({
+      success: true,
+      data: { suppressedOptionalDiagnosticIds: normalizedIds, payload },
+    });
   } catch (e) {
     return apiError(e);
   }

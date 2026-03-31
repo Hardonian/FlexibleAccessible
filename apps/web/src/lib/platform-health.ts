@@ -68,7 +68,9 @@ export async function getPlatformHealthPayload(
     organizationId != null
       ? await getRecentPlatformAuditEntries(organizationId).catch(() => [])
       : [];
-  const operatorScope = actorUserId ? await evaluateLegacyRetirementForOperator(actorUserId).catch(() => null) : null;
+  const operatorScope = actorUserId
+    ? await evaluateLegacyRetirementForOperator(actorUserId, organizationId ? { organizationId } : undefined).catch(() => null)
+    : null;
   const currentDependence = deriveLegacyDependenceStatus(operatorFlagsResolution);
 
   return {

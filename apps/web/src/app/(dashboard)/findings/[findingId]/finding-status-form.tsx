@@ -37,17 +37,14 @@ export function FindingStatusForm({
     <form action={updateFindingStatusAction} className="mt-1 space-y-3">
       <input type="hidden" name="findingId" value={findingId} />
       <div>
-        <label htmlFor="status-select" className="sr-only">
-          Finding status
+        <label htmlFor="status-select" className="block text-xs text-slate-500 mb-1">
+          Remediation status
         </label>
         <select
           id="status-select"
           name="status"
           defaultValue={defaultValue}
           className="input text-sm max-w-md"
-          onChange={(e) => {
-            e.currentTarget.form?.requestSubmit();
-          }}
         >
           {STATUS_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
@@ -55,10 +52,13 @@ export function FindingStatusForm({
             </option>
           ))}
         </select>
+        <p className="mt-1 text-xs text-slate-500">
+          Choose the new status, add an optional note, then apply once so both values persist together.
+        </p>
       </div>
       <div>
         <label htmlFor="status-note" className="block text-xs text-slate-500 mb-1">
-          Note (optional, stored on status change)
+          Note (optional, stored when you apply)
         </label>
         <textarea
           id="status-note"

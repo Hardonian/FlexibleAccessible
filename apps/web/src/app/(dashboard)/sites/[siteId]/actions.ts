@@ -1,13 +1,13 @@
-'use server';
+"use server";
 
-import { redirect } from 'next/navigation';
-import { requireSession } from '@/lib/session';
-import { prisma } from '@/lib/db';
-import { getCrawlQueue, type CrawlJobData } from '@/lib/queue';
+import { redirect } from "next/navigation";
+import { requireSession } from "@/lib/session";
+import { prisma } from "@/lib/db";
+import { getCrawlQueue, type CrawlJobData } from "@/lib/queue";
 
 export async function startCrawlAction(formData: FormData) {
   const user = await requireSession();
-  const siteId = formData.get('siteId') as string;
+  const siteId = formData.get("siteId") as string;
 
   const site = await prisma.site.findUnique({
     where: { id: siteId },
@@ -27,12 +27,18 @@ export async function startCrawlAction(formData: FormData) {
   });
 
   if (!site || site.workspace.organization.memberships.length === 0) {
-    throw new Error('Site not found');
+    redirect(`/sites?error=not_found`);
+  }
+
+  // Verify the user's membership is for THIS site's org (not any org)
+  const membership = site.workspace.organization.memberships[0];
+  if (!membership) {
+    redirect(`/sites?error=forbidden`);
   }
 
   // Check for running crawl
   const runningCrawl = await prisma.crawlRun.findFirst({
-    where: { siteId, status: { in: ['PENDING', 'RUNNING'] } },
+    where: { siteId, status: { in: ["PENDING", "RUNNING"] } },
   });
   if (runningCrawl) {
     redirect(`/sites/${siteId}`);
@@ -40,15 +46,15 @@ export async function startCrawlAction(formData: FormData) {
 
   const config = site.crawlConfig;
   const crawlRun = await prisma.crawlRun.create({
-    data: { siteId, status: 'PENDING' },
+    data: { siteId, status: "PENDING" },
   });
 
   await prisma.auditLog.create({
     data: {
       organizationId: site.workspace.organizationId,
       userId: user.id,
-      action: 'crawl.started',
-      entityType: 'CrawlRun',
+      action: "crawl.started",
+      entityType: "CrawlRun",
       entityId: crawlRun.id,
     },
   });
@@ -65,21 +71,22 @@ export async function startCrawlAction(formData: FormData) {
         excludePatterns: config?.excludePatterns ?? [],
         respectRobots: config?.respectRobots ?? true,
         renderJavaScript: config?.renderJavaScript ?? true,
-        viewports: (config?.viewports as Array<{ width: number; height: number }>) ?? [
-          { width: 1280, height: 720 },
-        ],
+        viewports: (config?.viewports as Array<{
+          width: number;
+          height: number;
+        }>) ?? [{ width: 1280, height: 720 }],
       },
     };
-    await getCrawlQueue().add('crawl', jobData, {
+    await getCrawlQueue().add("crawl", jobData, {
       attempts: 3,
-      backoff: { type: 'exponential', delay: 5000 },
+      backoff: { type: "exponential", delay: 5000 },
     });
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Queue add failed';
+    const message = e instanceof Error ? e.message : "Queue add failed";
     await prisma.crawlRun.update({
       where: { id: crawlRun.id },
       data: {
-        status: 'FAILED',
+        status: "FAILED",
         errorMessage: `Crawl queue unavailable: ${message}`,
         completedAt: new Date(),
       },
@@ -88,12 +95,13 @@ export async function startCrawlAction(formData: FormData) {
       data: {
         organizationId: site.workspace.organizationId,
         userId: user.id,
-        action: 'crawl.enqueue_failed',
-        entityType: 'CrawlRun',
+        action: "crawl.enqueue_failed",
+        entityType: "CrawlRun",
         entityId: crawlRun.id,
         metadata: { siteId, message },
       },
     });
+    redirect(`/sites/${siteId}?crawl_error=queue_unavailable`);
   }
 
   redirect(`/sites/${siteId}`);

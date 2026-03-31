@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useCallback, useState, useTransition } from 'react';
+import { useCallback, useState, useTransition, type ReactNode } from 'react';
 import type { PlatformDiagnosticIssue } from '@aros/core-services';
 
 interface Props {
@@ -26,6 +26,9 @@ export function OperatorControlPlaneClient({
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [activeAction, setActiveAction] = useState<
+    'recheck' | 'backfill' | 'retirement' | 'suppressions' | null
+  >(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [suppressed, setSuppressed] = useState<Set<string>>(() => new Set(initialSuppressedIds));
@@ -33,9 +36,14 @@ export function OperatorControlPlaneClient({
 
   const base = `/api/org/${organizationId}/platform`;
 
-  const runRecheck = useCallback(() => {
+  const beginAction = useCallback((action: NonNullable<typeof activeAction>) => {
+    setActiveAction(action);
     setActionError(null);
     setActionMessage(null);
+  }, []);
+
+  const runRecheck = useCallback(() => {
+    beginAction('recheck');
     startTransition(async () => {
       try {
         const res = await fetch(`${base}/recheck`, { method: 'POST' });
@@ -48,13 +56,14 @@ export function OperatorControlPlaneClient({
         router.refresh();
       } catch {
         setActionError('Network error during recheck.');
+      } finally {
+        setActiveAction(null);
       }
     });
-  }, [base, router]);
+  }, [base, beginAction, router]);
 
   const runLegacyBackfill = useCallback(() => {
-    setActionError(null);
-    setActionMessage(null);
+    beginAction('backfill');
     startTransition(async () => {
       try {
         const res = await fetch(`${base}/repair-legacy-flags`, { method: 'POST' });
@@ -74,13 +83,14 @@ export function OperatorControlPlaneClient({
         router.refresh();
       } catch {
         setActionError('Network error during legacy backfill.');
+      } finally {
+        setActiveAction(null);
       }
     });
-  }, [base, router]);
+  }, [base, beginAction, router]);
 
   const saveSuppressions = useCallback(() => {
-    setActionError(null);
-    setActionMessage(null);
+    beginAction('suppressions');
     startTransition(async () => {
       try {
         const res = await fetch(`${base}/operator-preferences`, {
@@ -97,13 +107,14 @@ export function OperatorControlPlaneClient({
         router.refresh();
       } catch {
         setActionError('Network error saving preferences.');
+      } finally {
+        setActiveAction(null);
       }
     });
-  }, [base, router, suppressed]);
+  }, [base, beginAction, router, suppressed]);
 
   const evaluateRetirementReadiness = useCallback(() => {
-    setActionError(null);
-    setActionMessage(null);
+    beginAction('retirement');
     startTransition(async () => {
       try {
         const res = await fetch(`${base}/legacy-retirement`, { method: 'POST' });
@@ -120,9 +131,11 @@ export function OperatorControlPlaneClient({
         router.refresh();
       } catch {
         setActionError('Network error evaluating legacy retirement readiness.');
+      } finally {
+        setActiveAction(null);
       }
     });
-  }, [base, router]);
+  }, [base, beginAction, router]);
 
   const toggleSuppressed = (id: string, checked: boolean) => {
     setSuppressed((prev) => {
@@ -135,116 +148,208 @@ export function OperatorControlPlaneClient({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          data-testid="platform-recheck-button"
-          onClick={runRecheck}
-          disabled={pending}
-          className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60"
-        >
-          {pending ? 'Running checks…' : 'Recheck readiness'}
-        </button>
-        <p className="text-sm text-slate-600 max-w-xl">
-          Runs live checks synchronously on the server. Results replace the data below after refresh — there is no hidden
-          optimistic green state.
-        </p>
-      </div>
-
-      {fallbackModeActive && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900" role="status">
-          <p className="font-medium">Compatibility mode active</p>
-          <p className="mt-1">
-            This organization is currently reading legacy deployment-wide operator flags. Run backfill to copy them into
-            organization-scoped keys and retire silent shared-state fallback.
-          </p>
-          <button
-            type="button"
-            onClick={runLegacyBackfill}
-            disabled={pending}
-            className="mt-3 rounded-md border border-amber-300 bg-white px-3 py-1.5 text-sm font-medium text-amber-900 hover:bg-amber-100 disabled:opacity-60"
-          >
-            Backfill legacy operator flags
-          </button>
+      <div
+        className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+        aria-live="polite"
+        aria-busy={pending}
+      >
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-slate-900">Live operator actions</p>
+            <p className="max-w-2xl text-sm text-slate-600">
+              These controls run against live platform state. They never mark services healthy optimistically and they
+              do not hide required infrastructure work.
+            </p>
+          </div>
+          <div className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700">
+            {pending ? 'Action in progress' : 'Idle'}
+          </div>
         </div>
-      )}
 
-      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700" role="status">
-        <p className="font-medium">Legacy retirement readiness</p>
-        <p className="mt-1">
-          Status:{' '}
-          <span className="font-mono text-xs">
-            {retirementReadiness?.status ?? 'unknown'}
-          </span>{' '}
-          · inspected orgs:{' '}
-          <span className="font-mono text-xs">
-            {retirementReadiness?.inspectedOrganizationCount ?? 0}
-          </span>{' '}
-          · fallback orgs:{' '}
-          <span className="font-mono text-xs">
-            {retirementReadiness?.fallbackOrganizationCount ?? 0}
-          </span>
-        </p>
-        <p className="mt-1 text-slate-600">{retirementReadiness?.reason ?? 'Run evaluation to refresh retirement evidence.'}</p>
-        <button
-          type="button"
-          onClick={evaluateRetirementReadiness}
-          disabled={pending}
-          className="mt-3 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-800 hover:bg-slate-100 disabled:opacity-60"
-        >
-          Evaluate retirement readiness
-        </button>
-      </div>
-
-      {actionError && (
-        <p className="text-sm text-red-800" role="alert">
-          {actionError}
-        </p>
-      )}
-      {actionMessage && (
-        <p className="text-sm text-slate-700" role="status">
-          {actionMessage}
-        </p>
-      )}
-
-      {optionalIssueIds.length > 0 && (
-        <fieldset className="rounded-lg border border-slate-200 bg-slate-50/80 p-4">
-          <legend className="px-1 text-sm font-medium text-slate-900">Optional service banner suppression</legend>
-          <p className="mt-2 text-xs text-slate-600">
-            Organization-scoped preference. It hides specific optional-service diagnostics from summary banners; it does
-            not disable integrations or change environment variables.
-          </p>
-          <ul className="mt-3 space-y-2">
-            {optionalIssueIds.map((id) => (
-              <li key={id} className="flex items-start gap-2 text-sm">
-                <input
-                  id={`suppress-${id}`}
-                  type="checkbox"
-                  className="mt-1 h-4 w-4 rounded border-slate-300"
-                  checked={suppressed.has(id)}
-                  onChange={(e) => toggleSuppressed(id, e.target.checked)}
-                  aria-describedby={`suppress-${id}-hint`}
-                />
-                <label htmlFor={`suppress-${id}`} className="text-slate-800">
-                  <span className="font-mono text-xs text-slate-600">{id}</span>
-                  <span id={`suppress-${id}-hint`} className="sr-only">
-                    When checked, this optional diagnostic is suppressed from operator summary banners.
-                  </span>
-                </label>
-              </li>
-            ))}
-          </ul>
-          <button
-            type="button"
-            onClick={saveSuppressions}
-            disabled={pending}
-            className="mt-3 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-800 hover:bg-slate-50 disabled:opacity-60"
+        {(actionError || actionMessage) && (
+          <div
+            className={`mt-4 rounded-lg border px-3 py-2 text-sm ${
+              actionError
+                ? 'border-red-200 bg-red-50 text-red-900'
+                : 'border-emerald-200 bg-emerald-50 text-emerald-900'
+            }`}
+            role={actionError ? 'alert' : 'status'}
           >
-            Save suppression preferences
-          </button>
-        </fieldset>
-      )}
+            {actionError ?? actionMessage}
+          </div>
+        )}
+
+        <div className="mt-4 grid gap-3 lg:grid-cols-2">
+          <ActionPanel
+            title="Recheck readiness"
+            eyebrow="Runtime truth"
+            description="Runs synchronous server-side checks and refreshes this report with current dependency, queue, and worker evidence."
+            badge={pending && activeAction === 'recheck' ? 'Running now' : 'Safe to rerun'}
+            onClick={runRecheck}
+            disabled={pending}
+            buttonLabel={pending && activeAction === 'recheck' ? 'Running checks…' : 'Run live recheck'}
+            buttonTestId="platform-recheck-button"
+          />
+
+          <ActionPanel
+            title="Retirement evidence"
+            eyebrow="Legacy cleanup"
+            description="Re-evaluates whether any organizations you can manage still depend on compatibility fallback keys."
+            badge={retirementReadiness?.status ?? 'unknown'}
+            onClick={evaluateRetirementReadiness}
+            disabled={pending}
+            buttonLabel={
+              pending && activeAction === 'retirement'
+                ? 'Evaluating…'
+                : 'Evaluate retirement readiness'
+            }
+          >
+            <dl className="grid gap-2 text-xs text-slate-600 sm:grid-cols-2">
+              <div className="rounded-md bg-slate-50 px-3 py-2">
+                <dt className="text-slate-500">Inspectable orgs</dt>
+                <dd className="mt-1 font-mono text-sm text-slate-900">
+                  {retirementReadiness?.inspectedOrganizationCount ?? 0}
+                </dd>
+              </div>
+              <div className="rounded-md bg-slate-50 px-3 py-2">
+                <dt className="text-slate-500">Fallback orgs</dt>
+                <dd className="mt-1 font-mono text-sm text-slate-900">
+                  {retirementReadiness?.fallbackOrganizationCount ?? 0}
+                </dd>
+              </div>
+            </dl>
+            <p className="text-xs text-slate-600">
+              {retirementReadiness?.reason ?? 'Run evaluation to refresh retirement evidence.'}
+            </p>
+          </ActionPanel>
+
+          <ActionPanel
+            title="Compatibility fallback"
+            eyebrow="Organization-scoped truth"
+            description={
+              fallbackModeActive
+                ? 'This org is still reading legacy deployment-wide operator flags. Backfill copies them into org-scoped state without pretending the fallback is retired.'
+                : 'This org is not currently using the legacy shared-state operator flag fallback.'
+            }
+            badge={fallbackModeActive ? 'Repair recommended' : 'Scoped state only'}
+            onClick={runLegacyBackfill}
+            disabled={pending || !fallbackModeActive}
+            buttonLabel={
+              pending && activeAction === 'backfill'
+                ? 'Backfilling…'
+                : fallbackModeActive
+                  ? 'Backfill legacy operator flags'
+                  : 'No backfill needed'
+            }
+            tone={fallbackModeActive ? 'amber' : 'emerald'}
+          >
+            <p className={`text-xs ${fallbackModeActive ? 'text-amber-800' : 'text-emerald-800'}`}>
+              {fallbackModeActive
+                ? 'Run this once to eliminate silent shared-state reads for this organization.'
+                : 'No compatibility repair action is currently required for this organization.'}
+            </p>
+          </ActionPanel>
+
+          {optionalIssueIds.length > 0 && (
+            <ActionPanel
+              title="Optional banner suppression"
+              eyebrow="Operator preference"
+              description="Hides selected optional-service diagnostics from summary banners for this organization only. It never disables the integrations themselves."
+              badge={`${suppressed.size}/${optionalIssueIds.length} hidden`}
+              onClick={saveSuppressions}
+              disabled={pending}
+              buttonLabel={
+                pending && activeAction === 'suppressions'
+                  ? 'Saving…'
+                  : 'Save suppression preferences'
+              }
+            >
+              <fieldset>
+                <legend className="sr-only">Optional service banner suppression</legend>
+                <ul className="space-y-2">
+                  {optionalIssueIds.map((id) => (
+                    <li key={id} className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm">
+                      <label htmlFor={`suppress-${id}`} className="flex items-start gap-3">
+                        <input
+                          id={`suppress-${id}`}
+                          type="checkbox"
+                          className="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
+                          checked={suppressed.has(id)}
+                          onChange={(e) => toggleSuppressed(id, e.target.checked)}
+                          aria-describedby={`suppress-${id}-hint`}
+                        />
+                        <span className="space-y-1">
+                          <span className="font-mono text-xs text-slate-700">{id}</span>
+                          <span id={`suppress-${id}-hint`} className="block text-xs text-slate-500">
+                            Hide this optional diagnostic from banner summaries for this organization.
+                          </span>
+                        </span>
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              </fieldset>
+            </ActionPanel>
+          )}
+        </div>
+      </div>
     </div>
+  );
+}
+
+function ActionPanel({
+  title,
+  eyebrow,
+  description,
+  badge,
+  tone = 'slate',
+  buttonLabel,
+  onClick,
+  disabled,
+  children,
+  buttonTestId,
+}: {
+  title: string;
+  eyebrow: string;
+  description: string;
+  badge: string;
+  tone?: 'slate' | 'amber' | 'emerald';
+  buttonLabel: string;
+  onClick: () => void;
+  disabled: boolean;
+  children?: ReactNode;
+  buttonTestId?: string;
+}) {
+  const toneClasses =
+    tone === 'amber'
+      ? 'border-amber-200 bg-amber-50/70'
+      : tone === 'emerald'
+        ? 'border-emerald-200 bg-emerald-50/70'
+        : 'border-slate-200 bg-slate-50/70';
+
+  return (
+    <section className={`rounded-xl border p-4 ${toneClasses}`}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">{eyebrow}</p>
+          <h3 className="text-base font-semibold text-slate-900">{title}</h3>
+        </div>
+        <span className="rounded-full border border-white/80 bg-white/90 px-2.5 py-1 text-[11px] font-medium text-slate-700">
+          {badge}
+        </span>
+      </div>
+      <p className="mt-2 text-sm text-slate-600">{description}</p>
+      {children && <div className="mt-4 space-y-3">{children}</div>}
+      <button
+        type="button"
+        data-testid={buttonTestId}
+        onClick={onClick}
+        disabled={disabled}
+        className="mt-4 inline-flex min-h-10 items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-400"
+      >
+        {buttonLabel}
+      </button>
+    </section>
   );
 }
 
