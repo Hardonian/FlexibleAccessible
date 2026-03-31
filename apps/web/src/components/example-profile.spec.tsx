@@ -1,10 +1,11 @@
-import { test, expect } from '@playwright/experimental-ct-react';
+import { test, expect, type MountResult } from '@playwright/experimental-ct-react';
+import type { Page } from '@playwright/test';
 import { ExampleProfile } from './example-profile';
 import AxeBuilder from '@axe-core/playwright';
 
 test.use({ viewport: { width: 500, height: 500 } });
 
-test('should render profile and handle Next.js mocked modules', async ({ page, mount }) => {
+test('should render profile and handle Next.js mocked modules', async ({ page, mount }: { page: Page, mount: any }) => {
   // 1. Mount the React component in a real browser
   const component = await mount(
     <ExampleProfile name="Jane Doe" avatarUrl="/test-avatar.png" />
@@ -37,7 +38,7 @@ test('should render profile and handle Next.js mocked modules', async ({ page, m
   expect(pushedUrl).toBe('/settings');
 });
 
-test('should not have any automatically detectable accessibility issues', async ({ page, mount }) => {
+test('should not have any automatically detectable accessibility issues', async ({ page, mount }: { page: Page, mount: any }) => {
   await mount(<ExampleProfile name="Jane Doe" avatarUrl="/test-avatar.png" />);
   
   const accessibilityScanResults = await new AxeBuilder({ page }).analyze();

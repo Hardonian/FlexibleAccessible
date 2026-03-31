@@ -13,11 +13,14 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
+    "forceConsistentCasingInFileNames": true,
     "plugins": [{ "name": "next" }],
+    "types": ["node", "@playwright/test", "@playwright/experimental-ct-react", "@axe-core/playwright"],
     "paths": {
       "@/*": ["./src/*"]
     }
   },
+
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]
 }
