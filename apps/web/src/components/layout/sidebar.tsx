@@ -9,12 +9,18 @@ import {
   type OrgInfo,
 } from "./dashboard-nav-config";
 import { switchOrgAction } from "./switch-org-action";
+import { AiUsageIndicator } from "../system/ai-usage-indicator";
 
 interface SidebarProps {
   orgs: OrgInfo[];
   user: { id: string; email: string; name: string | null };
   canViewSystem?: boolean;
   activeOrgId?: string;
+  aiUsage?: {
+    enabled: boolean;
+    limit: number;
+    used: number;
+  };
 }
 
 export function Sidebar({
@@ -22,6 +28,7 @@ export function Sidebar({
   user,
   canViewSystem,
   activeOrgId,
+  aiUsage,
 }: SidebarProps) {
   const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
@@ -117,6 +124,15 @@ export function Sidebar({
             </li>
           )}
         </ul>
+
+        {aiUsage && (
+          <AiUsageIndicator
+            organizationId={currentOrgId}
+            aiEnabled={aiUsage.enabled}
+            aiTokenLimit={aiUsage.limit}
+            usedTokens={aiUsage.used}
+          />
+        )}
       </nav>
 
       <div className="border-t border-slate-200 p-3">

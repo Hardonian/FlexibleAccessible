@@ -20,6 +20,10 @@ export interface OrgInfo {
   slug: string;
   role: MemberRole;
   workspaces: Array<{ id: string; name: string; slug: string }>;
+  subscription?: {
+    aiEnabled: boolean;
+    aiTokenLimit: number;
+  } | null;
 }
 
 export const DASHBOARD_NAV_ITEMS = [

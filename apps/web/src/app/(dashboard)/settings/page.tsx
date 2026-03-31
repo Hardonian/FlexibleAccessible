@@ -140,11 +140,17 @@ export default async function SettingsPage() {
               <div>
                 <p className="font-medium text-slate-900">
                   {subscription.plan} Plan
+                  {subscription.aiEnabled && (
+                    <span className="ml-2 badge bg-brand-100 text-brand-700">
+                      AI Pro Included
+                    </span>
+                  )}
                 </p>
                 <p className="text-sm text-slate-500">
                   Status: {subscription.status.toLowerCase()}
                 </p>
               </div>
+              <button className="btn-secondary text-xs">Manage in Stripe</button>
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 pt-3 border-t border-slate-200">
               <div>
@@ -173,6 +179,62 @@ export default async function SettingsPage() {
           <p className="text-slate-500">No active subscription.</p>
         )}
       </div>
+
+      {subscription?.aiEnabled && (
+        <div className="card border-brand-200 bg-gradient-to-br from-white to-brand-50/30">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-slate-900">
+              AI Insights & Efficiency
+            </h2>
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-xs font-medium text-slate-500">
+                Connected to AROS AI Mesh
+              </span>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="p-4 rounded-xl border border-slate-100 bg-white shadow-sm">
+              <p className="text-xs font-medium text-slate-500 uppercase">Tokens Consumed</p>
+              <p className="mt-1 text-2xl font-bold text-slate-900">
+                {((await prisma.aiUsageLog.aggregate({
+                  where: { organizationId: org.id },
+                  _sum: { totalTokens: true }
+                }))._sum.totalTokens ?? 0).toLocaleString()}
+              </p>
+              <div className="mt-2 text-[10px] text-slate-400">
+                Limit: {subscription.aiTokenLimit.toLocaleString()}
+              </div>
+            </div>
+
+            <div className="p-4 rounded-xl border border-slate-100 bg-white shadow-sm">
+              <p className="text-xs font-medium text-slate-500 uppercase">AI Suggestions</p>
+              <p className="mt-1 text-2xl font-bold text-slate-900">
+                {await prisma.aiUsageLog.count({
+                  where: { organizationId: org.id }
+                })}
+              </p>
+              <div className="mt-2 text-[10px] text-slate-400">
+                Automated fixes generated
+              </div>
+            </div>
+
+            <div className="p-4 rounded-xl border border-brand-100 bg-brand-50/50 shadow-sm border-dashed">
+              <p className="text-xs font-medium text-brand-700 uppercase">Value Generated</p>
+              <p className="mt-1 text-2xl font-bold text-brand-900">
+                ${((await prisma.aiUsageLog.aggregate({
+                  where: { organizationId: org.id },
+                  _sum: { cost: true }
+                }))._sum.cost ?? 0).toFixed(2)}
+              </p>
+              <div className="mt-2 text-[10px] text-brand-600">
+                Cost reduction estimate
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="card">
         <div className="flex items-center justify-between mb-4">

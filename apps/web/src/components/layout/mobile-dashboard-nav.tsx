@@ -10,12 +10,18 @@ import {
 } from "./dashboard-nav-config";
 import { useDashboardNav } from "./dashboard-nav-context";
 import { switchOrgAction } from "./switch-org-action";
+import { AiUsageIndicator } from "../system/ai-usage-indicator";
 
 interface MobileDashboardNavProps {
   orgs: OrgInfo[];
   user: { id: string; email: string; name: string | null };
   canViewSystem?: boolean;
   activeOrgId?: string;
+  aiUsage?: {
+    enabled: boolean;
+    limit: number;
+    used: number;
+  };
 }
 
 export function MobileDashboardNav({
@@ -23,6 +29,7 @@ export function MobileDashboardNav({
   user,
   canViewSystem,
   activeOrgId,
+  aiUsage,
 }: MobileDashboardNavProps) {
   const pathname = usePathname();
   const { mobileNavOpen, closeMobileNav } = useDashboardNav();
@@ -169,6 +176,15 @@ export function MobileDashboardNav({
               </li>
             )}
           </ul>
+
+          {aiUsage && (
+            <AiUsageIndicator
+              organizationId={currentOrgId}
+              aiEnabled={aiUsage.enabled}
+              aiTokenLimit={aiUsage.limit}
+              usedTokens={aiUsage.used}
+            />
+          )}
         </nav>
 
         <div className="border-t border-slate-200 p-3">

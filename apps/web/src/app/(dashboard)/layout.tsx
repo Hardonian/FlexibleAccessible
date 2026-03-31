@@ -16,6 +16,12 @@ const membershipLayoutInclude = {
   organization: {
     include: {
       workspaces: { select: { id: true, name: true, slug: true } },
+      subscription: {
+        select: {
+          aiEnabled: true,
+          aiTokenLimit: true,
+        },
+      },
     },
   },
 } satisfies Prisma.MembershipInclude;
@@ -73,6 +79,20 @@ export default async function DashboardLayout({
 
   const shellAudience = canViewSystem ? "operator" : "user";
 
+  const activeOrg = orgs.find((o) => o.id === activeOrgId);
+  let aiUsage = undefined;
+  if (activeOrg) {
+    const usage = await prisma.aiUsageLog.aggregate({
+      where: { organizationId: activeOrg.id },
+      _sum: { totalTokens: true },
+    });
+    aiUsage = {
+      enabled: activeOrg.subscription?.aiEnabled ?? false,
+      limit: activeOrg.subscription?.aiTokenLimit ?? 0,
+      used: usage._sum.totalTokens ?? 0,
+    };
+  }
+
   return (
     <DashboardNavProvider>
       <a
@@ -87,12 +107,14 @@ export default async function DashboardLayout({
           user={user}
           canViewSystem={canViewSystem}
           activeOrgId={activeOrgId}
+          aiUsage={aiUsage}
         />
         <MobileDashboardNav
           orgs={orgs}
           user={user}
           canViewSystem={canViewSystem}
           activeOrgId={activeOrgId}
+          aiUsage={aiUsage}
         />
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <TopBar

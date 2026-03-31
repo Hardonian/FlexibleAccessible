@@ -37,6 +37,10 @@ const clusterWorker = new Worker('cluster', handleClusterJob, {
 const remediationWorker = new Worker('remediation', handleRemediationJob, {
   connection,
   concurrency: 2,
+  limiter: {
+    max: 10,
+    duration: 60000, // 10 AI fixes per minute per worker instance
+  },
 });
 
 function setupWorkerEvents(worker: Worker, name: string) {

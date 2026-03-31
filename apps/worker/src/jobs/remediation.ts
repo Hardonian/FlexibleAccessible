@@ -1,6 +1,7 @@
 import { Job } from 'bullmq';
 import { prisma } from '@aros/db';
 import type { SuggestionType } from '@aros/db';
+import { checkAiEntitlement, logAiUsage } from '@aros/shared';
 
 interface RemediationJobData {
   findingId: string;
@@ -20,11 +21,27 @@ export async function handleRemediationJob(job: Job<RemediationJobData>) {
         take: 5,
         include: { page: { select: { url: true } } },
       },
+      site: {
+        include: {
+          workspace: {
+            select: { organizationId: true },
+          },
+        },
+      },
     },
   });
 
   if (!finding) {
     console.warn(`[Remediation] Finding ${findingId} not found`);
+    return;
+  }
+
+  const organizationId = finding.site.workspace.organizationId;
+
+  // ─── MONETIZATION GUARDRAIL: CHECK AI ENTITLEMENT ─────────────────
+  const entitlement = await checkAiEntitlement(prisma, organizationId);
+  if (!entitlement.allowed) {
+    console.warn(`[Remediation] AI Usage blocked for org ${organizationId}: ${entitlement.reason}`);
     return;
   }
 
@@ -63,6 +80,19 @@ export async function handleRemediationJob(job: Job<RemediationJobData>) {
       confidence: suggestion.confidence,
       validationResult: validation as object,
     },
+  });
+
+  // ─── LOG AI USAGE FOR BILLING ──────────────────────────────────────
+  // Mock token counts for now (based on input/output length)
+  const inputTokens = Math.ceil(elementHtml.length / 4);
+  const outputTokens = Math.ceil(suggestion.suggestedCode.length / 4);
+
+  await logAiUsage(prisma, {
+    organizationId,
+    model: 'rule-based', // Use 'rule-based' for the current mocked logic
+    promptTokens: inputTokens,
+    completionTokens: outputTokens,
+    purpose: 'REMEDIATION_SUGGESTION',
   });
 
   // If confidence is below threshold, create a review task
