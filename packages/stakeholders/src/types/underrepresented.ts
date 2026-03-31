@@ -36,6 +36,7 @@ export type OutreachStatus = (typeof OUTREACH_STATUSES)[number];
 export const OUTREACH_METHODS = [
   "EMAIL",
   "PHONE",
+  "VIDEO_CALL",
   "IN_PERSON",
   "COMMUNITY_EVENT",
   "ADVOCACY_ORG",
@@ -56,8 +57,8 @@ export const outreachRecordSchema = z.object({
   contactedAt: z.date().optional(),
   responseAt: z.date().optional(),
   responseNotes: z.string().optional(),
-  accessibilityNeedsMet: z.boolean().default(false),
-  barriersEncountered: z.array(z.string()).default([]),
+  accessibilityNeedsMet: z.boolean().optional(),
+  barriersEncountered: z.array(z.string()).optional(),
   followUpDate: z.date().optional(),
   owner: z.string(),
   metadata: z.record(z.unknown()).optional(),
@@ -90,8 +91,8 @@ export interface GroupEngagementStatus {
   totalIdentified: number;
   totalRegistered: number;
   totalActive: number;
-  outreachMethods: Record<OutreachMethod, number>;
-  statusBreakdown: Record<OutreachStatus, number>;
+  outreachMethods: Partial<Record<OutreachMethod, number>>;
+  statusBreakdown: Partial<Record<OutreachStatus, number>>;
   accessibilityNeedsMet: number;
   barriersReported: string[];
   averageResponseTimeDays: number | null;
@@ -108,9 +109,11 @@ export interface UnderrepresentedGroupSummary {
   overallEngagementRate: number;
   accessibilityNeedsMetRate: number;
   commonBarriers: { barrier: string; count: number }[];
-  outreachEffectiveness: Record<
-    OutreachMethod,
-    { attempted: number; engaged: number; rate: number }
+  outreachEffectiveness: Partial<
+    Record<
+      OutreachMethod,
+      { attempted: number; engaged: number; rate: number }
+    >
   >;
   recommendations: string[];
 }

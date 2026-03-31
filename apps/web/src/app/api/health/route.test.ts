@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { NextRequest } from 'next/server';
-import { GET } from './route'; // Assuming your actual health route is here
+import { GET } from './route';
+import { collectPlatformHealth, toPublicHealthSummary } from '@aros/core-services';
 
 // 1. Mock the core-services orchestrator functions
 vi.mock('@aros/core-services', () => ({
@@ -8,30 +8,31 @@ vi.mock('@aros/core-services', () => ({
   toPublicHealthSummary: vi.fn(),
 }));
 
-import { collectPlatformHealth, toPublicHealthSummary } from '@aros/core-services';
-
 describe('API Route: GET /api/health', () => {
   beforeEach(() => {
-    vi.resetAllMocks();
+    vi.clearAllMocks();
   });
 
   it('should return 200 OK when the platform orchestrator reports ready', async () => {
     // Arrange: Simulate a healthy platform state
     vi.mocked(collectPlatformHealth).mockResolvedValue({} as any);
     vi.mocked(toPublicHealthSummary).mockReturnValue({
-      status: 'ready',
-      timestamp: new Date().toISOString(),
+      checkedAt: new Date().toISOString(),
+      live: true,
+      ready: true,
+      readiness: 'ready',
+      installed: true,
+      checks: { database: true, redis: true, session: true, worker: true, jobPipelines: true },
     });
 
-    const request = new NextRequest('http://localhost:3000/api/health');
-
-    // Act
-    const response = await GET(request);
+    // Act - GET takes zero arguments
+    const response = await GET();
     const data = await response.json();
 
     // Assert
     expect(response.status).toBe(200);
-    expect(data.status).toBe('ready');
+    expect(data.ready).toBe(true);
+    expect(data.readiness).toBe('ready');
     expect(collectPlatformHealth).toHaveBeenCalledOnce();
     expect(toPublicHealthSummary).toHaveBeenCalledOnce();
   });
@@ -40,18 +41,21 @@ describe('API Route: GET /api/health', () => {
     // Arrange: Simulate a missing database or failed Redis connection
     vi.mocked(collectPlatformHealth).mockResolvedValue({} as any);
     vi.mocked(toPublicHealthSummary).mockReturnValue({
-      status: 'unavailable',
-      timestamp: new Date().toISOString(),
+      checkedAt: new Date().toISOString(),
+      live: true,
+      ready: false,
+      readiness: 'degraded',
+      installed: true,
+      checks: { database: false, redis: true, session: true, worker: true, jobPipelines: true },
     });
 
-    const request = new NextRequest('http://localhost:3000/api/health');
-
-    // Act
-    const response = await GET(request);
+    // Act - GET takes zero arguments
+    const response = await GET();
     const data = await response.json();
 
     // Assert
     expect(response.status).toBe(503);
-    expect(data.status).toBe('unavailable');
+    expect(data.ready).toBe(false);
+    expect(data.readiness).toBe('degraded');
   });
 });

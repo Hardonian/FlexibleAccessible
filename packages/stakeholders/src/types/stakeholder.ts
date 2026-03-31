@@ -62,15 +62,15 @@ export const stakeholderCreateSchema = z.object({
   segment: z.enum(STAKEHOLDER_SEGMENTS),
   power: z.enum(POWER_LEVELS_SCHEMA),
   interest: z.enum(INTEREST_LEVELS_SCHEMA),
-  engagementStatus: z.enum(ENGAGEMENT_STATUSES).default("NOT_CONTACTED"),
+  engagementStatus: z.enum(ENGAGEMENT_STATUSES).optional(),
   phone: z.string().optional(),
   preferredChannel: z.string().optional(),
-  accessibilityNeeds: z.array(z.enum(ACCESSIBILITY_NEEDS)).default([]),
+  accessibilityNeeds: z.array(z.enum(ACCESSIBILITY_NEEDS)).optional(),
   notes: z.string().optional(),
-  tags: z.array(z.string()).default([]),
-  underrepresentedGroups: z.array(z.string()).default([]),
+  tags: z.array(z.string()).optional(),
+  underrepresentedGroups: z.array(z.string()).optional(),
   region: z.string().optional(),
-  language: z.string().default("en"),
+  language: z.string().optional(),
   metadata: z.record(z.unknown()).optional(),
 });
 
@@ -88,8 +88,8 @@ export const stakeholderFilterSchema = z.object({
   underrepresentedGroups: z.array(z.string()).optional(),
   tags: z.array(z.string()).optional(),
   search: z.string().optional(),
-  page: z.number().int().positive().default(1),
-  pageSize: z.number().int().positive().max(100).default(20),
+  page: z.number().int().positive().optional(),
+  pageSize: z.number().int().positive().max(100).optional(),
   sortBy: z
     .enum([
       "name",
@@ -99,8 +99,8 @@ export const stakeholderFilterSchema = z.object({
       "engagementStatus",
       "createdAt",
     ] as const)
-    .default("name"),
-  sortOrder: z.enum(["asc", "desc"]).default("asc"),
+    .optional(),
+  sortOrder: z.enum(["asc", "desc"]).optional(),
 });
 
 // Inferred types from schemas
@@ -142,7 +142,7 @@ export interface StakeholderSummary {
   byUnderrepresentedGroup: Record<string, number>;
   byRegion: Record<string, number>;
   byAccessibilityNeed: Record<AccessibilityNeed, number>;
-  coverageRate: number; // percentage of identified stakeholders that are registered
-  engagementRate: number; // percentage in ACTIVE or CHAMPION status
+  coverageRate: number;
+  engagementRate: number;
   lastUpdated: Date;
 }
