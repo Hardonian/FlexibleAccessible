@@ -12,6 +12,8 @@ import {
   OperatorControlPlaneClient,
 } from '@/components/system/operator-control-plane-client';
 import { type PlatformDiagnosticIssue } from '@aros/core-services';
+import { getQueueDiagnostics } from '@/lib/queue-diagnostics';
+
 
 export const metadata = { title: 'System & services - AROS' };
 
@@ -82,6 +84,9 @@ export default async function SystemPage() {
     loadError = e instanceof Error ? e.message : 'Failed to load platform health';
     console.error('[system] platform health failed', e);
   }
+
+  const queueStats = await getQueueDiagnostics().catch(() => []);
+
 
   const summary = payload?.diagnostics.summary ?? null;
   const criticalIssueCount = summary?.criticalBlockers.length ?? 0;
@@ -458,6 +463,31 @@ export default async function SystemPage() {
               <DependencyRow label="Sessions" result={payload.report.dependencies.sessionStore} />
             </ul>
           </section>
+
+          <section className="card space-y-4" aria-labelledby="queues-heading">
+            <h2 id="queues-heading" className="text-lg font-semibold text-slate-900">
+              Worker Queue Metrics
+            </h2>
+            <div className="grid gap-4 sm:grid-cols-3">
+              {queueStats.map((q) => (
+                <div key={q.name} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    {q.name}
+                  </p>
+                  <div className="mt-2 flex items-baseline gap-2">
+                    <span className="text-xl font-bold text-slate-900">{q.waiting + q.active}</span>
+                    <span className="text-xs text-slate-500">active/wait</span>
+                  </div>
+                  <div className="mt-3 flex gap-2 text-[10px] font-medium">
+                    <span className="text-emerald-600">{q.completed} done</span>
+                    <span className="text-red-600">{q.failed} fail</span>
+                    <span className="text-sky-600">{q.delayed} delay</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
 
           <section aria-labelledby="services-heading">
             <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
