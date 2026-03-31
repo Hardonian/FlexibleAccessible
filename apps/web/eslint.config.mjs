@@ -42,6 +42,14 @@ export default [
           // AST Selector: Matches `prisma.model.method()` and `prisma.$action()` UNLESS they are inside `runOrgScopedQuery()`
           selector: ":matches(CallExpression[callee.object.object.name='prisma'], CallExpression[callee.object.name='prisma']):not(CallExpression[callee.name='runOrgScopedQuery'] *)",
           message: "⚠️ Tenant Boundary Violation: Direct database queries in route handlers must be wrapped in `runOrgScopedQuery(ctx, ...)` to guarantee tenant data isolation, or imported from a pre-wrapped module."
+        },
+        {
+          selector: "CallExpression[callee.object.name='router'][callee.property.name=/^(push|replace|prefetch)$/] > Literal.arguments:first-child:not([value=/^(\\/|http)/])",
+          message: "⚠️ Routing Violation: `router.push()` arguments should be absolute paths starting with `/` or valid URLs to prevent relative routing bugs."
+        },
+        {
+          selector: "CallExpression[callee.object.name='router'][callee.property.name=/^(push|replace|prefetch)$/] > TemplateLiteral.arguments:first-child > TemplateElement:first-child:not([value.cooked=/^(\\/|http)/])",
+          message: "⚠️ Routing Violation: `router.push()` template strings should start with `/` to prevent relative routing bugs."
         }
       ]
     }
