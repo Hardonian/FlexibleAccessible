@@ -45,13 +45,13 @@ export type CommunicationFormat = (typeof COMMUNICATION_FORMATS)[number];
 
 // Zod schemas
 export const communicationEntrySchema = z.object({
-  stakeholderId: z.string().optional(), // null for segment-level plans
+  stakeholderId: z.string().optional(),
   segment: z.string().optional(),
   channel: z.enum(CHANNELS),
   cadence: z.enum(COMMUNICATION_CADENCES),
   format: z.enum(COMMUNICATION_FORMATS),
   owner: z.string(),
-  accessibilityCompliant: z.boolean().default(false),
+  accessibilityCompliant: z.boolean().optional(),
   notes: z.string().optional(),
   lastSentAt: z.date().optional(),
   nextSendAt: z.date().optional(),
@@ -85,7 +85,6 @@ export interface CommunicationPlan {
   updatedAt: Date;
 }
 
-// Key messages by project phase
 export interface PhaseMessages {
   phase: "INITIATION" | "DEVELOPMENT" | "LAUNCH" | "MATURITY";
   messages: string[];
