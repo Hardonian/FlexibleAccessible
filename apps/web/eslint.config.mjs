@@ -12,6 +12,9 @@ const compat = new FlatCompat({
 });
 
 export default [
+  {
+    ignores: [".next/**"],
+  },
   ...compat.extends("next/core-web-vitals"),
   securityPlugin.configs.recommended,
   {
