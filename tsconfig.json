@@ -14,8 +14,10 @@
     "sourceMap": true,
     "rootDir": "."
   },
-  "include": ["*.ts", "scripts/**/*.ts"],
-  "exclude": ["node_modules", "dist", "apps", "packages"]
+  "files": [],
+  "include": [],
+  "exclude": ["node_modules", "dist"]
 }
+
 
 

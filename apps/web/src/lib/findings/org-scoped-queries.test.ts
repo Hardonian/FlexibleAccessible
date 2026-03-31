@@ -17,7 +17,7 @@ describe('Tenant Isolation Boundary: org-scoped-queries', () => {
   });
 
   it('should strictly enforce the organizationId deep in the relation query', async () => {
-    const mockCtx: OrgMembershipCore = { organizationId: 'safe-tenant-123', role: 'MEMBER' };
+    const mockCtx: OrgMembershipCore = { organizationId: 'safe-tenant-123', role: 'DEVELOPER' };
     
     const result = await getScopedFindings(mockCtx);
 
@@ -34,7 +34,7 @@ describe('Tenant Isolation Boundary: org-scoped-queries', () => {
   it('should explicitly reject execution if context organizationId is missing or manipulated to undefined', async () => {
     // If organizationId is undefined, Prisma might drop the filter and return ALL findings (cross-tenant leak).
     // The runOrgScopedQuery boundary must catch this before it reaches Prisma.
-    const maliciousCtx = { organizationId: undefined, role: 'MEMBER' } as unknown as OrgMembershipCore;
+    const maliciousCtx = { organizationId: undefined, role: 'DEVELOPER' } as unknown as OrgMembershipCore;
     
     const result = await getScopedFindings(maliciousCtx);
 
