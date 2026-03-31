@@ -1,11 +1,7 @@
 import { ArosMcpServer } from "./server";
 
-async function main() {
+export async function createServer() {
   const server = new ArosMcpServer();
   await server.start();
+  return server;
 }
-
-main().catch((err) => {
-  console.error("[AROS MCP] Fatal error:", err);
-  process.exit(1);
-});

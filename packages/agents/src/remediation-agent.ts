@@ -26,10 +26,10 @@ export class RemediationAgent {
     const steps: AgentStep[] = [];
     let tokensUsed = 0;
 
-    const runStep = async (
+    const runStep = async <T>(
       name: string,
-      handler: () => Promise<unknown>,
-    ): Promise<unknown> => {
+      handler: () => Promise<T>,
+    ): Promise<T> => {
       const step: AgentStep = {
         name,
         status: "running",
@@ -41,7 +41,7 @@ export class RemediationAgent {
       try {
         const output = await handler();
         step.status = "completed";
-        step.output = output;
+        step.output = output as any;
         step.completedAt = new Date();
         step.durationMs =
           step.completedAt.getTime() - (step.startedAt?.getTime() ?? 0);
@@ -60,7 +60,7 @@ export class RemediationAgent {
 
     try {
       // Step 1: Analyze — fetch finding and context
-      const analysis = await runStep("analyze", async () => {
+      const analysis = (await runStep("analyze", async () => {
         if (!context.findingId) throw new Error("findingId required");
         const finding = await prisma.canonicalFinding.findUnique({
           where: { id: context.findingId },
@@ -84,10 +84,10 @@ export class RemediationAgent {
           clusterInfo: finding.cluster,
           isClusterWide: (finding.cluster?.pageCount ?? 0) > 5,
         };
-      });
+      })) as any;
 
       // Step 2: Generate fix
-      const fix = await runStep("generate", async () => {
+      const fix = (await runStep("generate", async () => {
         const result = generateFix({
           ruleId: analysis.ruleId,
           elementHtml: analysis.elementHtml,
@@ -97,15 +97,15 @@ export class RemediationAgent {
           throw new Error(`No fix handler for rule ${analysis.ruleId}`);
         tokensUsed += 100;
         return result;
-      });
+      })) as any;
 
       // Step 3: Validate
-      const validation = await runStep("validate", async () => {
+      const validation = (await runStep("validate", async () => {
         return validateFix(fix.suggestedCode);
-      });
+      })) as any;
 
       // Step 4: Decide — auto-approve or escalate
-      const decision = await runStep("decide", async () => {
+      const decision = (await runStep("decide", async () => {
         const highConfidence = fix.confidence >= 0.8;
         const passesValidation = validation.valid;
         const noWarnings = validation.warnings.length === 0;
@@ -121,10 +121,10 @@ export class RemediationAgent {
             ? "High confidence, valid fix, no warnings"
             : `Escalating: confidence=${fix.confidence}, valid=${passesValidation}, warnings=${validation.warnings.length}`,
         };
-      });
+      })) as any;
 
       // Step 5: Finalize — persist suggestion
-      const result = await runStep("finalize", async () => {
+      const result = (await runStep("finalize", async () => {
         const status = decision.autoApprove
           ? "APPROVED"
           : validation.valid
@@ -163,7 +163,7 @@ export class RemediationAgent {
           status,
           autoApproved: decision.autoApprove,
         };
-      });
+      })) as any;
 
       const totalDurationMs = Date.now() - startTime;
       const agentResult: AgentResult = {
