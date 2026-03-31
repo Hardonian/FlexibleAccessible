@@ -1,20 +1,20 @@
 {
-  "name": "@aros/shared",
+  "name": "@aros/rag",
   "version": "0.1.0",
   "private": true,
   "main": "src/index.ts",
   "types": "src/index.ts",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run --passWithNoTests",
+    "ingest": "tsx src/ingest.ts"
   },
   "dependencies": {
-    "bullmq": "^5.31.0",
-    "ioredis": "^5.10.1",
-    "zod": "^3.24.0"
+    "@aros/shared": "*"
   },
   "devDependencies": {
     "typescript": "^5.7.0",
-    "vitest": "^2.1.0"
+    "vitest": "^2.1.0",
+    "tsx": "^4.19.0"
   }
 }
