@@ -56,6 +56,7 @@ export default async function DashboardLayout({
     slug: m.organization.slug,
     role: m.role,
     workspaces: m.organization.workspaces,
+    subscription: m.organization.subscription,
   }));
 
   const cookieStore = await cookies();

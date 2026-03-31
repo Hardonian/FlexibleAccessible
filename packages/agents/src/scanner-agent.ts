@@ -24,10 +24,10 @@ export class ScannerAgent {
     const startTime = Date.now();
     const steps: AgentStep[] = [];
 
-    const runStep = async (
+    const runStep = async <T>(
       name: string,
-      handler: () => Promise<unknown>,
-    ): Promise<unknown> => {
+      handler: () => Promise<T>,
+    ): Promise<T> => {
       const step: AgentStep = {
         name,
         status: "running",
@@ -38,7 +38,7 @@ export class ScannerAgent {
       try {
         const output = await handler();
         step.status = "completed";
-        step.output = output;
+        step.output = output as any;
         step.completedAt = new Date();
         step.durationMs =
           step.completedAt.getTime() - (step.startedAt?.getTime() ?? 0);
@@ -48,6 +48,8 @@ export class ScannerAgent {
         step.status = "failed";
         step.error = err instanceof Error ? err.message : String(err);
         step.completedAt = new Date();
+        step.durationMs =
+          step.completedAt.getTime() - (step.startedAt?.getTime() ?? 0);
         this.onEvent?.({ type: "step_error", step: name, error: step.error });
         throw err;
       }
@@ -57,7 +59,7 @@ export class ScannerAgent {
       if (!context.siteId) throw new Error("siteId required");
 
       // Step 1: Assess current state
-      const assessment = await runStep("assess", async () => {
+      const assessment = (await runStep("assess", async () => {
         const site = await prisma.site.findUnique({
           where: { id: context.siteId! },
           include: {
@@ -82,16 +84,19 @@ export class ScannerAgent {
           lastScan.completedAt < staleThreshold;
 
         return { site, lastScan, openFindings, needsScan };
-      });
+      })) as any;
 
       // Step 2: Schedule scan if needed
-      const scheduleResult = await runStep("schedule", async () => {
+      const scheduleResult = (await runStep("schedule", async () => {
         if (!assessment.needsScan) {
           return { action: "skipped", reason: "Recent scan exists" };
         }
 
         const scanRun = await prisma.scanRun.create({
-          data: { siteId: context.siteId!, status: "QUEUED" },
+          data: {
+            siteId: context.siteId!,
+            status: "QUEUED" as any,
+          },
         });
 
         const queue = getSharedScanQueue();
@@ -101,10 +106,10 @@ export class ScannerAgent {
         });
 
         return { action: "queued", scanRunId: scanRun.id };
-      });
+      })) as any;
 
       // Step 3: Trigger remediation for unresolved findings
-      const remediationResult = await runStep(
+      const remediationResult = (await runStep(
         "trigger_remediation",
         async () => {
           const findingsWithoutSuggestions =
@@ -112,7 +117,7 @@ export class ScannerAgent {
               where: {
                 siteId: context.siteId!,
                 status: "OPEN",
-                remediationSuggestions: { none: {} },
+                remediationSuggestions: { none: {} } as any,
               },
               select: { id: true },
               take: 20,
@@ -121,7 +126,7 @@ export class ScannerAgent {
           const { bullmqConnectionOptions } = await import("@aros/shared");
           const { Queue } = await import("bullmq");
           const remQueue = new Queue("remediation", {
-            connection: bullmqConnectionOptions(),
+            connection: (bullmqConnectionOptions as any)(),
           });
 
           let queued = 0;
@@ -135,7 +140,7 @@ export class ScannerAgent {
 
           return { remediationJobsQueued: queued };
         },
-      );
+      )) as any;
 
       return {
         success: true,
@@ -160,3 +165,4 @@ export class ScannerAgent {
     }
   }
 }
+
