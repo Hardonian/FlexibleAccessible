@@ -74,6 +74,10 @@ export async function runOrgScopedQuery<T>(
   ctx: OrgMembershipCore,
   fn: (organizationId: string) => Promise<T>,
 ): Promise<OrgScopedQueryResult<T>> {
+  if (!ctx || !ctx.organizationId) {
+    console.error("[route-data-boundary] Tenant isolation violation: Missing organizationId in context");
+    return { ok: false, message: "Tenant isolation violation: Missing organization context" };
+  }
   try {
     const data = await fn(ctx.organizationId);
     return { ok: true, data };

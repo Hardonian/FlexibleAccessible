@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
     "test:e2e": "playwright test",
-    "test:ct": "playwright test -c playwright-ct.config.ts"
+    "test:ct": "playwright test -c playwright-ct.config.ts",
+    "test:e2e:update": "playwright test --update-snapshots"
   },
   "dependencies": {
     "@aros/config": "*",

@@ -203,6 +203,10 @@ export default async function DashboardPage() {
         />
       </div>
 
+      <div className="card h-48 flex items-center justify-center bg-slate-50 border-dashed border-2 border-slate-200" data-test-id="dynamic-chart">
+        <p className="text-slate-400 italic">Trend analytics pending...</p>
+      </div>
+
       <div className="card">
         <h2 className="text-lg font-semibold text-slate-900 mb-4">
           Quick Actions
@@ -280,7 +284,9 @@ export default async function DashboardPage() {
                       {crawl.pagesCrawled}/{crawl.pagesFound}
                     </td>
                     <td className="py-2 text-right text-slate-500">
-                      {crawl.createdAt.toLocaleDateString()}
+                      <time dateTime={crawl.createdAt.toISOString()}>
+                        {crawl.createdAt.toLocaleDateString()}
+                      </time>
                     </td>
                   </tr>
                 ))}
