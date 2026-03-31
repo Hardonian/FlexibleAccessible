@@ -98,15 +98,17 @@ export const stakeholderFilterSchema = z.object({
       "interest",
       "engagementStatus",
       "createdAt",
+      "updatedAt",
+      "id",
     ] as const)
     .default("name"),
   sortOrder: z.enum(["asc", "desc"]).default("asc"),
 });
 
 // Inferred types from schemas
-export type StakeholderCreateInput = z.infer<typeof stakeholderCreateSchema>;
-export type StakeholderUpdateInput = z.infer<typeof stakeholderUpdateSchema>;
-export type StakeholderFilter = z.infer<typeof stakeholderFilterSchema>;
+export type StakeholderCreateInput = z.input<typeof stakeholderCreateSchema>;
+export type StakeholderUpdateInput = z.input<typeof stakeholderUpdateSchema>;
+export type StakeholderFilter = z.input<typeof stakeholderFilterSchema>;
 
 // Full stakeholder entity
 export interface Stakeholder {

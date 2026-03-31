@@ -221,7 +221,7 @@ export class UnderrepresentedGroupTracker {
       allBarriers.push(...status.barriersReported);
 
       for (const method of OUTREACH_METHODS) {
-        const count = status.outreachMethods[method];
+        const count = status.outreachMethods[method] || 0;
         methodEffectiveness[method].attempted += count;
         // Approximate engaged for this method
         methodEffectiveness[method].engaged += Math.round(

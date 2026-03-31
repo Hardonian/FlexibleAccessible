@@ -126,9 +126,16 @@ export class StakeholderRegistry {
     }
 
     data.sort((a, b) => {
-      const aVal = (a as Record<string, unknown>)[sortBy] as string;
-      const bVal = (b as Record<string, unknown>)[sortBy] as string;
-      const cmp = aVal.localeCompare(bVal);
+      const aVal = (a as unknown as Record<string, unknown>)[sortBy];
+      const bVal = (b as unknown as Record<string, unknown>)[sortBy];
+
+      if (sortBy === "createdAt" || sortBy === "updatedAt") {
+        return ((aVal as Date).getTime() || 0) - ((bVal as Date).getTime() || 0) * (sortOrder === "asc" ? 1 : -1);
+      }
+
+      const sA = String(aVal || "");
+      const sB = String(bVal || "");
+      const cmp = sA.localeCompare(sB);
       return sortOrder === "asc" ? cmp : -cmp;
     });
 

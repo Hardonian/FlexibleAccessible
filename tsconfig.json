@@ -19,7 +19,7 @@
     "declaration": true,
     "declarationMap": true
   },
-  "files": ["scripts/verify-env.ts"],
+  "files": [],
   "include": [],
   "references": [
     { "path": "apps/web" },

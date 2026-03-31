@@ -91,8 +91,8 @@ export interface GroupEngagementStatus {
   totalIdentified: number;
   totalRegistered: number;
   totalActive: number;
-  outreachMethods: Partial<Record<OutreachMethod, number>>;
-  statusBreakdown: Partial<Record<OutreachStatus, number>>;
+  outreachMethods: Record<OutreachMethod, number>;
+  statusBreakdown: Record<OutreachStatus, number>;
   accessibilityNeedsMet: number;
   barriersReported: string[];
   averageResponseTimeDays: number | null;
@@ -109,11 +109,9 @@ export interface UnderrepresentedGroupSummary {
   overallEngagementRate: number;
   accessibilityNeedsMetRate: number;
   commonBarriers: { barrier: string; count: number }[];
-  outreachEffectiveness: Partial<
-    Record<
-      OutreachMethod,
-      { attempted: number; engaged: number; rate: number }
-    >
+  outreachEffectiveness: Record<
+    OutreachMethod,
+    { attempted: number; engaged: number; rate: number }
   >;
   recommendations: string[];
 }
