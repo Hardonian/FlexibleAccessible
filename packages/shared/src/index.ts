@@ -21,3 +21,5 @@ export {
   type FindingStatusValue,
   type AutomationEvidenceFreshness,
 } from './finding-lifecycle';
+
+export * from './ai-usage';

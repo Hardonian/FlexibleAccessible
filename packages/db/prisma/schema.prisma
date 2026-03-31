@@ -25,6 +25,7 @@ model User {
   sessions       Session[]
   findingStatusChanges CanonicalFinding[] @relation("findingStatusChangedBy")
   findingStatusEvents  FindingStatusEvent[]
+  aiUsageLogs     AiUsageLog[]
 
   @@map("users")
 }
@@ -56,6 +57,7 @@ model Organization {
   billingCustomer   BillingCustomer?
   subscription      Subscription?
   auditLogs         AuditLog[]
+  aiUsageLogs       AiUsageLog[]
   integrationConnections IntegrationConnection[]
 
   @@map("organizations")
@@ -640,6 +642,8 @@ model Subscription {
   maxPagesPerCrawl    Int                @default(100)
   maxScansPerMonth    Int                @default(5)
   maxSeats            Int                @default(2)
+  aiEnabled           Boolean            @default(false)
+  aiTokenLimit        Int                @default(0)
   currentPeriodStart  DateTime?
   currentPeriodEnd    DateTime?
   cancelAtPeriodEnd   Boolean            @default(false)
@@ -702,4 +706,24 @@ model AuditLog {
   @@index([action])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+model AiUsageLog {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String?
+  model          String
+  promptTokens   Int
+  completionTokens Int
+  totalTokens    Int
+  purpose        String
+  cost           Float?
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User?        @relation(fields: [userId], references: [id])
+
+  @@index([organizationId])
+  @@index([createdAt])
+  @@map("ai_usage_logs")
 }

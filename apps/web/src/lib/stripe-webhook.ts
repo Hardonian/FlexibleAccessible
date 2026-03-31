@@ -129,11 +129,11 @@ async function applySubscriptionUpsert(
 
   const planMap: Record<
     string,
-    { plan: 'FREE' | 'STARTER' | 'PROFESSIONAL' | 'ENTERPRISE'; maxDomains: number; maxPages: number; maxScans: number; maxSeats: number }
+    { plan: 'FREE' | 'STARTER' | 'PROFESSIONAL' | 'ENTERPRISE'; maxDomains: number; maxPages: number; maxScans: number; maxSeats: number; aiEnabled: boolean; aiTokenLimit: number }
   > = {
-    [env.priceStarter]: { plan: 'STARTER', maxDomains: 3, maxPages: 200, maxScans: 10, maxSeats: 3 },
-    [env.priceProfessional]: { plan: 'PROFESSIONAL', maxDomains: 10, maxPages: 1000, maxScans: 50, maxSeats: 10 },
-    [env.priceEnterprise]: { plan: 'ENTERPRISE', maxDomains: 100, maxPages: 10000, maxScans: 500, maxSeats: 100 },
+    [env.priceStarter]: { plan: 'STARTER', maxDomains: 3, maxPages: 200, maxScans: 10, maxSeats: 3, aiEnabled: false, aiTokenLimit: 0 },
+    [env.priceProfessional]: { plan: 'PROFESSIONAL', maxDomains: 10, maxPages: 1000, maxScans: 50, maxSeats: 10, aiEnabled: true, aiTokenLimit: 100000 },
+    [env.priceEnterprise]: { plan: 'ENTERPRISE', maxDomains: 100, maxPages: 10000, maxScans: 500, maxSeats: 100, aiEnabled: true, aiTokenLimit: 1000000 },
   };
 
   const priceId = subscription.items?.data?.[0]?.price?.id;
@@ -157,6 +157,8 @@ async function applySubscriptionUpsert(
       maxPagesPerCrawl: planConfig?.maxPages ?? 200,
       maxScansPerMonth: planConfig?.maxScans ?? 10,
       maxSeats: planConfig?.maxSeats ?? 3,
+      aiEnabled: planConfig?.aiEnabled ?? false,
+      aiTokenLimit: planConfig?.aiTokenLimit ?? 0,
       currentPeriodStart: new Date(subscription.current_period_start * 1000),
       currentPeriodEnd: new Date(subscription.current_period_end * 1000),
       cancelAtPeriodEnd: subscription.cancel_at_period_end ?? false,
@@ -169,6 +171,8 @@ async function applySubscriptionUpsert(
       maxPagesPerCrawl: planConfig?.maxPages,
       maxScansPerMonth: planConfig?.maxScans,
       maxSeats: planConfig?.maxSeats,
+      aiEnabled: planConfig?.aiEnabled,
+      aiTokenLimit: planConfig?.aiTokenLimit,
       currentPeriodStart: new Date(subscription.current_period_start * 1000),
       currentPeriodEnd: new Date(subscription.current_period_end * 1000),
       cancelAtPeriodEnd: subscription.cancel_at_period_end ?? false,
@@ -192,6 +196,8 @@ async function applySubscriptionDeleted(tx: Prisma.TransactionClient, subscripti
       maxPagesPerCrawl: 50,
       maxScansPerMonth: 3,
       maxSeats: 1,
+      aiEnabled: false,
+      aiTokenLimit: 0,
     },
   });
 }
