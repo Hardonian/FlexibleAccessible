@@ -1,4 +1,4 @@
-import { prisma } from "@aros/db";
+import { prisma, SuggestionType } from "@aros/db";
 import { generateFix, validateFix } from "@aros/remediation";
 import type { FixResult } from "@aros/remediation";
 import type {
@@ -122,7 +122,7 @@ export class RemediationAgent extends BaseAgent {
         const suggestion = await prisma.remediationSuggestion.create({
           data: {
             canonicalFindingId: context.findingId!,
-            type: fix.type,
+            type: fix.type as SuggestionType,
             status,
             originalCode: analysis.elementHtml,
             suggestedCode: fix.suggestedCode,

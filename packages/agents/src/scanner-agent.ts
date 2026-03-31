@@ -75,7 +75,7 @@ export class ScannerAgent extends BaseAgent {
         const scanRun = await prisma.scanRun.create({
           data: {
             siteId: context.siteId!,
-            status: "QUEUED",
+            status: "PENDING",
           },
         });
 
