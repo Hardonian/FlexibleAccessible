@@ -32,4 +32,18 @@ export default [
       ...vitestPlugin.configs.recommended.rules,
     },
   },
+  {
+    // Enforce the Data Boundary specifically in Next.js App Router endpoints, pages, and actions
+    files: ["src/app/**/*.ts", "src/app/**/*.tsx"],
+    rules: {
+      "no-restricted-syntax": [
+        "warn",
+        {
+          // AST Selector: Matches `prisma.model.method()` and `prisma.$action()` UNLESS they are inside `runOrgScopedQuery()`
+          selector: ":matches(CallExpression[callee.object.object.name='prisma'], CallExpression[callee.object.name='prisma']):not(CallExpression[callee.name='runOrgScopedQuery'] *)",
+          message: "⚠️ Tenant Boundary Violation: Direct database queries in route handlers must be wrapped in `runOrgScopedQuery(ctx, ...)` to guarantee tenant data isolation, or imported from a pre-wrapped module."
+        }
+      ]
+    }
+  }
 ];
