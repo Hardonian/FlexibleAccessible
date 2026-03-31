@@ -66,7 +66,7 @@ export function Sidebar({
             defaultValue={currentOrgId}
             className="input text-sm"
             disabled={isPending}
-            aria-busy={isPending}
+            aria-busy={isPending ? "true" : "false"}
           >
             {orgs.map((org) => (
               <option key={org.id} value={org.id}>

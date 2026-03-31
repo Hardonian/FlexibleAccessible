@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "aros": {
+      "command": "npx",
+      "args": ["@aros/mcp-server"],
+      "env": {
+        "DATABASE_URL": "postgresql://postgres:postgres@localhost:5432/aros?schema=public",
+        "REDIS_URL": "redis://localhost:6379",
+        "NEXTAUTH_SECRET": "your-secret-here",
+        "NEXTAUTH_URL": "http://localhost:3000",
+        "AROS_API_KEY": "your-api-key-here"
+      }
+    }
+  }
+}

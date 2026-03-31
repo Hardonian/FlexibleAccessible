@@ -92,7 +92,7 @@ export class ReporterAgent {
         });
 
         const suggestions = await prisma.remediationSuggestion.findMany({
-          where: { canonicalFinding: { siteId: context.siteId! } },
+          where: { finding: { siteId: context.siteId! } },
           select: { status: true, confidence: true, type: true },
         });
 
@@ -113,8 +113,18 @@ export class ReporterAgent {
         }>;
 
         const total = findings.length;
-        const byStatus = Object.groupBy(findings, (f) => f.status);
-        const byImpact = Object.groupBy(findings, (f) => f.impact);
+        
+        const byStatus = findings.reduce((acc: Record<string, any[]>, f) => {
+          acc[f.status] = acc[f.status] || [];
+          acc[f.status].push(f);
+          return acc;
+        }, {});
+
+        const byImpact = findings.reduce((acc: Record<string, any[]>, f) => {
+          acc[f.impact] = acc[f.impact] || [];
+          acc[f.impact].push(f);
+          return acc;
+        }, {});
 
         const autoFixable = findings.filter((f) =>
           [
@@ -164,7 +174,7 @@ export class ReporterAgent {
 
       // Step 3: Generate report
       const report = await runStep("generate_report", async () => {
-        const report = await prisma.report.create({
+        const report = await (prisma as any).report.create({
           data: {
             siteId: context.siteId!,
             type: "CONFORMANCE",

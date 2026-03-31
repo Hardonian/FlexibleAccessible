@@ -13,6 +13,7 @@
     "@aros/config": "*",
     "@aros/core-services": "*",
     "@aros/db": "*",
+    "@aros/remediation": "*",
     "@aros/shared": "*",
     "axe-core": "^4.10.0",
     "bullmq": "^5.31.0",
