@@ -101,13 +101,9 @@ export default async function FindingsPage({
     organizationId: string,
   ): Prisma.CanonicalFindingWhereInput => {
     const where: Prisma.CanonicalFindingWhereInput = {
-      occurrences: {
-        some: {
-          page: {
-            site: { workspace: { organizationId } },
-            ...(params.siteId ? { siteId: params.siteId } : {}),
-          },
-        },
+      site: {
+        workspace: { organizationId },
+        ...(params.siteId ? { id: params.siteId } : {}),
       },
     };
 
@@ -372,6 +368,9 @@ function FindingRow({
               {finding.impact.toLowerCase()}
             </span>
             <span className="text-xs text-slate-400">{finding.ruleId}</span>
+            <span className="badge bg-white text-slate-700 border border-slate-200">
+              {finding.truthStatus.toLowerCase().replaceAll("_", " ")}
+            </span>
             <EvidenceSourceBadge source={finding.evidenceSource} />
             {freshness && freshness.freshness !== "current" && (
               <span

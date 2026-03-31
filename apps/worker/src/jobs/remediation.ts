@@ -1,8 +1,9 @@
 import { Job, Queue } from "bullmq";
 import crypto from "crypto";
 import { prisma } from "@aros/db";
-import type { SuggestionType } from "@aros/db";
+import type { Prisma, SuggestionType } from "@aros/db";
 import { generateFix, validateFix } from "@aros/remediation";
+import { resolveRemediationRecipe } from "@aros/core-services";
 import { checkAiEntitlement, logAiUsage, getRedisClient } from "@aros/shared";
 import { generateAiFix, isAiConfigured, type AiFixInput } from "./ai-client";
 
@@ -50,13 +51,13 @@ export async function handleRemediationJob(job: Job<RemediationJobData>) {
 
   const organizationId = finding.site.workspace.organizationId;
 
-  // Check AI entitlement for monetization
+  // AI entitlement gates only the AI path; rule-based suggestions remain available.
   const entitlement = await checkAiEntitlement(prisma, organizationId);
+  const aiAllowed = entitlement.allowed && isAiConfigured();
   if (!entitlement.allowed) {
     console.warn(
-      `[Remediation] AI Usage blocked for org ${organizationId}: ${entitlement.reason}`,
+      `[Remediation] AI usage blocked for org ${organizationId}; continuing with rule-based remediation (${entitlement.reason}).`,
     );
-    return;
   }
 
   const firstOccurrence = finding.occurrences[0];
@@ -70,12 +71,13 @@ export async function handleRemediationJob(job: Job<RemediationJobData>) {
 
   let suggestion: SuggestionResult | null = null;
   let generationMethod: "AI" | "RULE_BASED" = "RULE_BASED";
+  const recipe = await resolveRemediationRecipe(prisma, { organizationId: null, ruleId });
 
   // ─── PROFITABILITY LAYER: DEDUPLICATION CACHE ─────────────────────
   const redis = getRedisClient();
   const cacheKey = `ai:suggestion:${crypto.createHash('sha256').update(`${ruleId}:${elementHtml}`).digest('hex')}`;
   
-  const cachedSuggestion = await redis.get(cacheKey);
+  const cachedSuggestion = aiAllowed ? await redis.get(cacheKey) : null;
   if (cachedSuggestion) {
     const parsed = JSON.parse(cachedSuggestion);
     console.log(`[Remediation] Cache Hit for ${ruleId} (Confidence: ${parsed.confidence})`);
@@ -84,7 +86,7 @@ export async function handleRemediationJob(job: Job<RemediationJobData>) {
   }
 
   // Try AI-powered generation if no cache hit
-  if (!suggestion && isAiConfigured()) {
+  if (!suggestion && aiAllowed) {
     try {
       const aiInput: AiFixInput = {
         ruleId,
@@ -152,10 +154,11 @@ export async function handleRemediationJob(job: Job<RemediationJobData>) {
 
   const status = validation.valid ? "VALIDATED" : "FAILED_VALIDATION";
 
-  await prisma.remediationSuggestion.create({
+  const createdSuggestion = await prisma.remediationSuggestion.create({
     data: {
       canonicalFindingId: findingId,
       clusterId: clusterId ?? null,
+      recipeId: recipe.id,
       type: suggestion.type,
       status,
       originalCode: elementHtml,
@@ -171,22 +174,43 @@ export async function handleRemediationJob(job: Job<RemediationJobData>) {
     },
   });
 
-  // Log AI usage for billing
-  const inputTokens = Math.ceil(elementHtml.length / 4);
-  const outputTokens = Math.ceil(suggestion.suggestedCode.length / 4);
-
-  await logAiUsage(prisma, {
-    organizationId,
-    model: suggestion.modelUsed ?? generationMethod.toLowerCase(),
-    promptTokens: inputTokens,
-    completionTokens: outputTokens,
-    purpose: "REMEDIATION_SUGGESTION",
+  await prisma.findingEvidence.create({
+    data: {
+      siteId: finding.siteId,
+      canonicalFindingId: findingId,
+      remediationSuggestionId: createdSuggestion.id,
+      kind: "REMEDIATION_PROPOSAL",
+      label: `${suggestion.type.toLowerCase()} proposal`,
+      summary: suggestion.rationale,
+      textValue: suggestion.suggestedCode,
+      jsonValue: {
+        validation,
+        generationMethod,
+        confidence: suggestion.confidence,
+        modelUsed: suggestion.modelUsed ?? null,
+        recipeId: recipe.id,
+      } as unknown as Prisma.InputJsonValue,
+    },
   });
+
+  if (generationMethod === "AI") {
+    const inputTokens = Math.ceil(elementHtml.length / 4);
+    const outputTokens = Math.ceil(suggestion.suggestedCode.length / 4);
+
+    await logAiUsage(prisma, {
+      organizationId,
+      model: suggestion.modelUsed ?? generationMethod.toLowerCase(),
+      promptTokens: inputTokens,
+      completionTokens: outputTokens,
+      purpose: "REMEDIATION_SUGGESTION",
+    });
+  }
 
   // If confidence is below threshold or validation failed, create a review task
   if (suggestion.confidence < 0.7 || !validation.valid) {
     await prisma.reviewTask.create({
       data: {
+        suggestionId: createdSuggestion.id,
         type: "SUGGESTION_REVIEW",
         status: "PENDING",
         title: `Review: ${suggestion.type.toLowerCase().replace("_", " ")} suggestion`,

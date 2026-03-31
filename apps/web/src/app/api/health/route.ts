@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { collectPlatformHealth, toPublicHealthSummary } from '@aros/core-services';
-// eslint-disable-next-line no-restricted-syntax
 import { prisma } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';

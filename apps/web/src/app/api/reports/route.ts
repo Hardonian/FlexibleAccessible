@@ -30,15 +30,9 @@ export async function GET(request: Request) {
     }
 
     const where: Record<string, unknown> = {
-      occurrences: {
-        some: {
-          page: {
-            site: {
-              workspace: { organizationId: membership.organizationId },
-              ...(siteId ? { id: siteId } : {}),
-            },
-          },
-        },
+      site: {
+        workspace: { organizationId: membership.organizationId },
+        ...(siteId ? { id: siteId } : {}),
       },
     };
 
@@ -51,6 +45,27 @@ export async function GET(request: Request) {
         occurrences: {
           include: { page: { select: { url: true, title: true } } },
           take: 100,
+        },
+        evidenceRecords: {
+          take: 20,
+          orderBy: [{ capturedAt: "desc" }, { createdAt: "desc" }],
+        },
+        verificationRuns: {
+          take: 10,
+          orderBy: [{ completedAt: "desc" }, { createdAt: "desc" }],
+        },
+        governanceDecisions: {
+          take: 10,
+          orderBy: [{ createdAt: "desc" }],
+          select: {
+            id: true,
+            kind: true,
+            status: true,
+            rationale: true,
+            justification: true,
+            expiresAt: true,
+            createdAt: true,
+          },
         },
       },
       orderBy: [{ impact: "asc" }, { occurrenceCount: "desc" }],
@@ -90,15 +105,43 @@ export async function GET(request: Request) {
         ruleId: f.ruleId,
         impact: f.impact,
         status: f.status,
+        truthStatus: f.truthStatus,
         evidenceSource: f.evidenceSource,
+        sourceType: f.sourceType,
+        targetKind: f.targetKind,
+        targetLocator: f.targetLocator,
         description: f.description,
         wcagTags: f.wcagTags,
+        wcagCriteria: f.wcagCriteria,
+        wcagVersion: f.wcagVersion,
+        normalizedRuleKey: f.normalizedRuleKey,
+        ruleVersion: f.ruleVersion,
+        confidence: f.confidence,
         occurrenceCount: f.occurrenceCount,
         firstSeenAt: f.firstSeenAt,
         lastSeenAt: f.lastSeenAt,
         lastVerifiedAt: f.lastVerifiedAt,
         lastScanRunId: f.lastScanRunId,
         reopenedCount: f.reopenedCount,
+        evidenceCount: f.evidenceRecords.length,
+        latestVerification:
+          f.verificationRuns[0]
+            ? {
+                status: f.verificationRuns[0].status,
+                kind: f.verificationRuns[0].kind,
+                completedAt: f.verificationRuns[0].completedAt,
+                outcomeSummary: f.verificationRuns[0].outcomeSummary,
+              }
+            : null,
+        governance: f.governanceDecisions.map((decision) => ({
+          id: decision.id,
+          kind: decision.kind,
+          status: decision.status,
+          rationale: decision.rationale,
+          justification: decision.justification,
+          expiresAt: decision.expiresAt,
+          createdAt: decision.createdAt,
+        })),
         affectedPages: f.occurrences.map((o) => ({
           url: o.page.url,
           title: o.page.title,

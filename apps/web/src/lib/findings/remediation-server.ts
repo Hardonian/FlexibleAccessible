@@ -1,6 +1,10 @@
 import type { PrismaClient, FindingStatus } from '@aros/db';
 import { hasPermission } from '@aros/config';
 import { canOperatorTransition, type FindingStatusValue } from '@aros/shared';
+import {
+  deriveWorkflowTruthStatus,
+  getActiveFindingGovernanceDecision,
+} from '@aros/core-services';
 
 export type RemediationTransitionResult =
   | { ok: true }
@@ -31,9 +35,7 @@ export async function loadFindingScopedToOrg(
   return prisma.canonicalFinding.findFirst({
     where: {
       id: findingId,
-      occurrences: {
-        some: { page: { site: { workspace: { organizationId } } } },
-      },
+      site: { workspace: { organizationId } },
     },
     select: {
       id: true,
@@ -124,12 +126,18 @@ export async function transitionFindingRemediationStatus(input: {
   }
 
   const now = new Date();
+  const activeDecision = await getActiveFindingGovernanceDecision(input.prisma, finding.id);
+  const truthStatus = deriveWorkflowTruthStatus(
+    nextStatus,
+    activeDecision?.kind ?? null
+  );
 
   await input.prisma.$transaction(async (tx) => {
     await tx.canonicalFinding.update({
       where: { id: finding.id },
       data: {
         status: nextStatus,
+        truthStatus,
         statusChangedAt: now,
         statusChangedById: input.userId,
         statusNote: noteTrimmed,

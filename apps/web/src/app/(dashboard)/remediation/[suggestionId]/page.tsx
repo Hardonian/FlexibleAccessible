@@ -68,6 +68,7 @@ export default async function SuggestionDetailPage({
     },
     include: {
       reviewTask: true,
+      recipe: true,
       finding: {
         include: {
           occurrences: {
@@ -219,6 +220,34 @@ export default async function SuggestionDetailPage({
           <pre className="bg-slate-50 rounded-lg p-3 text-sm overflow-x-auto">
             {JSON.stringify(suggestion.validationResult, null, 2)}
           </pre>
+        </div>
+      )}
+
+      {suggestion.recipe && (
+        <div className="card">
+          <h2 className="text-lg font-semibold text-slate-900 mb-3">
+            Linked Recipe
+          </h2>
+          <p className="text-sm text-slate-700 mb-2">{suggestion.recipe.title}</p>
+          <p className="text-sm text-slate-600 mb-4">{suggestion.recipe.strategy}</p>
+          <div className="grid gap-4 lg:grid-cols-2 text-sm">
+            <div>
+              <p className="font-medium text-slate-900 mb-2">Verification steps</p>
+              <ul className="list-disc pl-5 space-y-1 text-slate-700">
+                {suggestion.recipe.verificationSteps.map((step) => (
+                  <li key={step}>{step}</li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <p className="font-medium text-slate-900 mb-2">Risk notes</p>
+              <ul className="list-disc pl-5 space-y-1 text-slate-700">
+                {suggestion.recipe.riskNotes.map((note) => (
+                  <li key={note}>{note}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
         </div>
       )}
 

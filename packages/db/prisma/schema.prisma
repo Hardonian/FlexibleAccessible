@@ -26,6 +26,10 @@ model User {
   findingStatusChanges CanonicalFinding[] @relation("findingStatusChangedBy")
   findingStatusEvents  FindingStatusEvent[]
   aiUsageLogs     AiUsageLog[]
+  verificationRunsTriggered FindingVerificationRun[] @relation("verificationTriggeredBy")
+  governanceDecisionsCreated FindingGovernanceDecision[] @relation("governanceCreatedBy")
+  governanceDecisionsApproved FindingGovernanceDecision[] @relation("governanceApprovedBy")
+  governanceDecisionsRevoked FindingGovernanceDecision[] @relation("governanceRevokedBy")
 
   @@map("users")
 }
@@ -61,6 +65,7 @@ model Organization {
   integrationConnections IntegrationConnection[]
   apiKeys           ApiKey[]
   mcpUsageLogs      McpUsageLog[]
+  remediationRecipes RemediationRecipe[]
 
   // MCP API monetization
   mcpEnabled         Boolean  @default(false)
@@ -138,6 +143,9 @@ model Site {
   githubRepoMapping GitHubRepoMapping?
   canonicalFindings CanonicalFinding[]
   reports           Report[]
+  evidenceRecords   FindingEvidence[]
+  verificationRuns  FindingVerificationRun[]
+  governanceDecisions FindingGovernanceDecision[]
 
   @@index([workspaceId])
   @@map("sites")
@@ -237,6 +245,7 @@ model Page {
   snapshots  PageSnapshot[]
   violations RawViolation[]
   findings   FindingOccurrence[]
+  evidenceRecords FindingEvidence[]
 
   @@unique([siteId, url])
   @@index([siteId])
@@ -290,6 +299,8 @@ model ScanRun {
   crawlRun  CrawlRun?      @relation(fields: [crawlRunId], references: [id])
   violations RawViolation[]
   findingsLastVerified CanonicalFinding[]
+  evidenceRecords FindingEvidence[]
+  verificationRuns FindingVerificationRun[]
 
   @@index([siteId])
   @@index([crawlRunId])
@@ -336,6 +347,26 @@ enum EvidenceSource {
   IMPORTED
 }
 
+enum FindingSourceType {
+  CRAWL
+  SCAN
+  REPO
+  PR
+  RUNTIME
+  MANUAL
+  IMPORT
+}
+
+enum FindingTargetKind {
+  URL
+  PAGE
+  FLOW
+  COMPONENT
+  SELECTOR
+  FILE
+  DESIGN_NODE
+}
+
 enum FindingStatus {
   OPEN
   ACKNOWLEDGED
@@ -346,18 +377,45 @@ enum FindingStatus {
   WONT_FIX
 }
 
+enum FindingTruthStatus {
+  OPEN
+  FIXED_PENDING_VERIFICATION
+  VERIFIED_FIXED
+  WAIVED
+  SUPPRESSED
+  INCONCLUSIVE
+  STALE
+  ERRORED
+}
+
+enum RuleEvaluationKind {
+  DETERMINISTIC
+  HEURISTIC
+  MODEL_ASSISTED
+}
+
 model CanonicalFinding {
   id              String        @id @default(cuid())
   siteId          String
   site            Site          @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  sourceType      FindingSourceType @default(SCAN)
+  targetKind      FindingTargetKind @default(SELECTOR)
+  targetLocator   Json?
   ruleId          String
+  normalizedRuleKey String?
+  ruleVersion     String?
+  evaluationKind  RuleEvaluationKind @default(DETERMINISTIC)
+  wcagVersion     String?
+  wcagCriteria    String[]      @default([])
   impact          Severity
+  confidence      Float         @default(1)
   description     String
   helpUrl         String?
   wcagTags        String[]      @default([])
   fingerprint     String        @unique
   evidenceSource  EvidenceSource @default(AUTOMATED_AXE)
   status          FindingStatus @default(OPEN)
+  truthStatus     FindingTruthStatus @default(OPEN)
   firstSeenAt     DateTime      @default(now())
   lastSeenAt      DateTime      @default(now())
   lastVerifiedAt  DateTime?
@@ -367,6 +425,8 @@ model CanonicalFinding {
   statusChangedAt DateTime      @default(now())
   statusChangedById String?
   statusNote      String?
+  provenance      Json?
+  evidenceSummary Json?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
@@ -377,14 +437,19 @@ model CanonicalFinding {
   lastScanRun   ScanRun?            @relation(fields: [lastScanRunId], references: [id])
   statusChangedBy User?             @relation("findingStatusChangedBy", fields: [statusChangedById], references: [id])
   statusEvents  FindingStatusEvent[]
+  evidenceRecords FindingEvidence[]
+  verificationRuns FindingVerificationRun[]
+  governanceDecisions FindingGovernanceDecision[]
 
   @@index([siteId])
   @@index([ruleId])
   @@index([status])
+  @@index([truthStatus])
   @@index([impact])
   @@index([clusterId])
   @@index([lastScanRunId])
   @@index([evidenceSource])
+  @@index([sourceType])
   @@map("canonical_findings")
 }
 
@@ -478,10 +543,45 @@ enum SuggestionStatus {
   REJECTED
 }
 
+enum RecipeReviewLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model RemediationRecipe {
+  id                String            @id @default(cuid())
+  organizationId    String?
+  ruleId            String
+  defectClass       String
+  title             String
+  applicableTargets String[]          @default([])
+  frameworks        String[]          @default([])
+  strategy          String
+  guidance          String
+  verificationSteps String[]          @default([])
+  riskNotes         String[]          @default([])
+  requiredReviewLevel RecipeReviewLevel @default(MEDIUM)
+  confidence        Float             @default(0.5)
+  successCount      Int               @default(0)
+  rejectionCount    Int               @default(0)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  suggestions  RemediationSuggestion[]
+
+  @@unique([organizationId, ruleId, defectClass])
+  @@index([organizationId])
+  @@index([ruleId])
+  @@map("remediation_recipes")
+}
+
 model RemediationSuggestion {
   id                String           @id @default(cuid())
   canonicalFindingId String?
   clusterId         String?
+  recipeId          String?
   type              SuggestionType
   status            SuggestionStatus @default(DRAFT)
   originalCode      String
@@ -497,9 +597,13 @@ model RemediationSuggestion {
   finding  CanonicalFinding? @relation(fields: [canonicalFindingId], references: [id])
   cluster  IssueCluster?     @relation(fields: [clusterId], references: [id])
   reviewTask ReviewTask?
+  recipe   RemediationRecipe? @relation(fields: [recipeId], references: [id])
+  evidenceRecords FindingEvidence[]
+  verificationRuns FindingVerificationRun[]
 
   @@index([canonicalFindingId])
   @@index([clusterId])
+  @@index([recipeId])
   @@index([status])
   @@map("remediation_suggestions")
 }
@@ -539,6 +643,7 @@ model ReviewTask {
   suggestion RemediationSuggestion? @relation(fields: [suggestionId], references: [id])
   assignee   User?                  @relation("assignee", fields: [assigneeId], references: [id])
   evidence   EvidenceArtifact[]
+  controlPlaneEvidence FindingEvidence[]
 
   @@index([status])
   @@index([assigneeId])
@@ -559,6 +664,157 @@ model EvidenceArtifact {
 
   @@index([reviewTaskId])
   @@map("evidence_artifacts")
+}
+
+enum EvidenceKind {
+  SCREENSHOT
+  HTML_SNAPSHOT
+  DOM_SNIPPET
+  SELECTOR_TRACE
+  RULE_EVALUATION
+  PAGE_METADATA
+  VERIFICATION_RESULT
+  ERROR_CONTEXT
+  REMEDIATION_PROPOSAL
+  REVIEWER_NOTE
+  GOVERNANCE_NOTE
+}
+
+enum EvidenceLifecycleStatus {
+  READY
+  MISSING
+  FAILED
+}
+
+model FindingEvidence {
+  id                    String                  @id @default(cuid())
+  siteId                String
+  canonicalFindingId    String?
+  scanRunId             String?
+  pageId                String?
+  remediationSuggestionId String?
+  verificationRunId     String?
+  governanceDecisionId  String?
+  reviewTaskId          String?
+  kind                  EvidenceKind
+  lifecycleStatus       EvidenceLifecycleStatus @default(READY)
+  label                 String
+  summary               String?
+  storageKey            String?
+  mimeType              String?
+  textValue             String?
+  jsonValue             Json?
+  errorMessage          String?
+  metadata              Json?
+  capturedAt            DateTime                @default(now())
+  createdAt             DateTime                @default(now())
+
+  site       Site                  @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  finding    CanonicalFinding?     @relation(fields: [canonicalFindingId], references: [id], onDelete: Cascade)
+  scanRun    ScanRun?              @relation(fields: [scanRunId], references: [id], onDelete: SetNull)
+  page       Page?                 @relation(fields: [pageId], references: [id], onDelete: SetNull)
+  remediationSuggestion RemediationSuggestion? @relation(fields: [remediationSuggestionId], references: [id], onDelete: SetNull)
+  verificationRun FindingVerificationRun? @relation(fields: [verificationRunId], references: [id], onDelete: SetNull)
+  governanceDecision FindingGovernanceDecision? @relation(fields: [governanceDecisionId], references: [id], onDelete: SetNull)
+  reviewTask ReviewTask?           @relation(fields: [reviewTaskId], references: [id], onDelete: SetNull)
+
+  @@index([siteId])
+  @@index([canonicalFindingId])
+  @@index([scanRunId])
+  @@index([pageId])
+  @@index([verificationRunId])
+  @@index([governanceDecisionId])
+  @@index([kind])
+  @@map("finding_evidence")
+}
+
+enum VerificationKind {
+  SCAN_RECHECK
+  DOM_ASSERTION
+  MANUAL_REVIEW
+}
+
+enum VerificationStatus {
+  PENDING
+  RUNNING
+  PASSED
+  FAILED
+  INCONCLUSIVE
+  ERRORED
+}
+
+model FindingVerificationRun {
+  id                    String             @id @default(cuid())
+  siteId                String
+  canonicalFindingId    String
+  scanRunId             String?
+  remediationSuggestionId String?
+  kind                  VerificationKind   @default(SCAN_RECHECK)
+  status                VerificationStatus @default(PENDING)
+  triggeredById         String?
+  startedAt             DateTime?
+  completedAt           DateTime?
+  outcomeSummary        String?
+  failureReason         String?
+  metadata              Json?
+  createdAt             DateTime           @default(now())
+
+  site                  Site               @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  finding               CanonicalFinding   @relation(fields: [canonicalFindingId], references: [id], onDelete: Cascade)
+  scanRun               ScanRun?           @relation(fields: [scanRunId], references: [id], onDelete: SetNull)
+  remediationSuggestion RemediationSuggestion? @relation(fields: [remediationSuggestionId], references: [id], onDelete: SetNull)
+  triggeredBy           User?              @relation("verificationTriggeredBy", fields: [triggeredById], references: [id])
+  evidence              FindingEvidence[]
+
+  @@index([siteId])
+  @@index([canonicalFindingId])
+  @@index([scanRunId])
+  @@index([status])
+  @@map("finding_verification_runs")
+}
+
+enum GovernanceDecisionKind {
+  WAIVER
+  SUPPRESSION
+  OVERRIDE
+}
+
+enum GovernanceDecisionStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+}
+
+model FindingGovernanceDecision {
+  id                 String                   @id @default(cuid())
+  siteId             String
+  canonicalFindingId String
+  kind               GovernanceDecisionKind
+  status             GovernanceDecisionStatus @default(ACTIVE)
+  rationale          String
+  justification      String?
+  expiresAt          DateTime?
+  createdById        String
+  approvedById       String?
+  revokedById        String?
+  approvedAt         DateTime?
+  revokedAt          DateTime?
+  metadata           Json?
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+
+  site       Site             @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  finding    CanonicalFinding @relation(fields: [canonicalFindingId], references: [id], onDelete: Cascade)
+  createdBy  User             @relation("governanceCreatedBy", fields: [createdById], references: [id])
+  approvedBy User?            @relation("governanceApprovedBy", fields: [approvedById], references: [id])
+  revokedBy  User?            @relation("governanceRevokedBy", fields: [revokedById], references: [id])
+  evidence   FindingEvidence[]
+
+  @@index([siteId])
+  @@index([canonicalFindingId])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("finding_governance_decisions")
 }
 
 // ─── INTEGRATIONS ────────────────────────────────────────────

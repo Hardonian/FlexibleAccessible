@@ -3,10 +3,12 @@ import { prisma } from '@aros/db';
 import { chromium, type Browser } from 'playwright';
 import {
   bullmqConnectionOptions,
-  createFingerprint,
-  shouldReopenOnAutomatedDetection,
-  type FindingStatusValue,
 } from '@aros/shared';
+import { normalizeViolations } from '@aros/scan-engine';
+import {
+  finalizeAutomatedScanVerification,
+  recordAutomatedFindingObservation,
+} from '@aros/core-services';
 
 interface ScanJobData {
   scanRunId: string;
@@ -29,7 +31,7 @@ export async function handleScanJob(job: Job<ScanJobData>) {
 
   const pages = await prisma.page.findMany({
     where: { siteId },
-    select: { id: true, url: true },
+    select: { id: true, url: true, title: true },
   });
 
   await prisma.scanRun.update({
@@ -40,6 +42,7 @@ export async function handleScanJob(job: Job<ScanJobData>) {
   let browser: Browser | null = null;
   let pagesScanned = 0;
   let totalViolations = 0;
+  const observedFingerprints = new Set<string>();
 
   try {
     browser = await chromium.launch({
@@ -77,118 +80,40 @@ export async function handleScanJob(job: Job<ScanJobData>) {
           });
         });
 
-        // Process violations
-        for (const violation of results.violations) {
-          for (const node of violation.nodes) {
-            const selector = node.target?.join(' > ') ?? '';
-            const elementHtml = node.html ?? '';
+        const normalizedViolations = normalizeViolations(results.violations, siteId);
 
-            const fingerprint = createFingerprint({
-              ruleId: violation.id,
-              selector,
-              siteId,
-              elementSignature: extractElementSignature(elementHtml),
-            });
+        for (const violation of normalizedViolations) {
+          const now = new Date();
+          observedFingerprints.add(violation.fingerprint);
 
-            const severityMap: Record<string, 'CRITICAL' | 'SERIOUS' | 'MODERATE' | 'MINOR'> = {
-              critical: 'CRITICAL',
-              serious: 'SERIOUS',
-              moderate: 'MODERATE',
-              minor: 'MINOR',
-            };
+          const raw = await prisma.rawViolation.create({
+            data: {
+              scanRunId,
+              pageId: pageRecord.id,
+              ruleId: violation.ruleId,
+              impact: violation.impact,
+              description: violation.description,
+              helpUrl: violation.helpUrl,
+              wcagTags: violation.wcagTags,
+              selector: violation.selector,
+              elementHtml: violation.elementHtml,
+              elementContext: violation.elementContext,
+              fingerprint: violation.fingerprint,
+            },
+          });
 
-            const impact = severityMap[violation.impact ?? 'moderate'] ?? 'MODERATE';
+          await recordAutomatedFindingObservation(prisma, {
+            siteId,
+            scanRunId,
+            pageId: pageRecord.id,
+            pageUrl: pageRecord.url,
+            rawViolationId: raw.id,
+            observedAt: now,
+            pageTitle: pageRecord.title,
+            violation,
+          });
 
-            const now = new Date();
-
-            const raw = await prisma.rawViolation.create({
-              data: {
-                scanRunId,
-                pageId: pageRecord.id,
-                ruleId: violation.id,
-                impact,
-                description: violation.description ?? violation.help ?? '',
-                helpUrl: violation.helpUrl,
-                wcagTags: violation.tags?.filter((t: string) => t.startsWith('wcag')) ?? [],
-                selector,
-                elementHtml: elementHtml.slice(0, 2000),
-                elementContext: node.failureSummary ?? '',
-                fingerprint,
-              },
-            });
-
-            const existing = await prisma.canonicalFinding.findUnique({
-              where: { fingerprint },
-            });
-
-            if (!existing) {
-              await prisma.canonicalFinding.create({
-                data: {
-                  siteId,
-                  ruleId: violation.id,
-                  impact,
-                  description: violation.help ?? violation.description ?? '',
-                  helpUrl: violation.helpUrl,
-                  wcagTags: violation.tags?.filter((t: string) => t.startsWith('wcag')) ?? [],
-                  fingerprint,
-                  evidenceSource: 'AUTOMATED_AXE',
-                  status: 'OPEN',
-                  occurrenceCount: 1,
-                  lastScanRunId: scanRunId,
-                  lastVerifiedAt: now,
-                },
-              });
-            } else {
-              const st = existing.status as FindingStatusValue;
-              const reopenAutomated =
-                shouldReopenOnAutomatedDetection(st) &&
-                (st === 'RESOLVED' || st === 'MITIGATED');
-
-              await prisma.canonicalFinding.update({
-                where: { id: existing.id },
-                data: {
-                  lastSeenAt: now,
-                  occurrenceCount: { increment: 1 },
-                  lastScanRunId: scanRunId,
-                  lastVerifiedAt: now,
-                  ...(reopenAutomated
-                    ? { status: 'OPEN', reopenedCount: { increment: 1 } }
-                    : {}),
-                },
-              });
-            }
-
-            const canonicalFinding = await prisma.canonicalFinding.findUnique({
-              where: { fingerprint },
-            });
-
-            if (canonicalFinding) {
-              await prisma.findingOccurrence.upsert({
-                where: {
-                  canonicalFindingId_pageId: {
-                    canonicalFindingId: canonicalFinding.id,
-                    pageId: pageRecord.id,
-                  },
-                },
-                create: {
-                  canonicalFindingId: canonicalFinding.id,
-                  pageId: pageRecord.id,
-                  selector,
-                  elementHtml: elementHtml.slice(0, 2000),
-                  lastRawViolationId: raw.id,
-                },
-                update: {
-                  lastSeenAt: now,
-                  resolved: false,
-                  selector,
-                  elementHtml: elementHtml.slice(0, 2000),
-                  lastRawViolationId: raw.id,
-                },
-              });
-            }
-
-            totalViolations++;
-          }
+          totalViolations++;
         }
 
         pagesScanned++;
@@ -215,6 +140,13 @@ export async function handleScanJob(job: Job<ScanJobData>) {
       },
     });
 
+    await finalizeAutomatedScanVerification(prisma, {
+      siteId,
+      scanRunId,
+      observedFingerprints: Array.from(observedFingerprints),
+      completedAt: new Date(),
+    });
+
     // Trigger clustering after scan completes
     await clusterQueue.add('cluster', { siteId, scanRunId }, {
       delay: 5000,
@@ -237,14 +169,4 @@ export async function handleScanJob(job: Job<ScanJobData>) {
       await browser.close();
     }
   }
-}
-
-function extractElementSignature(html: string): string {
-  const tagMatch = html.match(/<(\w+)/);
-  const roleMatch = html.match(/role="([^"]*)"/);
-  const typeMatch = html.match(/type="([^"]*)"/);
-  const tag = tagMatch?.[1]?.toLowerCase() ?? 'unknown';
-  const role = roleMatch?.[1] ?? '';
-  const type = typeMatch?.[1] ?? '';
-  return `${tag}${role ? `[role=${role}]` : ''}${type ? `[type=${type}]` : ''}`;
 }

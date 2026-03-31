@@ -50,3 +50,14 @@ export type {
   RemediationType,
   ActorResponsibility,
 } from './operator-diagnostics';
+export {
+  createFindingGovernanceDecision,
+  deriveFindingTruthStatus,
+  deriveWorkflowTruthStatus,
+  finalizeAutomatedScanVerification,
+  getActiveFindingGovernanceDecision,
+  recomputeFindingTruthStatus,
+  recordAutomatedFindingObservation,
+  revokeFindingGovernanceDecision,
+} from './finding-control-plane';
+export { getDefaultRemediationRecipe, resolveRemediationRecipe } from './remediation-recipes';

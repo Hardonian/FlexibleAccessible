@@ -26,6 +26,9 @@ Thumbs.db
 
 # Prisma
 packages/db/prisma/migrations/
+!packages/db/prisma/migrations/
+!packages/db/prisma/migrations/**/
+!packages/db/prisma/migrations/**/migration.sql
 
 # Testing
 coverage/

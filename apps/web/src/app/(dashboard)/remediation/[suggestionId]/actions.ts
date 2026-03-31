@@ -15,6 +15,7 @@ async function requireSuggestionAccess(suggestionId: string, userId: string) {
     select: {
       id: true,
       status: true,
+      recipeId: true,
       finding: {
         select: {
           site: {
@@ -103,6 +104,12 @@ export async function approveSuggestionAction(formData: FormData) {
         appliedAt: new Date(),
       },
     });
+    if (suggestion.recipeId) {
+      await prisma.remediationRecipe.update({
+        where: { id: suggestion.recipeId },
+        data: { successCount: { increment: 1 } },
+      });
+    }
   } catch {
     redirect(`/remediation/${suggestionId}?error=update_failed`);
   }
@@ -132,6 +139,12 @@ export async function rejectSuggestionAction(formData: FormData) {
       where: { id: suggestionId },
       data: { status: "REJECTED" },
     });
+    if (suggestion.recipeId) {
+      await prisma.remediationRecipe.update({
+        where: { id: suggestion.recipeId },
+        data: { rejectionCount: { increment: 1 } },
+      });
+    }
   } catch {
     redirect(`/remediation/${suggestionId}?error=update_failed`);
   }

@@ -316,10 +316,91 @@ async function main() {
   }
 
   // Demo remediation suggestions
-  await prisma.remediationSuggestion.create({
+  async function ensureRecipe(input: {
+    ruleId: string;
+    defectClass: string;
+    title: string;
+    strategy: string;
+    guidance: string;
+    verificationSteps: string[];
+    riskNotes: string[];
+  }) {
+    const existing = await prisma.remediationRecipe.findFirst({
+      where: {
+        organizationId: null,
+        ruleId: input.ruleId,
+        defectClass: input.defectClass,
+      },
+      select: { id: true },
+    });
+
+    if (existing) return existing.id;
+
+    const created = await prisma.remediationRecipe.create({
+      data: {
+        organizationId: null,
+        ruleId: input.ruleId,
+        defectClass: input.defectClass,
+        title: input.title,
+        strategy: input.strategy,
+        guidance: input.guidance,
+        verificationSteps: input.verificationSteps,
+        riskNotes: input.riskNotes,
+        applicableTargets: [],
+        frameworks: ['html'],
+        requiredReviewLevel: 'MEDIUM',
+        confidence: 0.85,
+      },
+      select: { id: true },
+    });
+
+    return created.id;
+  }
+
+  const imageAltRecipeId = await ensureRecipe({
+    ruleId: 'image-alt',
+    defectClass: 'missing_alt_text',
+    title: 'Add accurate alternative text',
+    strategy: 'Write alt text that reflects the image purpose rather than the asset filename.',
+    guidance: 'Use empty alt only for decorative imagery.',
+    verificationSteps: [
+      'Confirm the image has a purposeful alt attribute.',
+      'Re-run automated verification for the affected pages.',
+    ],
+    riskNotes: ['Logo alt text should stay consistent across the site.'],
+  });
+
+  const buttonNameRecipeId = await ensureRecipe({
+    ruleId: 'button-name',
+    defectClass: 'missing_button_name',
+    title: 'Provide a durable button name',
+    strategy: 'Prefer visible text. Use aria-label only for true icon-only controls.',
+    guidance: 'Keep icon decoration hidden from assistive tech when the label is elsewhere.',
+    verificationSteps: [
+      'Check the button accessible name.',
+      'Re-run automated verification.',
+    ],
+    riskNotes: ['Labels often drift when icon buttons change purpose.'],
+  });
+
+  const labelRecipeId = await ensureRecipe({
+    ruleId: 'label',
+    defectClass: 'missing_form_label',
+    title: 'Associate controls with visible labels',
+    strategy: 'Use native label bindings rather than placeholders.',
+    guidance: 'Keep ids stable across renders.',
+    verificationSteps: [
+      'Check label association in DOM and with keyboard focus.',
+      'Re-run automated verification.',
+    ],
+    riskNotes: ['Generated ids can break label bindings.'],
+  });
+
+  const imageSuggestion = await prisma.remediationSuggestion.create({
     data: {
       canonicalFindingId: allFindings.find((f) => f.ruleId === 'image-alt')?.id,
       clusterId: imageCluster.id,
+      recipeId: imageAltRecipeId,
       type: 'ALT_TEXT',
       status: 'VALIDATED',
       originalCode: '<img class="logo" src="/logo.png">',
@@ -330,10 +411,11 @@ async function main() {
     },
   });
 
-  await prisma.remediationSuggestion.create({
+  const buttonSuggestion = await prisma.remediationSuggestion.create({
     data: {
       canonicalFindingId: allFindings.find((f) => f.ruleId === 'button-name')?.id,
       clusterId: buttonCluster.id,
+      recipeId: buttonNameRecipeId,
       type: 'BUTTON_LABEL',
       status: 'VALIDATED',
       originalCode: '<button class="menu-toggle"><svg>...</svg></button>',
@@ -344,9 +426,10 @@ async function main() {
     },
   });
 
-  await prisma.remediationSuggestion.create({
+  const labelSuggestion = await prisma.remediationSuggestion.create({
     data: {
       canonicalFindingId: allFindings.find((f) => f.ruleId === 'label')?.id,
+      recipeId: labelRecipeId,
       type: 'FORM_LABEL',
       status: 'DRAFT',
       originalCode: '<input type="email" name="email" placeholder="Enter email">',
@@ -357,9 +440,54 @@ async function main() {
     },
   });
 
+  const firstFinding = allFindings[0];
+  if (firstFinding) {
+    const verificationRun = await prisma.findingVerificationRun.create({
+      data: {
+        siteId: site.id,
+        canonicalFindingId: firstFinding.id,
+        scanRunId: scanRun.id,
+        kind: 'SCAN_RECHECK',
+        status: 'FAILED',
+        startedAt: scanRun.startedAt ?? new Date(),
+        completedAt: scanRun.completedAt ?? new Date(),
+        outcomeSummary: 'Demo verification shows the issue is still present in the baseline scan.',
+      },
+    });
+
+    await prisma.findingEvidence.createMany({
+      data: [
+        {
+          siteId: site.id,
+          canonicalFindingId: firstFinding.id,
+          scanRunId: scanRun.id,
+          verificationRunId: verificationRun.id,
+          kind: 'RULE_EVALUATION',
+          label: firstFinding.ruleId,
+          summary: 'Baseline automated evidence imported by the seed script.',
+          jsonValue: {
+            normalizedRuleKey: firstFinding.ruleId,
+            wcagTags: firstFinding.wcagTags,
+          } as object,
+        },
+        {
+          siteId: site.id,
+          canonicalFindingId: firstFinding.id,
+          scanRunId: scanRun.id,
+          kind: 'REMEDIATION_PROPOSAL',
+          remediationSuggestionId: imageSuggestion.id,
+          label: 'seed remediation proposal',
+          summary: imageSuggestion.rationale,
+          textValue: imageSuggestion.suggestedCode,
+        },
+      ],
+    });
+  }
+
   // Demo review tasks
   await prisma.reviewTask.create({
     data: {
+      suggestionId: imageSuggestion.id,
       type: 'ALT_TEXT_REVIEW',
       status: 'PENDING',
       title: 'Review alt text for product images',
@@ -379,6 +507,7 @@ async function main() {
 
   await prisma.reviewTask.create({
     data: {
+      suggestionId: buttonSuggestion.id,
       type: 'SCREEN_READER',
       status: 'IN_PROGRESS',
       title: 'Screen reader testing: checkout flow',

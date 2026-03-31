@@ -4,6 +4,10 @@ import { prisma } from "@/lib/db";
 import type { Prisma } from "@aros/db";
 import Link from "next/link";
 import { FindingStatusForm } from "./finding-status-form";
+import {
+  createFindingGovernanceDecisionAction,
+  revokeFindingGovernanceDecisionAction,
+} from "./actions";
 import { getRoutePlatformTruth } from "@/lib/platform-truth-cache";
 import { resolveDashboardOrgMembership } from "@/lib/route-data-boundary";
 import { RouteReliabilityNotice } from "@/components/reliability/route-reliability-notice";
@@ -35,7 +39,7 @@ export default async function FindingDetailPage({
   searchParams,
 }: {
   params: Promise<{ findingId: string }>;
-  searchParams: Promise<{ remediation?: string }>;
+  searchParams: Promise<{ remediation?: string; governance?: string }>;
 }) {
   const { findingId } = await params;
   const sp = await searchParams;
@@ -117,7 +121,15 @@ export default async function FindingDetailPage({
         };
       };
       cluster: true;
-      suggestions: true;
+      suggestions: { include: { recipe: true } };
+      evidenceRecords: true;
+      verificationRuns: true;
+      governanceDecisions: {
+        include: {
+          createdBy: { select: { email: true; name: true } };
+          revokedBy: { select: { email: true; name: true } };
+        };
+      };
     };
   }>;
 
@@ -127,13 +139,7 @@ export default async function FindingDetailPage({
     finding = await prisma.canonicalFinding.findFirst({
       where: {
         id: findingId,
-        occurrences: {
-          some: {
-            page: {
-              site: { workspace: { organizationId: orgRes.organizationId } },
-            },
-          },
-        },
+        site: { workspace: { organizationId: orgRes.organizationId } },
       },
       include: {
         site: { select: { id: true, name: true, domain: true } },
@@ -170,8 +176,25 @@ export default async function FindingDetailPage({
         },
         cluster: true,
         suggestions: {
+          include: { recipe: true },
           orderBy: { confidence: "desc" },
           take: 5,
+        },
+        evidenceRecords: {
+          orderBy: [{ capturedAt: "desc" }, { createdAt: "desc" }],
+          take: 12,
+        },
+        verificationRuns: {
+          orderBy: [{ completedAt: "desc" }, { createdAt: "desc" }],
+          take: 8,
+        },
+        governanceDecisions: {
+          orderBy: [{ createdAt: "desc" }],
+          take: 8,
+          include: {
+            createdBy: { select: { email: true, name: true } },
+            revokedBy: { select: { email: true, name: true } },
+          },
         },
       },
     });
@@ -212,6 +235,25 @@ export default async function FindingDetailPage({
     latestCompletedScanCompletedAt: latestCompleted?.completedAt ?? null,
     jobPipelinesHealthy: platformTruth.flags.jobPipelinesHealthy,
   });
+  const latestVerificationRun = finding.verificationRuns[0] ?? null;
+  const activeGovernanceDecision =
+    finding.governanceDecisions.find(
+      (decision) =>
+        decision.status === "ACTIVE" &&
+        (!decision.expiresAt || decision.expiresAt.getTime() >= Date.now()),
+    ) ?? null;
+  const primaryRecipe =
+    finding.suggestions.find((suggestion) => suggestion.recipe)?.recipe ?? null;
+  const truthStatusTone =
+    finding.truthStatus === "VERIFIED_FIXED"
+      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+      : finding.truthStatus === "FIXED_PENDING_VERIFICATION"
+        ? "bg-amber-50 text-amber-700 border-amber-200"
+        : finding.truthStatus === "WAIVED" || finding.truthStatus === "SUPPRESSED"
+          ? "bg-violet-50 text-violet-700 border-violet-200"
+          : finding.truthStatus === "INCONCLUSIVE" || finding.truthStatus === "ERRORED"
+            ? "bg-rose-50 text-rose-700 border-rose-200"
+            : "bg-slate-100 text-slate-700 border-slate-200";
 
   const remediationError =
     sp.remediation === "forbidden"
@@ -223,6 +265,18 @@ export default async function FindingDetailPage({
           : sp.remediation === "not_found"
             ? "Finding not found in your organization."
             : null;
+  const governanceError =
+    sp.governance === "forbidden"
+      ? "You do not have permission to manage waivers or suppressions."
+      : sp.governance === "not_found"
+        ? "The finding or governance decision could not be found in your organization."
+        : sp.governance === "invalid_kind"
+          ? "Unknown governance decision type."
+          : sp.governance === "missing_rationale"
+            ? "A rationale is required for waivers and suppressions."
+            : sp.governance === "invalid_expiry"
+              ? "The provided expiry date is invalid."
+              : null;
 
   // Impact Visuals
   const impactConfig = {
@@ -303,6 +357,14 @@ export default async function FindingDetailPage({
           <p>{remediationError}</p>
         </RouteReliabilityNotice>
       )}
+      {governanceError && (
+        <RouteReliabilityNotice
+          variant="warning"
+          title="Governance update not applied"
+        >
+          <p>{governanceError}</p>
+        </RouteReliabilityNotice>
+      )}
 
       <div className="flex flex-col lg:flex-row gap-6 items-start">
         {/* Left Column: Core Identity, Occurrences, Context */}
@@ -327,6 +389,11 @@ export default async function FindingDetailPage({
                       className={`badge border ${impactConfig.bg} ${impactConfig.color} ${impactConfig.border} px-2.5 py-1 text-xs font-semibold uppercase tracking-wider`}
                     >
                       {finding.impact}
+                    </span>
+                    <span
+                      className={`badge border px-2.5 py-1 text-xs font-semibold uppercase tracking-wider ${truthStatusTone}`}
+                    >
+                      {finding.truthStatus.replaceAll("_", " ")}
                     </span>
                     <span className="badge bg-slate-100 text-slate-700 border border-slate-200 px-2.5 py-1 text-xs font-mono">
                       {finding.ruleId}
@@ -373,6 +440,22 @@ export default async function FindingDetailPage({
                   {finding.occurrenceCount.toLocaleString()} items
                 </dd>
               </div>
+              <div>
+                <dt className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 px-1 flex items-center gap-1.5">
+                  <Activity className="h-3.5 w-3.5" /> Source
+                </dt>
+                <dd className="font-medium text-slate-900 bg-white border border-slate-200 rounded-md px-3 py-1.5 shadow-sm">
+                  {finding.sourceType.toLowerCase()}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 px-1 flex items-center gap-1.5">
+                  <Bug className="h-3.5 w-3.5" /> Target
+                </dt>
+                <dd className="font-medium text-slate-900 bg-white border border-slate-200 rounded-md px-3 py-1.5 shadow-sm">
+                  {finding.targetKind.toLowerCase()}
+                </dd>
+              </div>
               <div className="col-span-2">
                 <dt className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 px-1 flex items-center gap-1.5">
                   <Shield className="h-3.5 w-3.5" /> WCAG Scope
@@ -392,6 +475,38 @@ export default async function FindingDetailPage({
                       Unspecified tagging
                     </span>
                   )}
+                </dd>
+              </div>
+              <div className="col-span-2">
+                <dt className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 px-1 flex items-center gap-1.5">
+                  <ShieldCheck className="h-3.5 w-3.5" /> Canonical Rule Map
+                </dt>
+                <dd className="bg-white border border-slate-200 rounded-md px-3 py-2 shadow-sm text-xs text-slate-700 space-y-1">
+                  <div>
+                    <span className="font-medium text-slate-900">Normalized key:</span>{" "}
+                    {finding.normalizedRuleKey ?? "unmapped"}
+                  </div>
+                  <div>
+                    <span className="font-medium text-slate-900">Rule version:</span>{" "}
+                    {finding.ruleVersion ?? "unknown"}{" "}
+                    {finding.evaluationKind && `• ${finding.evaluationKind.toLowerCase()}`}
+                  </div>
+                  <div>
+                    <span className="font-medium text-slate-900">WCAG version:</span>{" "}
+                    {finding.wcagVersion ?? "unspecified"}
+                    {finding.wcagCriteria.length > 0 &&
+                      ` • ${finding.wcagCriteria.join(", ")}`}
+                  </div>
+                </dd>
+              </div>
+              <div className="col-span-2">
+                <dt className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 px-1 flex items-center gap-1.5">
+                  <Info className="h-3.5 w-3.5" /> Target Locator
+                </dt>
+                <dd className="bg-white border border-slate-200 rounded-md px-3 py-2 shadow-sm text-xs text-slate-700 break-words">
+                  {finding.targetLocator
+                    ? JSON.stringify(finding.targetLocator)
+                    : "Locator not captured"}
                 </dd>
               </div>
             </dl>
@@ -495,6 +610,168 @@ export default async function FindingDetailPage({
               </div>
             </div>
           )}
+
+          {primaryRecipe && (
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
+              <div className="flex items-center gap-2">
+                <Zap className="h-5 w-5 text-brand-600" />
+                <h2 className="text-lg font-bold text-slate-900">
+                  Remediation Recipe
+                </h2>
+              </div>
+              <p className="text-sm text-slate-600">
+                Durable repair guidance linked to this defect class. This is
+                recipe knowledge, not proof that a fix has been applied.
+              </p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    Strategy
+                  </p>
+                  <p className="mt-2 text-sm text-slate-800">
+                    {primaryRecipe.strategy}
+                  </p>
+                  <p className="mt-3 text-xs text-slate-600">
+                    {primaryRecipe.guidance}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      Verification Steps
+                    </p>
+                    <ul className="mt-2 space-y-1 text-sm text-slate-800 list-disc pl-4">
+                      {primaryRecipe.verificationSteps.map((step) => (
+                        <li key={step}>{step}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      Risk Notes
+                    </p>
+                    <ul className="mt-2 space-y-1 text-sm text-slate-700 list-disc pl-4">
+                      {primaryRecipe.riskNotes.map((note) => (
+                        <li key={note}>{note}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    Review level: {primaryRecipe.requiredReviewLevel.toLowerCase()} •
+                    confidence {Math.round(primaryRecipe.confidence * 100)}% •
+                    accepted {primaryRecipe.successCount} / rejected{" "}
+                    {primaryRecipe.rejectionCount}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="p-5 sm:p-6 border-b border-slate-100 flex items-center gap-2">
+              <Shield className="h-5 w-5 text-slate-500" />
+              <h2 className="text-lg font-bold text-slate-900">
+                Evidence Substrate
+              </h2>
+            </div>
+            {finding.evidenceRecords.length === 0 ? (
+              <div className="p-6 text-sm text-slate-500">
+                No first-class evidence records are attached yet. This finding
+                may predate the evidence substrate or the artifact generation
+                step may have failed.
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {finding.evidenceRecords.map((evidence) => (
+                  <div key={evidence.id} className="p-5 sm:p-6 space-y-2">
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="badge bg-slate-100 text-slate-700 border border-slate-200">
+                          {evidence.kind.replaceAll("_", " ")}
+                        </span>
+                        <span className="badge bg-white text-slate-600 border border-slate-200">
+                          {evidence.lifecycleStatus.toLowerCase()}
+                        </span>
+                        <span className="text-xs text-slate-500">
+                          {evidence.capturedAt.toLocaleString()}
+                        </span>
+                      </div>
+                      <span className="text-xs font-medium text-slate-600">
+                        {evidence.label}
+                      </span>
+                    </div>
+                    {evidence.summary && (
+                      <p className="text-sm text-slate-700">{evidence.summary}</p>
+                    )}
+                    {evidence.textValue && (
+                      <pre className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700 whitespace-pre-wrap overflow-x-auto">
+                        {evidence.textValue}
+                      </pre>
+                    )}
+                    {evidence.jsonValue && (
+                      <pre className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700 whitespace-pre-wrap overflow-x-auto">
+                        {JSON.stringify(evidence.jsonValue, null, 2)}
+                      </pre>
+                    )}
+                    {evidence.errorMessage && (
+                      <p className="text-xs text-rose-700">{evidence.errorMessage}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="p-5 sm:p-6 border-b border-slate-100 flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-slate-500" />
+              <h2 className="text-lg font-bold text-slate-900">
+                Verification History
+              </h2>
+            </div>
+            {finding.verificationRuns.length === 0 ? (
+              <div className="p-6 text-sm text-slate-500">
+                No verification attempts are recorded yet. Operator status can
+                still change, but the platform should treat fixed claims as
+                unverified until a verification run appears here.
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {finding.verificationRuns.map((run) => (
+                  <div key={run.id} className="p-5 sm:p-6 space-y-2">
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="badge bg-slate-100 text-slate-700 border border-slate-200">
+                          {run.kind.replaceAll("_", " ")}
+                        </span>
+                        <span
+                          className={`badge border ${
+                            run.status === "PASSED"
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              : run.status === "FAILED"
+                                ? "bg-rose-50 text-rose-700 border-rose-200"
+                                : "bg-amber-50 text-amber-700 border-amber-200"
+                          }`}
+                        >
+                          {run.status.toLowerCase()}
+                        </span>
+                      </div>
+                      <span className="text-xs text-slate-500">
+                        {run.completedAt?.toLocaleString() ??
+                          run.createdAt.toLocaleString()}
+                      </span>
+                    </div>
+                    {run.outcomeSummary && (
+                      <p className="text-sm text-slate-700">{run.outcomeSummary}</p>
+                    )}
+                    {run.failureReason && (
+                      <p className="text-xs text-rose-700">{run.failureReason}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
             <div className="p-5 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -614,6 +891,15 @@ export default async function FindingDetailPage({
               <ShieldCheck className="h-4 w-4 text-brand-600" />
               Remediation Strategy
             </h3>
+            <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+              <p className="font-medium text-slate-900">
+                Canonical truth: {finding.truthStatus.replaceAll("_", " ")}
+              </p>
+              <p className="mt-1 text-xs text-slate-600">
+                Workflow status and canonical truth are separated so the platform
+                can distinguish operator intent from verified evidence.
+              </p>
+            </div>
             <FindingStatusForm
               findingId={findingId}
               defaultValue={finding.status}
@@ -633,6 +919,139 @@ export default async function FindingDetailPage({
                 crawl.
               </p>
             </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 sm:p-6 space-y-4">
+            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+              <Shield className="h-4 w-4 text-violet-600" />
+              Governance
+            </h3>
+            {activeGovernanceDecision ? (
+              <div className="rounded-lg border border-violet-200 bg-violet-50 p-4 text-sm text-violet-900 space-y-2">
+                <p className="font-semibold">
+                  Active {activeGovernanceDecision.kind.toLowerCase()} decision
+                </p>
+                <p>{activeGovernanceDecision.rationale}</p>
+                {activeGovernanceDecision.justification && (
+                  <p className="text-xs">{activeGovernanceDecision.justification}</p>
+                )}
+                <p className="text-xs">
+                  Created by{" "}
+                  {activeGovernanceDecision.createdBy.name ??
+                    activeGovernanceDecision.createdBy.email}
+                  {activeGovernanceDecision.expiresAt &&
+                    ` • expires ${activeGovernanceDecision.expiresAt.toLocaleString()}`}
+                </p>
+                {canManageFindings && (
+                  <form action={revokeFindingGovernanceDecisionAction}>
+                    <input type="hidden" name="findingId" value={findingId} />
+                    <input
+                      type="hidden"
+                      name="decisionId"
+                      value={activeGovernanceDecision.id}
+                    />
+                    <button type="submit" className="btn-secondary text-xs">
+                      Revoke decision
+                    </button>
+                  </form>
+                )}
+              </div>
+            ) : (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                No active waiver or suppression. Findings marked false positive
+                or accepted risk without a governance record remain
+                inconclusive, not proven.
+              </div>
+            )}
+
+            {canManageFindings && (
+              <form action={createFindingGovernanceDecisionAction} className="space-y-3">
+                <input type="hidden" name="findingId" value={findingId} />
+                <div>
+                  <label htmlFor="governance-kind" className="label">
+                    Decision type
+                  </label>
+                  <select
+                    id="governance-kind"
+                    name="kind"
+                    className="input"
+                    defaultValue="WAIVER"
+                  >
+                    <option value="WAIVER">Waiver</option>
+                    <option value="SUPPRESSION">Suppression</option>
+                    <option value="OVERRIDE">Override</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="governance-rationale" className="label">
+                    Rationale
+                  </label>
+                  <textarea
+                    id="governance-rationale"
+                    name="rationale"
+                    className="input min-h-24"
+                    required
+                    placeholder="Why is this decision needed, and what risk is being accepted or suppressed?"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="governance-justification" className="label">
+                    Justification / evidence requirement
+                  </label>
+                  <textarea
+                    id="governance-justification"
+                    name="justification"
+                    className="input min-h-20"
+                    placeholder="Supporting context, ticket reference, mitigation notes, or procurement-facing explanation."
+                  />
+                </div>
+                <div>
+                  <label htmlFor="governance-expiry" className="label">
+                    Expiry
+                  </label>
+                  <input
+                    id="governance-expiry"
+                    type="datetime-local"
+                    name="expiresAt"
+                    className="input"
+                  />
+                </div>
+                <button type="submit" className="btn-secondary w-full">
+                  Save governance decision
+                </button>
+              </form>
+            )}
+
+            {finding.governanceDecisions.length > 0 && (
+              <div className="pt-2 border-t border-slate-100 space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Governance history
+                </p>
+                <div className="space-y-2">
+                  {finding.governanceDecisions.map((decision) => (
+                    <div
+                      key={decision.id}
+                      className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700"
+                    >
+                      <p className="font-medium text-slate-900">
+                        {decision.kind.toLowerCase()} • {decision.status.toLowerCase()}
+                      </p>
+                      <p className="mt-1">{decision.rationale}</p>
+                      <p className="mt-1 text-slate-500">
+                        {decision.createdAt.toLocaleString()} by{" "}
+                        {decision.createdBy.name ?? decision.createdBy.email}
+                      </p>
+                      {decision.revokedBy && (
+                        <p className="text-slate-500">
+                          Revoked by{" "}
+                          {decision.revokedBy.name ?? decision.revokedBy.email}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Evidence Freshness Panel */}
@@ -674,6 +1093,20 @@ export default async function FindingDetailPage({
                   ) : (
                     <span className="italic text-slate-400">Untracked run</span>
                   )}
+                </span>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <span className="text-xs font-medium text-slate-500">
+                  Latest Verification
+                </span>
+                <span className="text-slate-700">
+                  {latestVerificationRun
+                    ? `${latestVerificationRun.status.toLowerCase()} • ${
+                        latestVerificationRun.completedAt?.toLocaleDateString() ??
+                        latestVerificationRun.createdAt.toLocaleDateString()
+                      }`
+                    : "No verification recorded"}
                 </span>
               </div>
 

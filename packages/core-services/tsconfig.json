@@ -1,10 +1,16 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "rootDir": "src",
+    "rootDir": "../..",
     "outDir": "dist",
     "noEmit": true,
     "types": ["node", "vitest/globals"]
   },
-  "include": ["src/**/*.ts"]
+  "include": [
+    "src/**/*.ts",
+    "../config/src/**/*.ts",
+    "../db/src/**/*.ts",
+    "../scan-engine/src/**/*.ts",
+    "../shared/src/**/*.ts"
+  ]
 }
