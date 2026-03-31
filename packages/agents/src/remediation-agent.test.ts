@@ -27,7 +27,7 @@ vi.mock('@aros/remediation', () => ({
 }));
 
 describe('RemediationAgent', () => {
-  const mockContext = { findingId: 'finding-123', siteId: 'site-abc', organizationId: 'org-xyz' };
+  const mockContext = { findingId: 'finding-123', siteId: 'site-abc', organizationId: 'org-xyz', metadata: {} };
 
   beforeEach(() => {
     vi.resetAllMocks();
@@ -107,7 +107,7 @@ describe('RemediationAgent', () => {
 
   it('should handle failure when finding is not found', async () => {
     // Arrange
-    (prisma.canonicalFinding.findUnique as vi.Mock).mockResolvedValue(null);
+    (prisma.canonicalFinding.findUnique as any).mockResolvedValue(null);
     const agent = new RemediationAgent();
 
     // Act
