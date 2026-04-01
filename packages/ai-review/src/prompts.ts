@@ -136,11 +136,11 @@ export function buildVisionPrompt(input: {
   accessibilityTreeSummary: string;
 }): string {
   const axeList =
-    input.axeViolations.length > 0
+    input.axeViolations?.length > 0
       ? input.axeViolations
           .map(
             (v) =>
-              `- [${v.impact.toUpperCase()}] ${v.ruleId}: ${v.description} at ${v.selector}`,
+              `- [${(v.impact || "unknown").toUpperCase()}] ${v.ruleId}: ${v.description} at ${v.selector}`,
           )
           .join("\n")
       : "- No automated violations detected";
@@ -159,7 +159,7 @@ export function buildVisionPrompt(input: {
 ${axeList}
 
 ## Accessibility Tree Summary
-${input.accessibilityTreeSummary.slice(0, 2000)}
+${(input.accessibilityTreeSummary || "").slice(0, 2000)}
 
 ## Task
 Analyze the screenshot for WCAG 2.2 Level AA violations that automated tools CANNOT detect. Evaluate each criterion below:
@@ -191,7 +191,7 @@ Page: ${input.url} (${input.pageTitle})
 Return ONLY this JSON (no markdown):
 {
   "page_id": "unknown",
-  "url": "${input.url}",
+  "url": ${JSON.stringify(input.url)},
   "timestamp": "${new Date().toISOString()}",
   "model_version": "retry",
   "latency_ms": 0,
@@ -215,20 +215,23 @@ Return ONLY this JSON (no markdown):
  * Compute an overall score from criteria statuses.
  */
 export function computeOverallScore(criteriaStatus: CriterionStatus[]): number {
+  if (!criteriaStatus || !Array.isArray(criteriaStatus)) return 100;
+
   let deductions = 0;
 
   for (const criteria of criteriaStatus) {
     if (criteria.status !== "fail" && criteria.status !== "partial") continue;
 
-    const weight = criteria.issues.some((i) => i.severity === "critical")
+    const issues = criteria.issues || [];
+    const weight = issues.some((i) => i.severity === "critical")
       ? 15
-      : criteria.issues.some((i) => i.severity === "serious")
+      : issues.some((i) => i.severity === "serious")
         ? 10
-        : criteria.issues.some((i) => i.severity === "moderate")
+        : issues.some((i) => i.severity === "moderate")
           ? 5
           : 2;
 
-    deductions += weight * criteria.confidence;
+    deductions += weight * (criteria.confidence ?? 1);
   }
 
   return Math.max(0, Math.round(100 - deductions));
