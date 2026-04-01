@@ -8,6 +8,7 @@ import {
   VISION_PROMPT_SECTIONS,
 } from "./constants.js";
 import { VISUAL_WCAG_CRITERIA } from "./criteria.js";
+export { VISUAL_WCAG_CRITERIA };
 import type {
   CriterionStatus,
   VisionAnalysisInput,
@@ -78,10 +79,7 @@ ${VISION_PROMPT_SECTIONS.AXE_HEADER}
 ${axeList}
 
 ${VISION_PROMPT_SECTIONS.A11Y_TREE_HEADER}
-${(input.accessibilityTreeSummary || "").slice(
-  0,
-  A11Y_TREE_MAX_SUMMARY_LENGTH,
-)}
+${(input.accessibilityTreeSummary || "").slice(0, A11Y_TREE_MAX_SUMMARY_LENGTH)}
 
 ${VISION_PROMPT_SECTIONS.TASK_HEADER}
 ${VISION_PROMPT_SECTIONS.TASK_INSTRUCTION}
