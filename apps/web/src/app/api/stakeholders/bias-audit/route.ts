@@ -21,9 +21,13 @@ export async function GET(request: Request) {
     });
 
     const rawDimension = searchParams.get("dimension");
-    const entries = rawDimension && (BIAS_DIMENSIONS as readonly string[]).includes(rawDimension)
-      ? await biasAudit.getEntriesByDimension(rawDimension as (typeof BIAS_DIMENSIONS)[number])
-      : await biasAudit.getAllEntries();
+    const entries =
+      rawDimension &&
+      (BIAS_DIMENSIONS as readonly string[]).includes(rawDimension)
+        ? await biasAudit.getEntriesByDimension(
+            rawDimension as (typeof BIAS_DIMENSIONS)[number],
+          )
+        : await biasAudit.getAllEntries();
 
     return NextResponse.json({ entries });
   } catch (error) {
@@ -77,13 +81,13 @@ export async function POST(request: Request) {
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 };
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     if (
       error instanceof Error &&
       error.message.includes("do not have access")
     ) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 99 });
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     console.error("[api/stakeholders/bias-audit POST]", error);
     return NextResponse.json(
