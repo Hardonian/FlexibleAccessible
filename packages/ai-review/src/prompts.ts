@@ -1,10 +1,41 @@
 import {
+  ERROR_MODEL_VERSION,
   RETRY_MODEL_VERSION,
   RETRY_PROMPT_MESSAGE,
   RETRY_PROMPT_SECTIONS,
+  UNKNOWN_PAGE_ID,
   VISION_PROMPT_SECTIONS,
 } from "./constants.js";
 import { VISUAL_WCAG_CRITERIA } from "./criteria.js";
+import type {
+  CriterionStatus,
+  VisionAnalysisInput,
+  VisionAnalysisOutput,
+} from "./types.js";
+
+/**
+ * Creates a structured error response when the AI model fails.
+ * This prevents the entire pipeline from crashing.
+ * @param input The original input to the analysis function.
+ * @param reasons The reasons for the failure.
+ * @returns A `VisionAnalysisOutput` object representing the failure.
+ */
+export function createErrorResponse(
+  input: VisionAnalysisInput,
+  reasons: string[],
+): VisionAnalysisOutput {
+  return {
+    page_id: UNKNOWN_PAGE_ID,
+    url: input.url,
+    timestamp: new Date().toISOString(),
+    model_version: ERROR_MODEL_VERSION,
+    latency_ms: 0,
+    overall_score: 0,
+    criteria_status: [],
+    requires_human_review: true,
+    human_review_reasons: reasons,
+  };
+}
 
 /**
  * Build the vision analysis prompt from input data.
@@ -62,33 +93,23 @@ Your output must conform to the provided JSON schema.`;
 /**
  * Build a simplified retry prompt when initial parse fails.
  */
-export function buildRetryPrompt(input: {
-  url: string;
-  pageTitle: string;
-}): string {
-  return `${RETRY_PROMPT_SECTIONS.INSTRUCTION}
+export function createRetryResponse(
+  input: VisionAnalysisInput,
+): VisionAnalysisOutput {
+  const response = createErrorResponse(input, [RETRY_PROMPT_MESSAGE]);
 
-Page: ${input.url} (${input.pageTitle})
-
-${RETRY_PROMPT_SECTIONS.JSON_INSTRUCTION}
-{
-  "page_id": "unknown",
-  "url": ${JSON.stringify(input.url)},
-  "timestamp": "${new Date().toISOString()}",
-  "model_version": "${RETRY_MODEL_VERSION}",
-  "latency_ms": 0,
-  "overall_score": 50,
-  "criteria_status": [
+  response.model_version = RETRY_MODEL_VERSION;
+  response.overall_score = 50;
+  response.criteria_status = [
     {
-      "criterion_id": "1.4.3",
-      "criterion_name": "Contrast (Minimum)",
-      "level": "AA",
-      "status": "uncertain",
-      "confidence": 0.5,
-      "issues": []
-    }
-  ],
-  "requires_human_review": true,
-  "human_review_reasons": ["${RETRY_PROMPT_MESSAGE}"]
-}`;
+      criterion_id: "1.4.3",
+      criterion_name: "Contrast (Minimum)",
+      level: "AA",
+      status: "uncertain",
+      confidence: 0.5,
+      issues: [],
+    },
+  ];
+
+  return response;
 }

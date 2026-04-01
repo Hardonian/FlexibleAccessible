@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createErrorResponse, analyzeImage } from "./review.js";
+import { analyzeImage } from "./review.js";
+import { createErrorResponse } from "./prompts.js";
 import type { VisionAnalysisInput, VisionAnalysisOutput } from "./types.js";
 
 // Mock the Generative AI SDK
