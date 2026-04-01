@@ -1244,3 +1244,76 @@ model FixCreditBalance {
 
   @@map("fix_credit_balances")
 }
+
+// ─── AI VISUAL REVIEW ──────────────────────────────────────
+
+enum VisualReviewStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+/// Tracks a batch AI visual review run for a site/scan.
+model AiVisualReviewRun {
+  id                    String           @id @default(cuid())
+  scanRunId             String
+  siteId                String
+  status                VisualReviewStatus @default(PENDING)
+  pagesReviewed         Int              @default(0)
+  totalFindings         Int              @default(0)
+  highConfidenceFindings Int             @default(0)
+  humanReviewRequired   Int              @default(0)
+  totalCostUsd          Float            @default(0)
+  totalLatencyMs        Int              @default(0)
+  startedAt             DateTime?
+  completedAt           DateTime?
+  errorMessage          String?
+  createdAt             DateTime         @default(now())
+
+  scanRun  ScanRun            @relation(fields: [scanRunId], references: [id], onDelete: Cascade)
+  site     Site               @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  findings AiVisualFinding[]
+
+  @@index([scanRunId])
+  @@index([siteId])
+  @@index([status])
+  @@map("ai_visual_review_runs")
+}
+
+/// Individual finding from AI visual review (vision, keyboard, screen reader).
+model AiVisualFinding {
+  id                String   @id @default(cuid())
+  reviewRunId       String
+  siteId            String
+  pageId            String
+  criterionId       String
+  criterionName     String
+  level             String
+  status            String
+  confidence        Float
+  severity          String
+  description       String
+  selector          String?
+  suggestedFix      String?
+  source            String   @default("vision")
+  action            String   @default("evidence_only")
+  /** Links to CanonicalFinding if one was auto-created. */
+  canonicalFindingId String?
+  reviewEvidenceId  String?
+  metadata          Json?
+  createdAt         DateTime @default(now())
+
+  reviewRun        AiVisualReviewRun  @relation(fields: [reviewRunId], references: [id], onDelete: Cascade)
+  site             Site               @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  page             Page               @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  canonicalFinding CanonicalFinding?  @relation(fields: [canonicalFindingId], references: [id])
+
+  @@index([reviewRunId])
+  @@index([siteId])
+  @@index([pageId])
+  @@index([criterionId])
+  @@index([confidence])
+  @@index([action])
+  @@map("ai_visual_findings")
+}
