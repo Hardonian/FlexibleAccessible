@@ -31,7 +31,9 @@ export async function GET(request: Request) {
       });
     }
 
-    const ctx = await requireOrgAccess(organizationId, "findings:view");
+    const ctx = await requireOrgAccess(organizationId, "findings:view", {
+      requirePaid: true,
+    });
 
     const comments = await prisma.findingComment.findMany({
       where: {
@@ -70,6 +72,7 @@ export async function POST(request: Request) {
     const ctx = await requireOrgAccess(
       parsed.organizationId,
       "findings:manage",
+      { requirePaid: true },
     );
 
     // Verify finding access

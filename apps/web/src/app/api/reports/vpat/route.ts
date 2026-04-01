@@ -27,7 +27,9 @@ export async function GET(request: Request) {
       });
     }
 
-    const ctx = await requireOrgAccess(organizationId, "reports:export");
+    const ctx = await requireOrgAccess(organizationId, "reports:export", {
+      requirePaid: true,
+    });
 
     const result = await runOrgScopedQuery(ctx, async (orgId) => {
       const site = await prisma.site.findFirst({

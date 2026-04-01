@@ -13,7 +13,9 @@ export async function POST(
 ) {
   try {
     const { organizationId } = await context.params;
-    const ctx = await requireOrgAccess(organizationId, 'org:system:manage');
+    const ctx = await requireOrgAccess(organizationId, 'org:system:manage', {
+      requirePaid: true,
+    });
 
     console.info('[platform-legacy-flags] repair initiated', { organizationId, userId: ctx.user.id });
 

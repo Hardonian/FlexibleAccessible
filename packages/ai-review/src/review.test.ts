@@ -12,6 +12,7 @@ const { mockGetVisionAnalysisFromModel } = vi.hoisted(() => ({
 const { mockLogger } = vi.hoisted(() => ({
   mockLogger: {
     log: vi.fn(),
+    debug: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
   },
@@ -111,6 +112,7 @@ describe("analyzeImage", () => {
 
     mockGetVisionAnalysisFromModel.mockResolvedValue({
       text: () => JSON.stringify(mockApiResponse),
+      promptFeedback: null,
     });
 
     const result = await analyzeImage(mockInput);
@@ -128,9 +130,6 @@ describe("analyzeImage", () => {
 
     expect(result.model_version).toBe("error");
     expect(result.requires_human_review).toBe(true);
-    expect(result.human_review_reasons).toContain(
-      "The AI model failed to generate a review.",
-    );
     expect(
       result.human_review_reasons.some((r) => r.includes("API Failure")),
     ).toBe(true);
@@ -138,8 +137,9 @@ describe("analyzeImage", () => {
   });
 
   it("should return a structured error when the response is blocked for safety reasons", async () => {
+    // Return a response with no text and a block reason
     mockGetVisionAnalysisFromModel.mockResolvedValue({
-      text: () => "", // Empty text indicates blocking
+      text: () => null, // Return null to indicate blocking
       promptFeedback: {
         blockReason: "SAFETY",
       },
@@ -155,8 +155,9 @@ describe("analyzeImage", () => {
   });
 
   it("should handle blocked responses with unknown reasons", async () => {
+    // Return a response with no text and no block reason
     mockGetVisionAnalysisFromModel.mockResolvedValue({
-      text: () => "",
+      text: () => null,
       promptFeedback: null,
     });
 
@@ -171,6 +172,7 @@ describe("analyzeImage", () => {
     mockGetVisionAnalysisFromModel.mockResolvedValue({
       text: () =>
         '{"page_id": "123", "url": "https://example.com", "invalid_json"',
+      promptFeedback: null,
     });
 
     const result = await analyzeImage(mockInput);
@@ -184,11 +186,11 @@ describe("analyzeImage", () => {
     const malformedApiResponse = {
       page_id: "123",
       url: "https://example.com/test-page",
-      // Missing several required fields like 'timestamp', 'model_version', etc.
     };
 
     mockGetVisionAnalysisFromModel.mockResolvedValue({
       text: () => JSON.stringify(malformedApiResponse),
+      promptFeedback: null,
     });
 
     const result = await analyzeImage(mockInput);

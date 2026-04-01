@@ -11,7 +11,9 @@ export async function GET(
 ) {
   try {
     const { organizationId } = await context.params;
-    const ctx = await requireOrgAccess(organizationId, 'org:system:view');
+    const ctx = await requireOrgAccess(organizationId, 'org:system:view', {
+      requirePaid: true,
+    });
     const payload = await getPlatformHealthPayload(organizationId, ctx.user.id);
     return NextResponse.json({ success: true, data: payload });
   } catch (e) {

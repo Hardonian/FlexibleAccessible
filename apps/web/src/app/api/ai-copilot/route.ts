@@ -29,6 +29,7 @@ export async function POST(request: Request) {
     const ctx = await requireOrgAccess(
       parsed.organizationId,
       "findings:manage",
+      { requirePaid: true },
     );
 
     // Load finding context for RAG

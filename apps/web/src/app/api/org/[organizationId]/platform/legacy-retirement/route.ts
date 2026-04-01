@@ -12,7 +12,9 @@ export async function POST(
 ) {
   try {
     const { organizationId } = await context.params;
-    const ctx = await requireOrgAccess(organizationId, 'org:system:manage');
+    const ctx = await requireOrgAccess(organizationId, 'org:system:manage', {
+      requirePaid: true,
+    });
     const evaluation = await evaluateLegacyRetirementForOperator(ctx.user.id, { organizationId });
 
     await logOperatorPlatformAction({

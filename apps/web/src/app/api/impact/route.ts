@@ -27,7 +27,9 @@ export async function GET(request: Request) {
       });
     }
 
-    const ctx = await requireOrgAccess(organizationId, "findings:view");
+    const ctx = await requireOrgAccess(organizationId, "findings:view", {
+      requirePaid: true,
+    });
 
     // Verify site access
     const site = await prisma.site.findFirst({
@@ -80,7 +82,9 @@ export async function POST(request: Request) {
       });
     }
 
-    const ctx = await requireOrgAccess(organizationId, "findings:manage");
+    const ctx = await requireOrgAccess(organizationId, "findings:manage", {
+      requirePaid: true,
+    });
 
     const site = await prisma.site.findFirst({
       where: {

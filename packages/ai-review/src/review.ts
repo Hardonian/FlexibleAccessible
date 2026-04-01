@@ -46,11 +46,16 @@ export async function analyzeImage(
     });
 
     // The response might be blocked by safety settings even if the threshold is NONE.
-    if (!response.text) {
-      const blockReason = response.promptFeedback?.blockReason || UNKNOWN_REASON;
+    if (!response.text()) {
+      const blockReason =
+        response.promptFeedback?.blockReason || UNKNOWN_REASON;
       const reason = `${AI_BLOCK_MESSAGE_PREFIX}${blockReason}`;
       logger.error(reason, { feedback: response.promptFeedback });
-      return createErrorResponse(input, [AI_FAILURE_MESSAGE, `Error: ${reason}`], latency_ms);
+      return createErrorResponse(
+        input,
+        [AI_FAILURE_MESSAGE, `Error: ${reason}`],
+        latency_ms,
+      );
     }
 
     const jsonText = response.text();
@@ -65,10 +70,14 @@ export async function analyzeImage(
         ...baseLogContext,
         error,
       });
-      return createErrorResponse(input, [
-        AI_FAILURE_MESSAGE,
-        `Error: Failed to parse AI response as JSON. ${(error as Error).message}`,
-      ], latency_ms);
+      return createErrorResponse(
+        input,
+        [
+          AI_FAILURE_MESSAGE,
+          `Error: Failed to parse AI response as JSON. ${(error as Error).message}`,
+        ],
+        latency_ms,
+      );
     }
 
     const validationResult = VisionAnalysisOutputSchema.safeParse({
@@ -82,10 +91,11 @@ export async function analyzeImage(
         ...baseLogContext,
         issues: validationResult.error.issues,
       });
-      return createErrorResponse(input, [
-        AI_FAILURE_MESSAGE,
-        `Error: ${errorMessage}`,
-      ], latency_ms);
+      return createErrorResponse(
+        input,
+        [AI_FAILURE_MESSAGE, `Error: ${errorMessage}`],
+        latency_ms,
+      );
     }
 
     logger.log("AI analysis completed successfully", {
@@ -95,10 +105,14 @@ export async function analyzeImage(
     return validationResult.data;
   } catch (error) {
     const latency_ms = Date.now() - startTime;
-    logger.error("Error calling Generative AI model", { ...baseLogContext, error });
-    return createErrorResponse(input, [
-      AI_FAILURE_MESSAGE,
-      `Error: ${(error as Error).message}`,
-    ], latency_ms);
+    logger.error("Error calling Generative AI model", {
+      ...baseLogContext,
+      error,
+    });
+    return createErrorResponse(
+      input,
+      [AI_FAILURE_MESSAGE, `Error: ${(error as Error).message}`],
+      latency_ms,
+    );
   }
 }

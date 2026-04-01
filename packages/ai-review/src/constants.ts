@@ -11,6 +11,7 @@ export const AI_BLOCK_MESSAGE_PREFIX = "AI response was blocked. Reason: ";
 export const UNKNOWN_REASON = "Unknown";
 
 export const PNG_MIME_TYPE = "image/png";
+export const DEBUG_PROMPT_LENGTH = 500;
 
 export const VISION_PROMPT_SECTIONS = {
   ROLE: `You are an expert web accessibility auditor specialized in WCAG 2.1 compliance.

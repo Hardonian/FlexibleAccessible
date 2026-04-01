@@ -21,7 +21,9 @@ export async function POST(
 ) {
   try {
     const { organizationId } = await context.params;
-    const ctx = await requireOrgAccess(organizationId, 'org:system:manage');
+    const ctx = await requireOrgAccess(organizationId, 'org:system:manage', {
+      requirePaid: true,
+    });
     const json = await req.json().catch(() => null);
     const parsedBody = bodySchema.safeParse(json);
     if (!parsedBody.success) {

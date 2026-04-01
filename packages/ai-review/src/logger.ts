@@ -23,6 +23,14 @@ export const logger = {
     }
   },
 
+  debug(message: string, ...args: unknown[]): void {
+    if (args.length > 0) {
+      console.debug(formatMessage("log", message), ...args);
+    } else {
+      console.debug(formatMessage("log", message));
+    }
+  },
+
   warn(message: string, ...args: unknown[]): void {
     if (args.length > 0) {
       console.warn(formatMessage("warn", message), ...args);
