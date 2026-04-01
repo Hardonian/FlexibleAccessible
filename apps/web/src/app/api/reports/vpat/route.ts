@@ -5,6 +5,7 @@ import { requireOrgAccess } from "@/lib/auth-guard";
 import { apiSuccess, apiError } from "@/lib/api-utils";
 import { ApiError } from "@aros/shared";
 import { generateVpatReport } from "@/lib/vpat/generator";
+import { runOrgScopedQuery } from "@/lib/route-data-boundary";
 
 /**
  * GET /api/reports/vpat?organizationId=xxx&siteId=yyy&format=json
@@ -28,25 +29,53 @@ export async function GET(request: Request) {
 
     const ctx = await requireOrgAccess(organizationId, "reports:export");
 
-    const site = await prisma.site.findFirst({
-      where: {
-        id: siteId,
-        workspace: { organizationId: ctx.organizationId },
-      },
+    const result = await runOrgScopedQuery(ctx, async (orgId) => {
+      const site = await prisma.site.findFirst({
+        where: {
+          id: siteId,
+          workspace: { organizationId: orgId },
+        },
+      });
+
+      if (!site) return { error: "Site not found", code: 404 };
+
+      const org = await prisma.organization.findUnique({
+        where: { id: orgId },
+        select: { name: true },
+      });
+
+      const report = await generateVpatReport(siteId, orgId, org?.name);
+
+      if (format === "csv") {
+        return { report, site, format: "csv" };
+      }
+
+      // Store as Report record
+      await prisma.report.create({
+        data: {
+          siteId,
+          type: "VPAT",
+          title: `VPAT Report - ${site.name}`,
+          content: report as unknown as object,
+          summary: `${report.summary.supports} criteria supported, ${report.summary.partiallySupports} partially, ${report.summary.doesNotSupport} not supported`,
+        },
+      });
+
+      return { report };
     });
 
-    if (!site) {
-      return apiError(ApiError.notFound("Site not found"));
+    if (!result.ok) {
+      return apiError({ message: result.message, code: "INTERNAL_SERVER_ERROR" });
     }
 
-    const org = await prisma.organization.findUnique({
-      where: { id: ctx.organizationId },
-      select: { name: true },
-    });
+    const { data } = result;
 
-    const report = await generateVpatReport(siteId, org?.name);
+    if ("error" in data) {
+      return apiError({ message: data.error, code: data.code === 404 ? "NOT_FOUND" : "BAD_REQUEST" });
+    }
 
-    if (format === "csv") {
+    if ("format" in data && data.format === "csv") {
+      const { report, site } = data;
       const header =
         "WCAG Criteria,Level,Conformance Status,Explanation,Open Findings\n";
       const rows = report.rows
@@ -66,18 +95,7 @@ export async function GET(request: Request) {
       });
     }
 
-    // Store as Report record
-    await prisma.report.create({
-      data: {
-        siteId,
-        type: "VPAT",
-        title: `VPAT Report - ${site.name}`,
-        content: report as unknown as object,
-        summary: `${report.summary.supports} criteria supported, ${report.summary.partiallySupports} partially, ${report.summary.doesNotSupport} not supported`,
-      },
-    });
-
-    return apiSuccess(report);
+    return apiSuccess(data.report);
   } catch (error) {
     return apiError(error);
   }

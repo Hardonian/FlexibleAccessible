@@ -134,17 +134,23 @@ function mapRuleToCriteria(ruleId: string, wcagTags: string[]): string[] {
  */
 export async function generateVpatReport(
   siteId: string,
+  organizationId: string,
   organizationName?: string,
 ): Promise<VpatReport> {
   const site = await prisma.site.findUnique({
     where: { id: siteId },
-    select: { name: true, domain: true },
+    select: { name: true, domain: true, workspace: { select: { organizationId: true } } },
   });
 
-  if (!site) throw new Error("Site not found");
+  if (!site || site.workspace.organizationId !== organizationId) {
+    throw new Error("Site not found or access denied");
+  }
 
   const findings = await prisma.canonicalFinding.findMany({
-    where: { siteId },
+    where: { 
+      siteId,
+      site: { workspace: { organizationId } }
+    },
     select: {
       id: true,
       ruleId: true,
