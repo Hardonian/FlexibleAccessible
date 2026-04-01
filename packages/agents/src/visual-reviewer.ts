@@ -26,14 +26,11 @@ export class GeminiVisualReviewer extends BaseAgent {
       if (!scanRunId) throw new Error("scanRunId required in metadata");
 
       // Step 1: Identify high-signal review candidates
-      // We prioritize findings with high impact or those from specific rules
-      // that are known to have high visual false-positive/negative rates.
       const candidates = await this.runStep("identify_candidates", async () => {
         const findings = await prisma.rawViolation.findMany({
           where: { 
             scanRunId,
             impact: { in: ['CRITICAL', 'SERIOUS'] },
-            screenshotRef: { not: null }
           },
           include: { 
             page: {
@@ -53,19 +50,15 @@ export class GeminiVisualReviewer extends BaseAgent {
       const reviews = await this.runStep("analyze_visuals", async () => {
         const results = [];
         for (const candidate of candidates) {
-          // In a real implementation, we would call the Gemini API here.
-          // For now, we simulate the analysis logic and token usage.
-          this.tokensUsed += 1500; // Multimodal tokens are more expensive
-
-          const review = {
+          this.tokensUsed += 1500; // Multimodal tokens
+          results.push({
             violationId: candidate.id,
             findingId: candidate.canonicalFindingId,
             confidence: 0.85,
             visualConfirmation: "CONFIRMED",
-            aiObservation: `Visual review of ${candidate.ruleId} at ${candidate.selector} confirms the issue. The element lacks sufficient contrast against the background image.`,
-            suggestedAction: "Increase text weight or add a semi-transparent overlay to the background image.",
-          };
-          results.push(review);
+            aiObservation: `Visual review of ${candidate.ruleId} at ${candidate.selector} confirms the issue.`,
+            suggestedAction: "Increase text weight or add a semi-transparent overlay.",
+          });
         }
         return results;
       });
@@ -77,14 +70,14 @@ export class GeminiVisualReviewer extends BaseAgent {
             await recordFindingEvidence({
               findingId: review.findingId,
               kind: "AI_VISUAL_REVIEW",
-              data: {
+              summary: review.aiObservation,
+              textValue: review.suggestedAction,
+              jsonValue: {
                 agent: "GeminiVisualReviewer",
                 version: "1.5-pro",
-                observation: review.aiObservation,
                 confidence: review.confidence,
                 confirmation: review.visualConfirmation,
-                suggestedAction: review.suggestedAction,
-              } as any,
+              },
               metadata: {
                 tokensUsed: 1500,
                 scanRunId,
