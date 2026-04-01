@@ -66,6 +66,7 @@ setupWorkerEvents(crawlWorker, "Crawl");
 setupWorkerEvents(scanWorker, "Scan");
 setupWorkerEvents(clusterWorker, "Cluster");
 setupWorkerEvents(remediationWorker, "Remediation");
+setupWorkerEvents(publicScanWorker, "PublicScan");
 
 const HEARTBEAT_MS = 30_000;
 async function heartbeatTick() {
@@ -91,6 +92,7 @@ async function shutdown() {
     scanWorker.close(),
     clusterWorker.close(),
     remediationWorker.close(),
+    publicScanWorker.close(),
   ]);
   await prisma.$disconnect().catch(() => undefined);
   await redisForShutdown.quit();
