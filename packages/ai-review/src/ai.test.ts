@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { getVisionAnalysisFromModel } from "./ai.js";
-import { VISION_ANALYSIS_SCHEMA } from "../criteria.js";
+import { VISION_ANALYSIS_SCHEMA } from "./criteria.js";
 import type { Part } from "@google/generative-ai";
 
 // Mock the Generative AI SDK
@@ -51,8 +51,14 @@ describe("getVisionAnalysisFromModel", () => {
       safetySettings: [
         { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
         { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+        {
+          category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+          threshold: "BLOCK_NONE",
+        },
+        {
+          category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+          threshold: "BLOCK_NONE",
+        },
       ],
     });
   });

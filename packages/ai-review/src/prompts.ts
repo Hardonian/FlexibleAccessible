@@ -119,3 +119,62 @@ export function createRetryResponse(
     human_review_reasons: [RETRY_PROMPT_MESSAGE],
   };
 }
+
+/**
+ * Build a simplified retry prompt for when initial parsing fails.
+ */
+export function buildRetryPrompt(input: {
+  url: string;
+  pageTitle: string;
+}): string {
+  return `${VISION_PROMPT_SECTIONS.ROLE}
+
+${VISION_PROMPT_SECTIONS.CONTEXT_HEADER}
+- URL: ${input.url}
+- Title: ${input.pageTitle}
+
+${VISION_PROMPT_SECTIONS.TASK_HEADER}
+Provide a SIMPLIFIED response with only the TOP 3 most critical accessibility issues.
+Format your response as JSON with:
+- overall_score (0-100)
+- criteria_status: array with 3 most important criteria
+- requires_human_review: true
+- human_review_reasons: ["Retry prompt used"]
+
+Be concise. Focus on the top 3 issues only.`;
+}
+
+/**
+ * Compute an overall accessibility score from criterion statuses.
+ * Returns a score from 0-100.
+ */
+export function computeOverallScore(criteria: CriterionStatus[]): number {
+  if (criteria.length === 0) return 100;
+
+  let totalDeduction = 0;
+  const SEVERITY_WEIGHTS: Record<string, number> = {
+    critical: 20,
+    serious: 15,
+    moderate: 10,
+    minor: 5,
+  };
+
+  for (const criterion of criteria) {
+    if (criterion.status === "pass" || criterion.status === "not_applicable") {
+      continue;
+    }
+
+    if (criterion.status === "fail") {
+      const issueCount = criterion.issues.length;
+      for (const issue of criterion.issues) {
+        const weight = SEVERITY_WEIGHTS[issue.severity] || 10;
+        const confidenceFactor = criterion.confidence;
+        totalDeduction += weight * confidenceFactor * Math.min(issueCount, 3);
+      }
+    } else if (criterion.status === "uncertain") {
+      totalDeduction += 5 * criterion.confidence;
+    }
+  }
+
+  return Math.max(0, Math.min(100, Math.round(100 - totalDeduction)));
+}
