@@ -11,7 +11,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "npm run generate --workspace=@aros/db && vitest run"
   },
   "dependencies": {
     "@aros/config": "*",

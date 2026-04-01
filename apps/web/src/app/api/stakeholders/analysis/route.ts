@@ -1,8 +1,4 @@
-// ─── Comprehensive Analysis API ────────────────────────────────────────
-// GET: Build comprehensive stakeholder analysis - requires org access + paid
-
 import { NextResponse } from "next/server";
-import { requireSession } from "@/lib/session";
 import { requireOrgAccess } from "@/lib/auth-guard";
 import {
   buildStakeholderAnalysis,
@@ -11,7 +7,6 @@ import {
 
 export async function GET(request: Request) {
   try {
-    const user = await requireSession();
     const { searchParams } = new URL(request.url);
     const organizationId = searchParams.get("organizationId");
 
@@ -22,14 +17,14 @@ export async function GET(request: Request) {
       );
     }
 
-    await requireOrgAccess(organizationId, "stakeholders:view", {
+    const ctx = await requireOrgAccess(organizationId, "stakeholders:view", {
       requirePaid: true,
     });
 
     const includeGapAnalysis = searchParams.get("includeGaps") === "true";
 
     const analysis = await buildStakeholderAnalysis(organizationId, {
-      auditedBy: user.id,
+      auditedBy: ctx.user.id,
       hasRegistry: true,
       hasEngagementStrategy: true,
       hasCommunicationPlan: true,
@@ -52,6 +47,12 @@ export async function GET(request: Request) {
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (
+      error instanceof Error &&
+      error.message.includes("do not have access")
+    ) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     console.error("[api/stakeholders/analysis]", error);
     return NextResponse.json(

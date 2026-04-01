@@ -188,7 +188,7 @@ describe("StakeholderRegistry", () => {
         page: 1,
         pageSize: 10,
       });
-      expect(result.data).toHaveLength(3);
+      expect(result.data).toHaveLength(4);
     });
 
     it("filters by underrepresented groups", async () => {

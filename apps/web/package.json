@@ -10,7 +10,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests",
+    "test": "vitest run",
     "test:e2e": "playwright test",
     "test:ct": "playwright test -c playwright-ct.config.ts",
     "test:e2e:update": "playwright test --update-snapshots"
@@ -36,6 +36,8 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.1",
+    "@csstools/css-calc": "^3.1.1",
+    "@csstools/css-color-parser": "^4.0.2",
     "@ducanh2912/next-pwa": "^10.2.6",
     "@eslint/eslintrc": "^3.2.0",
     "@playwright/experimental-ct-react": "^1.58.2",
@@ -50,7 +52,10 @@
     "eslint-plugin-security": "^3.0.1",
     "eslint-plugin-vitest": "^0.5.4",
     "jsdom": "^29.0.1",
+    "mdn-data": "^2.27.1",
+    "redent": "^4.0.0",
     "sharp": "^0.33.5",
+    "tough-cookie": "^6.0.1",
     "typescript": "^5.7.0",
     "vitest": "^4.1.2"
   }

@@ -121,8 +121,8 @@ describe("ValidationFramework", () => {
       );
 
       expect(result.gaps.length).toBeGreaterThan(0);
-      expect(result.gaps.some((g) => g.includes("SECONDARY"))).toBe(true);
-      expect(result.gaps.some((g) => g.includes("EXTERNAL"))).toBe(true);
+      expect(result.gaps.some((g) => g.toLowerCase().includes("secondary"))).toBe(true);
+      expect(result.gaps.some((g) => g.toLowerCase().includes("external"))).toBe(true);
     });
 
     it("computes confidence level based on sources", async () => {

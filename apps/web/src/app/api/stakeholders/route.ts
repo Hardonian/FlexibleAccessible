@@ -3,10 +3,6 @@ import { requireOrgAccess } from "@/lib/auth-guard";
 import {
   StakeholderRegistry,
   stakeholderCreateSchema,
-  type StakeholderSegment,
-  type PowerLevel,
-  type InterestLevel,
-  type EngagementStatus,
 } from "@aros/stakeholders";
 
 const registry = new StakeholderRegistry();
@@ -27,36 +23,26 @@ export async function GET(request: Request) {
       requirePaid: true,
     });
 
-    const segment = searchParams.get("segment") as StakeholderSegment | null;
-    const power = searchParams.get("power") as PowerLevel | null;
-    const interest = searchParams.get("interest") as InterestLevel | null;
-    const engagementStatus = searchParams.get(
-      "engagementStatus",
-    ) as EngagementStatus | null;
+    const segment = searchParams.get("segment");
+    const power = searchParams.get("power");
+    const interest = searchParams.get("interest");
+    const engagementStatus = searchParams.get("engagementStatus");
     const search = searchParams.get("search") || undefined;
     const page = parseInt(searchParams.get("page") || "1", 10);
     const pageSize = parseInt(searchParams.get("pageSize") || "20", 10);
-    const sortBy = (searchParams.get("sortBy") || "name") as
-      | "name"
-      | "segment"
-      | "power"
-      | "interest"
-      | "engagementStatus"
-      | "createdAt";
-    const sortOrder = (searchParams.get("sortOrder") || "asc") as
-      | "asc"
-      | "desc";
+    const sortBy = searchParams.get("sortBy") || "name";
+    const sortOrder = searchParams.get("sortOrder") || "asc";
 
     const result = await registry.list({
-      segment: segment ?? undefined,
-      power: power ?? undefined,
-      interest: interest ?? undefined,
-      engagementStatus: engagementStatus ?? undefined,
+      segment: segment as any,
+      power: power as any,
+      interest: interest as any,
+      engagementStatus: engagementStatus as any,
       search,
       page,
       pageSize,
-      sortBy,
-      sortOrder,
+      sortBy: sortBy as any,
+      sortOrder: sortOrder as any,
     });
 
     return NextResponse.json(result);

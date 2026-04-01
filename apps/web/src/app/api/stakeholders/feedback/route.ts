@@ -5,7 +5,6 @@ import {
   FEEDBACK_STATUSES,
   FEEDBACK_CATEGORIES,
 } from "@aros/stakeholders";
-import type { FeedbackStatus, FeedbackCategory } from "@aros/stakeholders";
 
 const feedbackManager = new FeedbackLoopManager();
 
@@ -36,13 +35,15 @@ export async function GET(request: Request) {
       statusParam &&
       (FEEDBACK_STATUSES as readonly string[]).includes(statusParam)
     ) {
-      items = await feedbackManager.listByStatus(statusParam as FeedbackStatus);
+      items = await feedbackManager.listByStatus(
+        statusParam as (typeof FEEDBACK_STATUSES)[number],
+      );
     } else if (
       categoryParam &&
       (FEEDBACK_CATEGORIES as readonly string[]).includes(categoryParam)
     ) {
       items = await feedbackManager.listByCategory(
-        categoryParam as FeedbackCategory,
+        categoryParam as (typeof FEEDBACK_CATEGORIES)[number],
       );
     } else {
       items = await feedbackManager.exportAll();

@@ -85,6 +85,12 @@ describe("BiasAuditEngine", () => {
         groupCounts: {},
         regionCounts: {},
         languageCounts: { en: 10 },
+        segmentCounts: {},
+        stakeholderCount: 0,
+        engagementStatusCounts: {},
+        powerDistribution: {},
+        interestDistribution: {},
+        accessibilityNeedCounts: {},
       };
 
       const result = await engine.runAudit(emptyContext);

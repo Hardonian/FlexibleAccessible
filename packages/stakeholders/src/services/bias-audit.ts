@@ -80,6 +80,17 @@ export class BiasAuditEngine {
           0,
         );
 
+        if (invisibleCount === 0 && visibleCount === 0) {
+          return {
+            passed: false,
+            severity: "MEDIUM",
+            finding: "No stakeholders with disabilities are represented",
+            evidence: "No disability groups were found in the stakeholder data",
+            recommendation:
+              "Recruit stakeholders with both visible and invisible disabilities",
+          };
+        }
+
         const passed = invisibleCount >= visibleCount * 0.5;
         return {
           passed,
@@ -159,8 +170,18 @@ export class BiasAuditEngine {
       description: "Check if non-digital channels are used for engagement",
       check: (ctx) => {
         // Check if there's reasonable channel diversity
+        const regionCount = Object.keys(ctx.regionCounts).length;
+        if (regionCount === 0) {
+          return {
+            passed: false,
+            severity: "MEDIUM",
+            finding: "No geographic regions specified for stakeholders",
+            evidence: "Region count is 0",
+            recommendation: "Add region data to stakeholders to assess geographic bias",
+          };
+        }
         const hasDigitalOnly = ctx.regionCounts["DIGITAL_ONLY"] !== undefined;
-        const hasMultipleRegions = Object.keys(ctx.regionCounts).length > 1;
+        const hasMultipleRegions = regionCount > 1;
 
         return {
           passed: !hasDigitalOnly || hasMultipleRegions,

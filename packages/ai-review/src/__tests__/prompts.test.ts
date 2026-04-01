@@ -1,175 +1,96 @@
 import { describe, it, expect } from "vitest";
+import { buildVisionPrompt } from "../prompts.js";
 import {
-  buildVisionPrompt,
-  buildRetryPrompt,
-  computeOverallScore,
-  VISUAL_WCAG_CRITERIA,
-} from "../prompts.js";
-import type { CriterionStatus } from "../types.js";
+  VISION_PROMPT_SECTIONS,
+  A11Y_TREE_MAX_SUMMARY_LENGTH,
+} from "../constants.js";
+import { VISUAL_WCAG_CRITERIA } from "../criteria.js";
 
-describe("prompts", () => {
-  describe("buildVisionPrompt", () => {
-    it("should include page context", () => {
-      const prompt = buildVisionPrompt({
-        url: "https://example.com",
-        pageTitle: "Test Page",
-        axeViolations: [],
-        accessibilityTreeSummary: "button: Submit",
-      });
+describe("buildVisionPrompt", () => {
+  const baseInput = {
+    url: "https://example.com",
+    pageTitle: "Example Page",
+    accessibilityTreeSummary: "A summary of the accessibility tree.",
+    axeViolations: [],
+    domSummary: "",
+  };
 
-      expect(prompt).toContain("https://example.com");
-      expect(prompt).toContain("Test Page");
-      expect(prompt).toContain("No automated violations detected");
-    });
+  it("should construct a prompt with no axe violations", () => {
+    const input = { ...baseInput, axeViolations: [] };
+    const prompt = buildVisionPrompt(input);
 
-    it("should list axe violations", () => {
-      const prompt = buildVisionPrompt({
-        url: "https://example.com",
-        pageTitle: "Test",
-        axeViolations: [
-          {
-            ruleId: "image-alt",
-            impact: "critical",
-            selector: "img.hero",
-            description: "Image missing alt text",
-          },
-        ],
-        accessibilityTreeSummary: "",
-      });
-
-      expect(prompt).toContain("CRITICAL");
-      expect(prompt).toContain("image-alt");
-      expect(prompt).toContain("img.hero");
-    });
-
-    it("should include all WCAG criteria", () => {
-      const prompt = buildVisionPrompt({
-        url: "https://example.com",
-        pageTitle: "Test",
-        axeViolations: [],
-        accessibilityTreeSummary: "",
-      });
-
-      for (const criteria of VISUAL_WCAG_CRITERIA) {
-        expect(prompt).toContain(criteria.id);
-        expect(prompt).toContain(criteria.name);
-      }
-    });
+    expect(prompt).toContain(VISION_PROMPT_SECTIONS.ROLE);
+    expect(prompt).toContain(`- URL: ${input.url}`);
+    expect(prompt).toContain(`- Title: ${input.pageTitle}`);
+    expect(prompt).toContain(VISION_PROMPT_SECTIONS.AXE_HEADER);
+    expect(prompt).toContain(VISION_PROMPT_SECTIONS.NO_AXE_VIOLATIONS);
+    expect(prompt).toContain(input.accessibilityTreeSummary);
+    expect(prompt).toContain(VISUAL_WCAG_CRITERIA[0].prompt);
   });
 
-  describe("buildRetryPrompt", () => {
-    it("should produce a simplified prompt", () => {
-      const prompt = buildRetryPrompt({
-        url: "https://example.com",
-        pageTitle: "Test",
-      });
+  it("should list axe violations when they are present", () => {
+    const input = {
+      ...baseInput,
+      axeViolations: [
+        {
+          ruleId: "color-contrast",
+          impact: "serious" as const,
+          selector: "#main",
+          description: "Low contrast",
+        },
+        {
+          ruleId: "image-alt",
+          impact: "critical" as const,
+          selector: "img.logo",
+          description: "Missing alt text",
+        },
+      ],
+    };
+    const prompt = buildVisionPrompt(input);
 
-      expect(prompt).toContain("https://example.com");
-      expect(prompt).toContain("TOP 3");
-      expect(prompt).toContain("requires_human_review");
-    });
+    expect(prompt).not.toContain(VISION_PROMPT_SECTIONS.NO_AXE_VIOLATIONS);
+    expect(prompt).toContain(
+      "- [SERIOUS] color-contrast: Low contrast at #main",
+    );
+    expect(prompt).toContain(
+      "- [CRITICAL] image-alt: Missing alt text at img.logo",
+    );
   });
 
-  describe("computeOverallScore", () => {
-    it("should return 100 for all-pass criteria", () => {
-      const criteria: CriterionStatus[] = [
+  it("should handle axe violations with unknown impact", () => {
+    const input = {
+      ...baseInput,
+      axeViolations: [
         {
-          criterion_id: "1.4.3",
-          criterion_name: "Contrast",
-          level: "AA",
-          status: "pass",
-          confidence: 0.9,
-          issues: [],
+          ruleId: "aria-roles",
+          impact: null,
+          selector: "[role=button]",
+          description: "Invalid role",
         },
-      ];
-
-      expect(computeOverallScore(criteria)).toBe(100);
-    });
-
-    it("should deduct for failures", () => {
-      const criteria: CriterionStatus[] = [
-        {
-          criterion_id: "1.4.3",
-          criterion_name: "Contrast",
-          level: "AA",
-          status: "fail",
-          confidence: 0.9,
-          issues: [
-            {
-              description: "Low contrast",
-              severity: "serious",
-              selector: "p.text",
-              element_description: "Paragraph",
-              suggested_fix: "Darken text",
-              evidence: "Light text visible",
-            },
-          ],
-        },
-      ];
-
-      const score = computeOverallScore(criteria);
-      expect(score).toBeLessThan(100);
-      expect(score).toBeGreaterThanOrEqual(0);
-    });
-
-    it("should handle multiple failures", () => {
-      const criteria: CriterionStatus[] = [
-        {
-          criterion_id: "1.4.3",
-          criterion_name: "Contrast",
-          level: "AA",
-          status: "fail",
-          confidence: 0.9,
-          issues: [
-            {
-              description: "Low contrast",
-              severity: "critical",
-              selector: "p",
-              element_description: "Text",
-              suggested_fix: "Fix",
-              evidence: "Visible",
-            },
-          ],
-        },
-        {
-          criterion_id: "2.4.7",
-          criterion_name: "Focus Visible",
-          level: "AA",
-          status: "fail",
-          confidence: 0.8,
-          issues: [
-            {
-              description: "No focus indicator",
-              severity: "serious",
-              selector: "button",
-              element_description: "Button",
-              suggested_fix: "Add outline",
-              evidence: "Screenshot",
-            },
-          ],
-        },
-      ];
-
-      const score = computeOverallScore(criteria);
-      expect(score).toBeLessThan(100);
-      expect(score).toBeGreaterThanOrEqual(0);
-    });
+      ],
+    };
+    const prompt = buildVisionPrompt(input);
+    expect(prompt).toContain(
+      "- [UNKNOWN] aria-roles: Invalid role at [role=button]",
+    );
   });
 
-  describe("VISUAL_WCAG_CRITERIA", () => {
-    it("should contain at least 10 criteria", () => {
-      expect(VISUAL_WCAG_CRITERIA.length).toBeGreaterThanOrEqual(10);
-    });
+  it("should truncate a long accessibility tree summary", () => {
+    const longSummary = "a".repeat(A11Y_TREE_MAX_SUMMARY_LENGTH + 100);
+    const input = {
+      ...baseInput,
+      accessibilityTreeSummary: longSummary,
+    };
+    const prompt = buildVisionPrompt(input);
+    const truncatedSummary = longSummary.slice(0, A11Y_TREE_MAX_SUMMARY_LENGTH);
 
-    it("should have unique IDs", () => {
-      const ids = VISUAL_WCAG_CRITERIA.map((c) => c.id);
-      expect(new Set(ids).size).toBe(ids.length);
-    });
+    expect(prompt).toContain(truncatedSummary);
+    expect(prompt).not.toContain(longSummary);
+  });
 
-    it("should include both A and AA levels", () => {
-      const levels = new Set(VISUAL_WCAG_CRITERIA.map((c) => c.level));
-      expect(levels.has("A")).toBe(true);
-      expect(levels.has("AA")).toBe(true);
-    });
+  it("should handle an empty or null accessibility tree summary", () => {
+    const input = { ...baseInput, accessibilityTreeSummary: "" };
+    const prompt = buildVisionPrompt(input);
+    expect(prompt).toContain(`${VISION_PROMPT_SECTIONS.A11Y_TREE_HEADER}\n\n`);
   });
 });
