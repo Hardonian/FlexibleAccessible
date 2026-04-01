@@ -1,19 +1,14 @@
-import type { ReviewFinding, CriterionStatus } from "./types.js";
+import type {
+  ReviewFinding,
+  CriterionStatus,
+  ScoredFinding,
+  ConfidenceAction,
+} from "./types.js";
 import {
   CONFIDENCE_AUTO_CREATE,
   CONFIDENCE_REVIEW_REQUIRED,
   CONFIDENCE_MINIMUM,
 } from "./types.js";
-
-export type ConfidenceAction =
-  | "auto_create"
-  | "review_required"
-  | "evidence_only"
-  | "discard";
-
-export interface ScoredFinding extends ReviewFinding {
-  action: ConfidenceAction;
-}
 
 /**
  * Determine the action to take based on confidence score.
