@@ -8,6 +8,7 @@ import {
 } from "./constants.js";
 import { VisionAnalysisOutputSchema } from "./schemas.js";
 import { getVisionAnalysisFromModel } from "./services/ai.js";
+import { logger } from "./logger.js";
 
 /**
  * Analyzes a screenshot with a generative vision model, using structured JSON output.
@@ -18,7 +19,7 @@ import { getVisionAnalysisFromModel } from "./services/ai.js";
 export async function analyzeImage(
   input: VisionAnalysisInput,
 ): Promise<VisionAnalysisOutput> {
-  console.log(`[AI] Starting analysis for ${input.url}`);
+  logger.log("Starting AI analysis", { url: input.url });
   const prompt = buildVisionPrompt(input);
   const imagePart = {
     inlineData: { data: input.screenshotBase64, mimeType: PNG_MIME_TYPE },
@@ -26,13 +27,13 @@ export async function analyzeImage(
 
   try {
     const response = await getVisionAnalysisFromModel(prompt, imagePart);
-    console.log(`[AI] Received response from model for ${input.url}`);
+    logger.log("Received response from AI model", { url: input.url });
 
     // The response might be blocked by safety settings even if the threshold is NONE.
     if (!response.text) {
       const blockReason = response.promptFeedback?.blockReason || UNKNOWN_REASON;
       const reason = `${AI_BLOCK_MESSAGE_PREFIX}${blockReason}`;
-      console.error(reason, { feedback: response.promptFeedback });
+      logger.error(reason, { feedback: response.promptFeedback });
       return createErrorResponse(input, [AI_FAILURE_MESSAGE, `Error: ${reason}`]);
     }
 
@@ -40,9 +41,9 @@ export async function analyzeImage(
     let parsedJson;
     try {
       parsedJson = JSON.parse(jsonText);
-      console.log(`[AI] Successfully parsed JSON for ${input.url}`);
+      logger.log("Successfully parsed JSON from AI", { url: input.url });
     } catch (error) {
-      console.error(`[AI] Error parsing JSON for ${input.url}:`, error);
+      logger.error("Error parsing JSON from AI", { url: input.url, error });
       return createErrorResponse(input, [
         AI_FAILURE_MESSAGE,
         `Error: Failed to parse AI response as JSON. ${(error as Error).message}`,
@@ -53,20 +54,20 @@ export async function analyzeImage(
 
     if (!validationResult.success) {
       const errorMessage = `AI response failed Zod validation: ${validationResult.error.message}`;
-      console.error(
-        `[AI] Zod validation error for ${input.url}:`,
-        validationResult.error.issues,
-      );
+      logger.error("Zod validation error", {
+        url: input.url,
+        issues: validationResult.error.issues,
+      });
       return createErrorResponse(input, [
         AI_FAILURE_MESSAGE,
         `Error: ${errorMessage}`,
       ]);
     }
 
-    console.log(`[AI] Analysis for ${input.url} completed successfully.`);
+    logger.log("AI analysis completed successfully", { url: input.url });
     return validationResult.data;
   } catch (error) {
-    console.error(`[AI] Error calling Generative AI model for ${input.url}:`, error);
+    logger.error("Error calling Generative AI model", { url: input.url, error });
     return createErrorResponse(input, [
       AI_FAILURE_MESSAGE,
       `Error: ${(error as Error).message}`,
