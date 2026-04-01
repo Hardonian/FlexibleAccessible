@@ -35,7 +35,7 @@ describe('RemediationAgent', () => {
 
   it('should auto-approve a high-confidence, valid fix', async () => {
     // Arrange
-    (prisma.canonicalFinding.findUnique as vi.Mock).mockResolvedValue({
+    (prisma.canonicalFinding.findUnique as any).mockResolvedValue({
       id: 'finding-123',
       ruleId: 'image-alt',
       impact: 'SERIOUS',
@@ -43,14 +43,14 @@ describe('RemediationAgent', () => {
       occurrences: [{ elementHtml: '<img>', selector: 'img' }],
       cluster: null,
     });
-    (generateFix as vi.Mock).mockReturnValue({
+    (generateFix as any).mockReturnValue({
       suggestedCode: '<img alt="A descriptive text">',
       confidence: 0.95,
       type: 'CODE',
       rationale: 'High confidence fix.',
     });
-    (validateFix as vi.Mock).mockReturnValue({ valid: true, warnings: [] });
-    (prisma.remediationSuggestion.create as vi.Mock).mockResolvedValue({ id: 'suggestion-456' });
+    (validateFix as any).mockReturnValue({ valid: true, warnings: [] });
+    (prisma.remediationSuggestion.create as any).mockResolvedValue({ id: 'suggestion-456' });
 
     const agent = new RemediationAgent();
 
@@ -64,14 +64,14 @@ describe('RemediationAgent', () => {
       status: 'APPROVED',
       autoApproved: true,
     });
-    const suggestionCreateCall = (prisma.remediationSuggestion.create as vi.Mock).mock.calls[0][0].data;
+    const suggestionCreateCall = (prisma.remediationSuggestion.create as any).mock.calls[0][0].data;
     expect(suggestionCreateCall.status).toBe('APPROVED');
     expect(prisma.reviewTask.create).not.toHaveBeenCalled();
   });
 
   it('should escalate a low-confidence fix to review', async () => {
     // Arrange
-    (prisma.canonicalFinding.findUnique as vi.Mock).mockResolvedValue({
+    (prisma.canonicalFinding.findUnique as any).mockResolvedValue({
       id: 'finding-123',
       ruleId: 'complex-rule',
       impact: 'MODERATE',
@@ -79,14 +79,14 @@ describe('RemediationAgent', () => {
       occurrences: [{ elementHtml: '<div></div>', selector: 'div' }],
       cluster: null,
     });
-    (generateFix as vi.Mock).mockReturnValue({
+    (generateFix as any).mockReturnValue({
       suggestedCode: '<div role="region"></div>',
       confidence: 0.6,
       type: 'CODE',
       rationale: 'Low confidence fix.',
     });
-    (validateFix as vi.Mock).mockReturnValue({ valid: true, warnings: [] });
-    (prisma.remediationSuggestion.create as vi.Mock).mockResolvedValue({ id: 'suggestion-789' });
+    (validateFix as any).mockReturnValue({ valid: true, warnings: [] });
+    (prisma.remediationSuggestion.create as any).mockResolvedValue({ id: 'suggestion-789' });
 
     const agent = new RemediationAgent();
 
@@ -100,7 +100,7 @@ describe('RemediationAgent', () => {
       status: 'VALIDATED',
       autoApproved: false,
     });
-    const suggestionCreateCall = (prisma.remediationSuggestion.create as vi.Mock).mock.calls[0][0].data;
+    const suggestionCreateCall = (prisma.remediationSuggestion.create as any).mock.calls[0][0].data;
     expect(suggestionCreateCall.status).toBe('VALIDATED');
     expect(prisma.reviewTask.create).toHaveBeenCalledOnce();
   });

@@ -1,7 +1,8 @@
 import { prisma, SuggestionType } from "@aros/db";
 import { generateFix, validateFix } from "@aros/remediation";
 import type { FixResult } from "@aros/remediation";
-import type {
+import {
+  AgentContext,
   AgentResult,
   AgentEventHandler,
 } from "./types.js";

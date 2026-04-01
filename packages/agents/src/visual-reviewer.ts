@@ -1,5 +1,5 @@
 import { prisma } from "@aros/db";
-import type { 
+import { 
   AgentContext,
   AgentResult, 
   AgentEventHandler 
