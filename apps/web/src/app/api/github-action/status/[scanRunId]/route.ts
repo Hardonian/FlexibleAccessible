@@ -82,6 +82,8 @@ export async function GET(
       );
     }
 
+    const { site, ...scanRunData } = scanRun;
+
     // If completed, aggregate findings by severity
     if (scanRun.status === "COMPLETED") {
       const findings = await prisma.rawViolation.groupBy({
@@ -107,13 +109,13 @@ export async function GET(
       );
 
       return apiSuccess({
-        ...scanRun,
+        ...scanRunData,
         score,
         severityCounts,
       });
     }
 
-    return apiSuccess(scanRun);
+    return apiSuccess(scanRunData);
   } catch (error) {
     return apiError(error);
   }

@@ -32,12 +32,12 @@ export function EntitlementWall({
             Premium workspace
           </p>
           <div className="space-y-2">
-            <h1
+            <h2
               id="upgrade-required-title"
               className="text-2xl font-semibold tracking-tight text-slate-950"
             >
               {title}
-            </h1>
+            </h2>
             <p className="max-w-2xl text-sm leading-6 text-slate-700">
               {description ?? entitlementReasonMessage(entitlement)}
             </p>

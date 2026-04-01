@@ -85,6 +85,13 @@ export async function startSiteScanAction(
       variant: 'error',
     };
   } catch (e) {
+    if (e instanceof ApiError && e.code === 'SUBSCRIPTION_REQUIRED') {
+      return {
+        status: 'error',
+        message: 'Upgrade to a paid plan to run private verification scans.',
+        variant: 'error',
+      };
+    }
     if (e instanceof ApiError && e.statusCode === 403) {
       return { status: 'permission_denied', message: 'You do not have permission to start scans.', variant: 'error' };
     }
@@ -175,6 +182,9 @@ export async function retryPostCrawlScanKickoffAction(formData: FormData) {
         .catch(() => undefined);
     }
   } catch (e) {
+    if (e instanceof ApiError && e.code === 'SUBSCRIPTION_REQUIRED') {
+      redirect('/settings/billing?status=upgrade_required&from=%2Fsites');
+    }
     if (e instanceof ApiError && (e.statusCode === 403 || e.statusCode === 404)) {
       redirect(`/sites/${siteId}`);
     }

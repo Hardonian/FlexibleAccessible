@@ -19,7 +19,6 @@ const PUBLIC_API_PREFIXES = [
   "/api/badge",
   "/api/og",
   "/api/webhooks/stripe",
-  "/api/deploy-webhook",
 ];
 
 function isPrivatePage(pathname: string) {
