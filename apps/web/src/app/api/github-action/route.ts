@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireSession } from "@/lib/session";
 import { apiSuccess, apiError } from "@/lib/api-utils";
+import { ApiError } from "@aros/shared";
 import { Queue } from "bullmq";
 import { bullmqConnectionOptions } from "@aros/shared";
 
@@ -52,7 +53,7 @@ export async function POST(request: Request) {
     });
 
     if (!site) {
-      return apiError({ message: "Site not found", code: "NOT_FOUND" }, 404);
+      return apiError(ApiError.notFound("Site not found"));
     }
 
     // Create scan run

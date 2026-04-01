@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireSession } from "@/lib/session";
 import { requireOrgAccess } from "@/lib/auth-guard";
 import { apiSuccess, apiError } from "@/lib/api-utils";
+import { ApiError } from "@aros/shared";
 import {
   computeClusterImpacts,
   getParetoAnalysis,
@@ -37,7 +38,7 @@ export async function GET(request: Request) {
     });
 
     if (!site) {
-      return apiError({ message: "Site not found", code: "NOT_FOUND" }, 404);
+      return apiError(ApiError.notFound("Site not found"));
     }
 
     // Check if impacts are stale (> 1 hour old)
@@ -79,7 +80,7 @@ export async function POST(request: Request) {
       });
     }
 
-    const ctx = await requireOrgAccess(organizationId, "findings:edit");
+    const ctx = await requireOrgAccess(organizationId, "findings:manage");
 
     const site = await prisma.site.findFirst({
       where: {
@@ -89,7 +90,7 @@ export async function POST(request: Request) {
     });
 
     if (!site) {
-      return apiError({ message: "Site not found", code: "NOT_FOUND" }, 404);
+      return apiError(ApiError.notFound("Site not found"));
     }
 
     const results = await computeClusterImpacts(siteId);

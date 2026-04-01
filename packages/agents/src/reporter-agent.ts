@@ -1,6 +1,6 @@
 import { prisma } from "@aros/db";
-import type { AgentContext, AgentResult, AgentEventHandler } from "./types";
-import { BaseAgent } from "./base-agent";
+import type { AgentContext, AgentResult, AgentEventHandler } from "./types.js";
+import { BaseAgent } from "./base-agent.js";
 import type {
   CanonicalFinding,
   IssueCluster,

@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { ScannerAgent } from './scanner-agent';
+import { ScannerAgent } from './scanner-agent.js';
 import { prisma } from '@aros/db';
 import { getSharedScanQueue } from '@aros/shared';
 import { Queue } from 'bullmq';

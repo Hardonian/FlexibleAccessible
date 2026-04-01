@@ -153,7 +153,7 @@ export async function handlePublicScanJob(job: Job<PublicScanJobData>) {
         moderateCount,
         minorCount,
         pagesScanned,
-        violations: allViolations.slice(0, 50), // Cap stored violations
+        violations: allViolations.slice(0, 50) as any,
         completedAt: new Date(),
       },
     });

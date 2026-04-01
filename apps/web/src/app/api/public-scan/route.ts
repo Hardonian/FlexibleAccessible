@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { apiSuccess, apiError } from "@/lib/api-utils";
+import { ApiError } from "@aros/shared";
 import { createHash } from "crypto";
 
 export const runtime = "nodejs";
@@ -138,7 +139,7 @@ export async function GET(request: Request) {
     const id = searchParams.get("id");
 
     if (!id) {
-      return apiError({ message: "Scan ID required", code: "BAD_REQUEST" });
+      return apiError(ApiError.badRequest("Scan ID required"));
     }
 
     const scan = await prisma.publicScanResult.findUnique({
@@ -146,7 +147,7 @@ export async function GET(request: Request) {
     });
 
     if (!scan) {
-      return apiError({ message: "Scan not found", code: "NOT_FOUND" });
+      return apiError(ApiError.notFound("Scan not found"));
     }
 
     return apiSuccess({

@@ -1,10 +1,10 @@
 import { prisma } from "@aros/db";
 import type { 
-  AgentContext, 
+  AgentContext,
   AgentResult, 
   AgentEventHandler 
-} from "./types";
-import { BaseAgent } from "./base-agent";
+} from "./types.js";
+import { BaseAgent } from "./base-agent.js";
 import { recordFindingEvidence } from "@aros/core-services";
 
 /**
@@ -36,7 +36,9 @@ export class GeminiVisualReviewer extends BaseAgent {
             screenshotRef: { not: null }
           },
           include: { 
-            screenshot: true // This is the PageSnapshot
+            page: {
+              include: { snapshots: { take: 1, orderBy: { capturedAt: 'desc' } } }
+            }
           },
           take: 10 // Cost-disciplined limit per run
         });

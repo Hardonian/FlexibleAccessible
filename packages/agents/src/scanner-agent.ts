@@ -5,8 +5,8 @@ import type {
   AgentContext,
   AgentResult,
   AgentEventHandler,
-} from "./types";
-import { BaseAgent } from "./base-agent";
+} from "./types.js";
+import { BaseAgent } from "./base-agent.js";
 
 const SCAN_STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000; // 24 hours
 const REMEDIATION_TRIGGER_LIMIT = 20;

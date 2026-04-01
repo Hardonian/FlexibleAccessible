@@ -1,5 +1,5 @@
 import { Queue } from 'bullmq';
-import { bullmqConnectionOptions } from './redis-connection';
+import { bullmqConnectionOptions } from './redis-connection.js';
 
 /** BullMQ queue name for site verification scans (must match worker consumer). */
 export const SCAN_QUEUE_NAME = 'scan' as const;

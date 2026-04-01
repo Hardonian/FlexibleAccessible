@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { ReporterAgent } from './reporter-agent';
+import { ReporterAgent } from './reporter-agent.js';
 import { prisma } from '@aros/db';
 
 // Mock dependencies

@@ -1,13 +1,13 @@
-import { RemediationAgent } from "./remediation-agent";
-import { ScannerAgent } from "./scanner-agent";
-import { ReporterAgent } from "./reporter-agent";
-import { GeminiVisualReviewer } from "./visual-reviewer";
+import { RemediationAgent } from "./remediation-agent.js";
+import { ScannerAgent } from "./scanner-agent.js";
+import { ReporterAgent } from "./reporter-agent.js";
+import { GeminiVisualReviewer } from "./visual-reviewer.js";
 import type {
   AgentContext,
   AgentResult,
   AgentEventHandler,
   AgentEvent,
-} from "./types";
+} from "./types.js";
 import { prisma } from "@aros/db";
 
 const REMEDIATION_FINDINGS_LIMIT = 50;
