@@ -3,6 +3,10 @@ import { requireOrgAccess } from "@/lib/auth-guard";
 import {
   StakeholderRegistry,
   stakeholderCreateSchema,
+  type StakeholderSegment,
+  type PowerLevel,
+  type InterestLevel,
+  type EngagementStatus,
 } from "@aros/stakeholders";
 
 const registry = new StakeholderRegistry();
@@ -23,10 +27,12 @@ export async function GET(request: Request) {
       requirePaid: true,
     });
 
-    const segment = searchParams.get("segment") || undefined;
-    const power = searchParams.get("power") || undefined;
-    const interest = searchParams.get("interest") || undefined;
-    const engagementStatus = searchParams.get("engagementStatus") || undefined;
+    const segment = searchParams.get("segment") as StakeholderSegment | null;
+    const power = searchParams.get("power") as PowerLevel | null;
+    const interest = searchParams.get("interest") as InterestLevel | null;
+    const engagementStatus = searchParams.get(
+      "engagementStatus",
+    ) as EngagementStatus | null;
     const search = searchParams.get("search") || undefined;
     const page = parseInt(searchParams.get("page") || "1", 10);
     const pageSize = parseInt(searchParams.get("pageSize") || "20", 10);
@@ -42,18 +48,10 @@ export async function GET(request: Request) {
       | "desc";
 
     const result = await registry.list({
-      segment: segment as
-        | (typeof import("@aros/stakeholders").STAKEHOLDER_SEGMENTS)[number]
-        | undefined,
-      power: power as
-        | (typeof import("@aros/stakeholders").POWER_LEVELS_SCHEMA)[number]
-        | undefined,
-      interest: interest as
-        | (typeof import("@aros/stakeholders").INTEREST_LEVELS_SCHEMA)[number]
-        | undefined,
-      engagementStatus: engagementStatus as
-        | (typeof import("@aros/stakeholders").ENGAGEMENT_STATUSES)[number]
-        | undefined,
+      segment: segment ?? undefined,
+      power: power ?? undefined,
+      interest: interest ?? undefined,
+      engagementStatus: engagementStatus ?? undefined,
       search,
       page,
       pageSize,

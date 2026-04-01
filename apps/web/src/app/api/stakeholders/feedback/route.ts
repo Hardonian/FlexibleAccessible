@@ -4,9 +4,8 @@ import {
   FeedbackLoopManager,
   FEEDBACK_STATUSES,
   FEEDBACK_CATEGORIES,
-  type FeedbackStatus,
-  type FeedbackCategory,
 } from "@aros/stakeholders";
+import type { FeedbackStatus, FeedbackCategory } from "@aros/stakeholders";
 
 const feedbackManager = new FeedbackLoopManager();
 
@@ -26,17 +25,25 @@ export async function GET(request: Request) {
       requirePaid: true,
     });
 
-    const status = searchParams.get("status") as FeedbackStatus | null;
-    const category = searchParams.get("category") as FeedbackCategory | null;
+    const statusParam = searchParams.get("status");
+    const categoryParam = searchParams.get("category");
     const stakeholderId = searchParams.get("stakeholderId");
 
     let items;
     if (stakeholderId) {
       items = await feedbackManager.listByStakeholder(stakeholderId);
-    } else if (status && FEEDBACK_STATUSES.includes(status)) {
-      items = await feedbackManager.listByStatus(status);
-    } else if (category && FEEDBACK_CATEGORIES.includes(category)) {
-      items = await feedbackManager.listByCategory(category);
+    } else if (
+      statusParam &&
+      (FEEDBACK_STATUSES as readonly string[]).includes(statusParam)
+    ) {
+      items = await feedbackManager.listByStatus(statusParam as FeedbackStatus);
+    } else if (
+      categoryParam &&
+      (FEEDBACK_CATEGORIES as readonly string[]).includes(categoryParam)
+    ) {
+      items = await feedbackManager.listByCategory(
+        categoryParam as FeedbackCategory,
+      );
     } else {
       items = await feedbackManager.exportAll();
     }
