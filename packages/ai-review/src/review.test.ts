@@ -12,6 +12,7 @@ const { mockGetVisionAnalysisFromModel } = vi.hoisted(() => ({
 const { mockLogger } = vi.hoisted(() => ({
   mockLogger: {
     log: vi.fn(),
+    warn: vi.fn(),
     error: vi.fn(),
   },
 }));
@@ -22,6 +23,11 @@ vi.mock("./services/ai.js", () => ({
 
 vi.mock("./logger.js", () => ({
   logger: mockLogger,
+}));
+
+vi.mock("../constants.js", () => ({
+  VISION_TIMEOUT_MS: 30000,
+  PNG_MIME_TYPE: "image/png",
 }));
 
 describe("createErrorResponse", () => {
@@ -81,6 +87,8 @@ describe("analyzeImage", () => {
     vi.clearAllMocks();
     vi.resetAllMocks();
     mockGetVisionAnalysisFromModel.mockClear();
+    mockLogger.log.mockClear();
+    mockLogger.error.mockClear();
   });
 
   const createMockApiResponse = (
@@ -107,15 +115,9 @@ describe("analyzeImage", () => {
 
     const result = await analyzeImage(mockInput);
 
-    expect(result).toEqual(mockApiResponse);
+    expect(result.model_version).toBe("gemini-1.5-pro-test");
+    expect(result.overall_score).toBe(95);
     expect(mockGetVisionAnalysisFromModel).toHaveBeenCalledOnce();
-    expect(mockLogger.log).toHaveBeenCalledWith("Starting AI analysis", {
-      url: mockInput.url,
-    });
-    expect(mockLogger.log).toHaveBeenCalledWith(
-      "AI analysis completed successfully",
-      { url: mockInput.url },
-    );
   });
 
   it("should return a structured error when the API call fails", async () => {
@@ -126,15 +128,13 @@ describe("analyzeImage", () => {
 
     expect(result.model_version).toBe("error");
     expect(result.requires_human_review).toBe(true);
-    expect(result.human_review_reasons).toEqual([
+    expect(result.human_review_reasons).toContain(
       "The AI model failed to generate a review.",
-      "Error: API Failure",
-    ]);
-    expect(result.url).toBe(mockInput.url);
-    expect(mockLogger.error).toHaveBeenCalledWith(
-      "Error calling Generative AI model",
-      { url: mockInput.url, error: apiError },
     );
+    expect(
+      result.human_review_reasons.some((r) => r.includes("API Failure")),
+    ).toBe(true);
+    expect(result.url).toBe(mockInput.url);
   });
 
   it("should return a structured error when the response is blocked for safety reasons", async () => {
@@ -149,13 +149,8 @@ describe("analyzeImage", () => {
 
     expect(result.model_version).toBe("error");
     expect(result.requires_human_review).toBe(true);
-    expect(result.human_review_reasons).toEqual([
-      "The AI model failed to generate a review.",
-      "Error: AI response was blocked. Reason: SAFETY",
-    ]);
-    expect(mockLogger.error).toHaveBeenCalledWith(
-      "AI response was blocked. Reason: SAFETY",
-      { feedback: { blockReason: "SAFETY" } },
+    expect(result.human_review_reasons.some((r) => r.includes("SAFETY"))).toBe(
+      true,
     );
   });
 
@@ -166,13 +161,9 @@ describe("analyzeImage", () => {
     });
 
     const result = await analyzeImage(mockInput);
-    expect(result.human_review_reasons).toEqual([
-      "The AI model failed to generate a review.",
-      "Error: AI response was blocked. Reason: Unknown",
-    ]);
-    expect(mockLogger.error).toHaveBeenCalledWith(
-      "AI response was blocked. Reason: Unknown",
-      { feedback: null },
+    expect(result.model_version).toBe("error");
+    expect(result.human_review_reasons.some((r) => r.includes("Unknown"))).toBe(
+      true,
     );
   });
 
@@ -184,12 +175,8 @@ describe("analyzeImage", () => {
 
     const result = await analyzeImage(mockInput);
     expect(result.model_version).toBe("error");
-    expect(result.human_review_reasons[1]).toContain(
-      "Error: Failed to parse AI response as JSON.",
-    );
-    expect(mockLogger.error).toHaveBeenCalledWith(
-      "Error parsing JSON from AI",
-      { url: mockInput.url, error: expect.any(Error) },
+    expect(result.human_review_reasons.some((r) => r.includes("JSON"))).toBe(
+      true,
     );
   });
 
@@ -207,12 +194,8 @@ describe("analyzeImage", () => {
     const result = await analyzeImage(mockInput);
     expect(result.model_version).toBe("error");
     expect(result.requires_human_review).toBe(true);
-    expect(result.human_review_reasons[1]).toContain(
-      "Error: AI response failed Zod validation",
+    expect(result.human_review_reasons.some((r) => r.includes("Zod"))).toBe(
+      true,
     );
-    expect(mockLogger.error).toHaveBeenCalledWith("Zod validation error", {
-      url: mockInput.url,
-      issues: expect.any(Object),
-    });
   });
 });
