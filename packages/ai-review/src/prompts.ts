@@ -91,35 +91,91 @@ export const VISUAL_WCAG_CRITERIA = [
   },
 ];
 
-export const JSON_SCHEMA = `{
-  "page_id": "string",
-  "url": "string",
-  "timestamp": "ISO 8601 string",
-  "model_version": "string",
-  "latency_ms": "number",
-  "overall_score": "number (0-100)",
-  "criteria_status": [
-    {
-      "criterion_id": "string (e.g. '1.4.3')",
-      "criterion_name": "string",
-      "level": "string ('A' or 'AA')",
-      "status": "string ('pass' | 'fail' | 'partial' | 'not_applicable' | 'uncertain')",
-      "confidence": "number (0.0-1.0)",
-      "issues": [
-        {
-          "description": "string",
-          "severity": "string ('critical' | 'serious' | 'moderate' | 'minor')",
-          "selector": "string (best-guess CSS selector)",
-          "element_description": "string (human-readable)",
-          "suggested_fix": "string",
-          "evidence": "string (what was observed)"
-        }
-      ]
-    }
+/**
+ * JSON schema for the vision analysis output, used for structured output.
+ */
+export const VISION_ANALYSIS_SCHEMA = {
+  type: "object",
+  properties: {
+    page_id: { type: "string" },
+    url: { type: "string" },
+    timestamp: { type: "string", description: "ISO 8601 string" },
+    model_version: { type: "string" },
+    latency_ms: { type: "number" },
+    overall_score: { type: "number", description: "0-100" },
+    criteria_status: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          criterion_id: { type: "string", description: "e.g. '1.4.3'" },
+          criterion_name: { type: "string" },
+          level: { type: "string", enum: ["A", "AA"] },
+          status: {
+            type: "string",
+            enum: ["pass", "fail", "partial", "not_applicable", "uncertain"],
+          },
+          confidence: { type: "number", description: "0.0-1.0" },
+          issues: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                description: { type: "string" },
+                severity: {
+                  type: "string",
+                  enum: ["critical", "serious", "moderate", "minor"],
+                },
+                selector: {
+                  type: "string",
+                  description: "best-guess CSS selector",
+                },
+                element_description: {
+                  type: "string",
+                  description: "human-readable",
+                },
+                suggested_fix: { type: "string" },
+                evidence: { type: "string", description: "what was observed" },
+              },
+              required: [
+                "description",
+                "severity",
+                "selector",
+                "element_description",
+                "suggested_fix",
+                "evidence",
+              ],
+            },
+          },
+        },
+        required: [
+          "criterion_id",
+          "criterion_name",
+          "level",
+          "status",
+          "confidence",
+          "issues",
+        ],
+      },
+    },
+    requires_human_review: { type: "boolean" },
+    human_review_reasons: {
+      type: "array",
+      items: { type: "string" },
+    },
+  },
+  required: [
+    "page_id",
+    "url",
+    "timestamp",
+    "model_version",
+    "latency_ms",
+    "overall_score",
+    "criteria_status",
+    "requires_human_review",
+    "human_review_reasons",
   ],
-  "requires_human_review": "boolean",
-  "human_review_reasons": ["string"]
-}`;
+};
 
 /**
  * Build the vision analysis prompt from input data.
@@ -173,8 +229,7 @@ ${criteriaList}
 4. Compute overall_score as: 100 - (sum of severity weights across failed criteria). Weights: critical=15, serious=10, moderate=5, minor=2.
 5. Set requires_human_review=true if any criterion has confidence < 0.7 or status is "uncertain".
 
-Return ONLY valid JSON (no markdown fences, no explanation before or after):
-${JSON_SCHEMA}`;
+Your output must conform to the provided JSON schema.`;
 }
 
 /**
