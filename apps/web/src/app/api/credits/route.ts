@@ -37,7 +37,9 @@ export async function GET(request: Request) {
       });
     }
 
-    const ctx = await requireOrgAccess(organizationId, "org:billing");
+    const ctx = await requireOrgAccess(organizationId, "org:billing", {
+      requirePaid: true,
+    });
 
     const balance = await prisma.fixCreditBalance.findUnique({
       where: { organizationId: ctx.organizationId },
@@ -82,7 +84,9 @@ export async function POST(request: Request) {
     const body = await request.json();
     const parsed = purchaseSchema.parse(body);
 
-    const ctx = await requireOrgAccess(parsed.organizationId, "org:billing");
+    const ctx = await requireOrgAccess(parsed.organizationId, "org:billing", {
+      requirePaid: true,
+    });
     const pack = CREDIT_PACKS[parsed.pack];
 
     if (!pack) {

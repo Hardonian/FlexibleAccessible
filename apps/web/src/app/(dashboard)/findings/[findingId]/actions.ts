@@ -1,57 +1,37 @@
-'use server';
+"use server";
 
-import { redirect } from 'next/navigation';
-import { requireSession } from '@/lib/session';
-import { prisma } from '@/lib/db';
-import { resolveDashboardOrgMembership } from '@/lib/route-data-boundary';
-import { getRoutePlatformTruth } from '@/lib/platform-truth-cache';
+import { redirect } from "next/navigation";
+import { requireSession } from "@/lib/session";
+import { prisma } from "@/lib/db";
+import { resolveDashboardOrgMembership } from "@/lib/route-data-boundary";
+import { getRoutePlatformTruth } from "@/lib/platform-truth-cache";
+import { requireOrgAccess } from "@/lib/auth-guard";
 import {
   createFindingGovernanceDecision,
   revokeFindingGovernanceDecision,
-} from '@aros/core-services';
-import { transitionFindingRemediationStatus } from '@/lib/findings/remediation-server';
-import { getEntitlementState } from '@/lib/auth-guard';
-
-async function redirectIfUpgradeRequired(organizationId: string) {
-  const subscription = await prisma.subscription.findUnique({
-    where: { organizationId },
-    select: {
-      plan: true,
-      status: true,
-      maxDomains: true,
-      maxPagesPerCrawl: true,
-      maxScansPerMonth: true,
-      maxSeats: true,
-      aiEnabled: true,
-      aiTokenLimit: true,
-      currentPeriodEnd: true,
-      cancelAtPeriodEnd: true,
-    },
-  });
-
-  if (!getEntitlementState(subscription).hasPaidAccess) {
-    redirect('/settings/billing?status=upgrade_required&from=%2Ffindings');
-  }
-}
+} from "@aros/core-services";
+import { transitionFindingRemediationStatus } from "@/lib/findings/remediation-server";
 
 export async function updateFindingStatusAction(formData: FormData) {
   const user = await requireSession();
-  const findingId = formData.get('findingId') as string;
-  const status = formData.get('status') as string;
-  const note = (formData.get('note') as string | null) ?? null;
+  const findingId = formData.get("findingId") as string;
+  const status = formData.get("status") as string;
+  const note = (formData.get("note") as string | null) ?? null;
 
   if (!findingId || !status) {
-    redirect('/findings');
+    redirect("/findings");
   }
 
   const platformTruth = await getRoutePlatformTruth();
   const orgRes = await resolveDashboardOrgMembership(user.id, platformTruth);
 
-  if (orgRes.kind !== 'ok') {
-    redirect('/findings');
+  if (orgRes.kind !== "ok") {
+    redirect("/findings");
   }
 
-  await redirectIfUpgradeRequired(orgRes.organizationId);
+  const ctx = await requireOrgAccess(orgRes.organizationId, "finding:manage", {
+    requirePaid: true,
+  });
 
   const result = await transitionFindingRemediationStatus({
     prisma,
@@ -70,26 +50,31 @@ export async function updateFindingStatusAction(formData: FormData) {
   redirect(`/findings/${findingId}`);
 }
 
-export async function createFindingGovernanceDecisionAction(formData: FormData) {
+export async function createFindingGovernanceDecisionAction(
+  formData: FormData,
+) {
   const user = await requireSession();
-  const findingId = formData.get('findingId') as string;
-  const kind = formData.get('kind') as string;
-  const rationale = formData.get('rationale') as string;
-  const justification = (formData.get('justification') as string | null) ?? null;
-  const expiresAtRaw = (formData.get('expiresAt') as string | null) ?? null;
+  const findingId = formData.get("findingId") as string;
+  const kind = formData.get("kind") as string;
+  const rationale = formData.get("rationale") as string;
+  const justification =
+    (formData.get("justification") as string | null) ?? null;
+  const expiresAtRaw = (formData.get("expiresAt") as string | null) ?? null;
 
   if (!findingId) {
-    redirect('/findings');
+    redirect("/findings");
   }
 
   const platformTruth = await getRoutePlatformTruth();
   const orgRes = await resolveDashboardOrgMembership(user.id, platformTruth);
 
-  if (orgRes.kind !== 'ok') {
+  if (orgRes.kind !== "ok") {
     redirect(`/findings/${findingId}?governance=not_found`);
   }
 
-  await redirectIfUpgradeRequired(orgRes.organizationId);
+  const ctx = await requireOrgAccess(orgRes.organizationId, "finding:manage", {
+    requirePaid: true,
+  });
 
   const expiresAt = expiresAtRaw?.trim() ? new Date(expiresAtRaw) : null;
   const result = await createFindingGovernanceDecision({
@@ -111,23 +96,27 @@ export async function createFindingGovernanceDecisionAction(formData: FormData) 
   redirect(`/findings/${findingId}`);
 }
 
-export async function revokeFindingGovernanceDecisionAction(formData: FormData) {
+export async function revokeFindingGovernanceDecisionAction(
+  formData: FormData,
+) {
   const user = await requireSession();
-  const findingId = formData.get('findingId') as string;
-  const decisionId = formData.get('decisionId') as string;
+  const findingId = formData.get("findingId") as string;
+  const decisionId = formData.get("decisionId") as string;
 
   if (!findingId || !decisionId) {
-    redirect(findingId ? `/findings/${findingId}` : '/findings');
+    redirect(findingId ? `/findings/${findingId}` : "/findings");
   }
 
   const platformTruth = await getRoutePlatformTruth();
   const orgRes = await resolveDashboardOrgMembership(user.id, platformTruth);
 
-  if (orgRes.kind !== 'ok') {
+  if (orgRes.kind !== "ok") {
     redirect(`/findings/${findingId}?governance=not_found`);
   }
 
-  await redirectIfUpgradeRequired(orgRes.organizationId);
+  const ctx = await requireOrgAccess(orgRes.organizationId, "finding:manage", {
+    requirePaid: true,
+  });
 
   const result = await revokeFindingGovernanceDecision({
     prisma,

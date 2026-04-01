@@ -4,13 +4,14 @@ import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { hasPermission } from "@aros/config";
-import { getEntitlementState } from "@/lib/auth-guard";
+import { getEntitlementState, requireOrgAccess } from "@/lib/auth-guard";
 
 async function requireSuggestionAccess(suggestionId: string, userId: string) {
   if (!suggestionId) {
     redirect("/remediation?error=missing_id");
   }
 
+  // First get the suggestion and determine the organization
   const suggestion = await prisma.remediationSuggestion.findUnique({
     where: { id: suggestionId },
     select: {
@@ -22,18 +23,7 @@ async function requireSuggestionAccess(suggestionId: string, userId: string) {
           site: {
             select: {
               workspace: {
-                select: {
-                  organizationId: true,
-                  organization: {
-                    select: {
-                      memberships: {
-                        where: { userId },
-                        take: 1,
-                        select: { role: true },
-                      },
-                    },
-                  },
-                },
+                select: { organizationId: true },
               },
             },
           },
@@ -44,18 +34,7 @@ async function requireSuggestionAccess(suggestionId: string, userId: string) {
           site: {
             select: {
               workspace: {
-                select: {
-                  organizationId: true,
-                  organization: {
-                    select: {
-                      memberships: {
-                        where: { userId },
-                        take: 1,
-                        select: { role: true },
-                      },
-                    },
-                  },
-                },
+                select: { organizationId: true },
               },
             },
           },
@@ -68,40 +47,23 @@ async function requireSuggestionAccess(suggestionId: string, userId: string) {
     redirect("/remediation?error=not_found");
   }
 
-  const orgMembership =
-    suggestion.finding?.site.workspace.organization.memberships[0] ??
-    suggestion.cluster?.site.workspace.organization.memberships[0];
-
-  if (!orgMembership) {
-    redirect("/remediation?error=forbidden");
-  }
-
   const organizationId =
     suggestion.finding?.site.workspace.organizationId ??
     suggestion.cluster?.site.workspace.organizationId;
 
-  const subscription = organizationId
-    ? await prisma.subscription.findUnique({
-        where: { organizationId },
-        select: {
-          plan: true,
-          status: true,
-          maxDomains: true,
-          maxPagesPerCrawl: true,
-          maxScansPerMonth: true,
-          maxSeats: true,
-          aiEnabled: true,
-          aiTokenLimit: true,
-          currentPeriodEnd: true,
-          cancelAtPeriodEnd: true,
-        },
-      })
-    : null;
+  if (!organizationId) {
+    redirect("/remediation?error=invalid_suggestion");
+  }
+
+  // Use centralized auth guard
+  const ctx = await requireOrgAccess(organizationId, "suggestions:manage", {
+    requirePaid: true,
+  });
 
   return {
     suggestion,
-    role: orgMembership.role,
-    entitlement: getEntitlementState(subscription),
+    role: ctx.role,
+    entitlement: ctx.entitlement,
   };
 }
 
