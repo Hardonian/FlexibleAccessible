@@ -36,5 +36,13 @@
   },
   "dependencies": {
     "zod": "^4.3.6"
+  },
+  "overrides": {
+    "@prisma/config": {
+      "effect": "3.21.0"
+    },
+    "@rollup/plugin-terser": {
+      "serialize-javascript": "7.0.5"
+    }
   }
 }
