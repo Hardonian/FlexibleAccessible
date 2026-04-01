@@ -4,9 +4,8 @@ const nextConfig = {
   // Obscure the technology stack from basic automated scanners
   poweredByHeader: false,
   
-  experimental: {
-    typedRoutes: true,
-  },
+  typedRoutes: true,
+  experimental: {},
 
   // Enforce baseline security headers on static assets that bypass the Middleware
   async headers() {

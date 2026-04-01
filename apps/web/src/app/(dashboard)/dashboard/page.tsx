@@ -309,7 +309,7 @@ function StatCard({
   href: string;
 }) {
   return (
-    <Link href={href} className="card hover:shadow-md transition-shadow group">
+    <Link href={href as any} className="card hover:shadow-md transition-shadow group">
       <p className="text-sm text-slate-500">{label}</p>
       <p className="mt-1 text-3xl font-bold text-slate-900 group-hover:text-brand-600 transition-colors">
         {value.toLocaleString()}

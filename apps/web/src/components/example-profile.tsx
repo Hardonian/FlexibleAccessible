@@ -25,7 +25,7 @@ export function ExampleProfile({ name, avatarUrl }: { name: string; avatarUrl: s
         Account Settings
       </button>
       
-      <Link href="/logout" className="text-sm text-gray-500 hover:underline">
+      <Link href={"/logout" as any} className="text-sm text-gray-500 hover:underline">
         Sign out
       </Link>
     </div>

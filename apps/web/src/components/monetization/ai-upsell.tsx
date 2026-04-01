@@ -33,13 +33,13 @@ export function AiUpsell({ reason }: AiUpsellProps) {
           </p>
           <div className="mt-4 flex flex-wrap gap-3">
             <Link 
-              href="/settings/billing" 
+              href={"/settings/billing" as any} 
               className="bg-brand-600 hover:bg-brand-700 text-white px-5 py-2 rounded-lg text-sm font-semibold transition-all shadow-md shadow-brand-100"
             >
               Upgrade to Professional
             </Link>
             <Link 
-              href="/remediation" 
+              href={"/remediation" as any} 
               className="bg-white border border-slate-200 text-slate-700 px-5 py-2 rounded-lg text-sm font-semibold hover:bg-slate-50 transition-all"
             >
               View Usage Stats
