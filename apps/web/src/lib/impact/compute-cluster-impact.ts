@@ -93,8 +93,8 @@ export async function computeClusterImpacts(
     const avgHours =
       cluster.findings.reduce((sum, f) => {
         const ruleMeta = RULE_METADATA[f.ruleId];
-        const fixType = ruleMeta?.suggestionType ?? "CUSTOM_SNIPPET";
-        return sum + (FIX_COMPLEXITY_HOURS[fixType] ?? 0.5);
+        const complexity = ruleMeta?.automatable ? 0.15 : 0.5;
+        return sum + complexity;
       }, 0) / Math.max(cluster.findings.length, 1);
 
     const estimatedHours = avgHours * cluster.findingCount;

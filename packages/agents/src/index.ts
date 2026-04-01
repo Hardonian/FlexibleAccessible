@@ -1,6 +1,6 @@
-export { RemediationAgent } from "./remediation-agent";
-export { ScannerAgent } from "./scanner-agent";
-export { ReporterAgent } from "./reporter-agent";
-export { GeminiVisualReviewer } from "./visual-reviewer";
-export { AgentOrchestrator } from "./orchestrator";
-export type { AgentContext, AgentResult, AgentStep } from "./types";
+export { RemediationAgent } from "./remediation-agent.js";
+export { ScannerAgent } from "./scanner-agent.js";
+export { ReporterAgent } from "./reporter-agent.js";
+export { GeminiVisualReviewer } from "./visual-reviewer.js";
+export { AgentOrchestrator } from "./orchestrator.js";
+export type { AgentContext, AgentResult, AgentStep } from "./types.js";

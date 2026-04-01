@@ -2,11 +2,10 @@ import { prisma, SuggestionType } from "@aros/db";
 import { generateFix, validateFix } from "@aros/remediation";
 import type { FixResult } from "@aros/remediation";
 import type {
-  AgentContext,
   AgentResult,
   AgentEventHandler,
-} from "./types";
-import { BaseAgent } from "./base-agent";
+} from "./types.js";
+import { BaseAgent } from "./base-agent.js";
 
 // Define interfaces for step outputs to improve type safety
 interface AnalysisOutput {

@@ -108,10 +108,7 @@ export async function POST(request: Request) {
       });
 
       if (!parent) {
-        return apiError(
-          { message: "Parent comment not found", code: "NOT_FOUND" },
-          404,
-        );
+        return apiError(ApiError.notFound("Parent comment not found"));
       }
     }
 

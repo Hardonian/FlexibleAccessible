@@ -5,7 +5,7 @@ import type {
   AgentStep,
   AgentEventHandler,
   AgentEvent,
-} from "./types";
+} from "./types.js";
 
 /**
  * Provides a skeletal implementation for an agent, handling step execution,

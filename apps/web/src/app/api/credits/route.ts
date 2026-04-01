@@ -82,11 +82,11 @@ export async function POST(request: Request) {
     const body = await request.json();
     const parsed = purchaseSchema.parse(body);
 
-    const ctx = await requireOrgAccess(parsed.organizationId, "billing:manage");
+    const ctx = await requireOrgAccess(parsed.organizationId, "org:billing");
     const pack = CREDIT_PACKS[parsed.pack];
 
     if (!pack) {
-      return apiError({ message: "Invalid pack", code: "BAD_REQUEST" });
+      return apiError(ApiError.badRequest("Invalid pack"));
     }
 
     // Get or create billing customer
@@ -95,45 +95,55 @@ export async function POST(request: Request) {
     });
 
     if (!billingCustomer) {
-      return apiError({
-        message: "No billing customer. Please set up billing first.",
-        code: "BILLING_REQUIRED",
-      });
+      return apiError(
+        ApiError.badRequest(
+          "No billing customer. Please set up billing first.",
+        ),
+      );
     }
 
-    // In production, create a Stripe Checkout Session for one-time payment
-    // For now, record the purchase intent and return mock checkout URL
+    // In production, create a Stripe Checkout Session for one-time payment.
+    // Requires the 'stripe' package: npm install stripe
     const stripeSecret = process.env.STRIPE_SECRET_KEY;
     if (stripeSecret) {
-      const stripe = await import("stripe");
-      const client = new stripe.default(stripeSecret);
+      // Dynamic import to avoid build-time dependency when stripe is not installed
+      let Stripe: any;
+      try {
+        Stripe = (await import("stripe" as string)).default;
+      } catch {
+        Stripe = null;
+      }
 
-      const session = await client.checkout.sessions.create({
-        customer: billingCustomer.stripeCustomerId,
-        mode: "payment",
-        line_items: [
-          {
-            price_data: {
-              currency: "usd",
-              product_data: {
-                name: `AROS Fix Credits — ${pack.label}`,
-                description: `${pack.credits} fix credits for accessibility remediation`,
+      if (Stripe) {
+        const client = new Stripe(stripeSecret);
+
+        const session = await client.checkout.sessions.create({
+          customer: billingCustomer.stripeCustomerId,
+          mode: "payment",
+          line_items: [
+            {
+              price_data: {
+                currency: "usd",
+                product_data: {
+                  name: `AROS Fix Credits — ${pack.label}`,
+                  description: `${pack.credits} fix credits for accessibility remediation`,
+                },
+                unit_amount: pack.priceCents,
               },
-              unit_amount: pack.priceCents,
+              quantity: 1,
             },
-            quantity: 1,
+          ],
+          metadata: {
+            organizationId: ctx.organizationId,
+            creditPack: parsed.pack,
+            creditAmount: String(pack.credits),
           },
-        ],
-        metadata: {
-          organizationId: ctx.organizationId,
-          creditPack: parsed.pack,
-          creditAmount: String(pack.credits),
-        },
-        success_url: `${process.env.NEXTAUTH_URL}/settings/billing?credits=success`,
-        cancel_url: `${process.env.NEXTAUTH_URL}/settings/billing?credits=cancelled`,
-      });
+          success_url: `${process.env.NEXTAUTH_URL}/settings/billing?credits=success`,
+          cancel_url: `${process.env.NEXTAUTH_URL}/settings/billing?credits=cancelled`,
+        });
 
-      return apiSuccess({ checkoutUrl: session.url });
+        return apiSuccess({ checkoutUrl: session.url });
+      }
     }
 
     // Development mode: directly grant credits

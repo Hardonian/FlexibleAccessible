@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { RemediationAgent } from './remediation-agent';
+import { RemediationAgent } from './remediation-agent.js';
 import { prisma } from '@aros/db';
 import { generateFix, validateFix } from '@aros/remediation';
 
@@ -116,6 +116,6 @@ describe('RemediationAgent', () => {
     // Assert
     expect(result.success).toBe(false);
     expect(result.error).toContain('Finding finding-123 not found');
-    expect(result.steps.find(s => s.name === 'analyze')?.status).toBe('failed');
+    expect(result.steps.find((s: any) => s.name === 'analyze')?.status).toBe('failed');
   });
 });

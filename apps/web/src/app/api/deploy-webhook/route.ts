@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { apiSuccess, apiError } from "@/lib/api-utils";
+import { ApiError } from "@aros/shared";
 import { createHmac, timingSafeEqual } from "crypto";
 
 export const runtime = "nodejs";

@@ -1,4 +1,4 @@
-import IORedis from 'ioredis';
+import { Redis } from 'ioredis';
 
 /**
  * BullMQ connection options shared by web (enqueue) and worker (consume).
@@ -11,11 +11,11 @@ export function bullmqConnectionOptions(): { url: string; maxRetriesPerRequest: 
   };
 }
 
-let redis: IORedis | null = null;
+let redis: Redis | null = null;
 
-export function getRedisClient(): IORedis {
+export function getRedisClient(): Redis {
   if (!redis) {
-    redis = new IORedis(bullmqConnectionOptions().url, {
+    redis = new Redis(bullmqConnectionOptions().url, {
       maxRetriesPerRequest: null,
     });
   }

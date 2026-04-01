@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { generateVpatReport } from "../generator";
+import { generateVpatReport } from "./generator";
 
 describe("VPAT Generator", () => {
   it("should be defined and exportable", () => {

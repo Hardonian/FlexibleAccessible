@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireSession } from "@/lib/session";
 import { requireOrgAccess } from "@/lib/auth-guard";
 import { apiSuccess, apiError } from "@/lib/api-utils";
+import { ApiError } from "@aros/shared";
 import { generateVpatReport } from "@/lib/vpat/generator";
 
 /**
@@ -35,7 +36,7 @@ export async function GET(request: Request) {
     });
 
     if (!site) {
-      return apiError({ message: "Site not found", code: "NOT_FOUND" }, 404);
+      return apiError(ApiError.notFound("Site not found"));
     }
 
     const org = await prisma.organization.findUnique({

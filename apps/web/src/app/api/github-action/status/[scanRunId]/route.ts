@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireSession } from "@/lib/session";
 import { apiSuccess, apiError } from "@/lib/api-utils";
+import { ApiError } from "@aros/shared";
 
 /**
  * GET /api/github-action/status/[scanRunId]
@@ -31,7 +32,7 @@ export async function GET(
     });
 
     if (!scanRun) {
-      return apiError({ message: "Scan not found", code: "NOT_FOUND" }, 404);
+      return apiError(ApiError.notFound("Scan not found"));
     }
 
     // If completed, aggregate findings by severity

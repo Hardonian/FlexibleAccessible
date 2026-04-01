@@ -1,6 +1,6 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { BaseAgent } from './base-agent';
-import type { AgentContext, AgentResult } from './types';
+import { BaseAgent } from './base-agent.js';
+import type { AgentContext, AgentResult } from './types.js';
 import { prisma } from '@aros/db';
 
 // Mock DB for usage logging

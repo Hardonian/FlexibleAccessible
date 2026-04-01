@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { apiSuccess, apiError } from "@/lib/api-utils";
+import { ApiError } from "@aros/shared";
 
 /**
  * GET /api/public-scan/[id]
@@ -35,7 +36,7 @@ export async function GET(
     });
 
     if (!scan) {
-      return apiError({ message: "Scan not found", code: "NOT_FOUND" }, 404);
+      return apiError(ApiError.notFound("Scan not found"));
     }
 
     return apiSuccess(scan);

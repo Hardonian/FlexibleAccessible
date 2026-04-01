@@ -1,16 +1,16 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { AgentOrchestrator } from './orchestrator';
-import { ScannerAgent } from './scanner-agent';
-import { RemediationAgent } from './remediation-agent';
-import { ReporterAgent } from './reporter-agent';
-import { GeminiVisualReviewer } from './visual-reviewer';
+import { AgentOrchestrator } from './orchestrator.js';
+import { ScannerAgent } from './scanner-agent.js';
+import { RemediationAgent } from './remediation-agent.js';
+import { ReporterAgent } from './reporter-agent.js';
+import { GeminiVisualReviewer } from './visual-reviewer.js';
 import { prisma } from '@aros/db';
 
 // Mock the individual agents
-vi.mock('./scanner-agent');
-vi.mock('./remediation-agent');
-vi.mock('./reporter-agent');
-vi.mock('./visual-reviewer');
+vi.mock('./scanner-agent.js');
+vi.mock('./remediation-agent.js');
+vi.mock('./reporter-agent.js');
+vi.mock('./visual-reviewer.js');
 
 vi.mock('@aros/db', () => ({
   prisma: {

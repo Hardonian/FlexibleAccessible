@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { getRedisClient } from './redis-connection';
+import { getRedisClient } from './redis-connection.js';
 
 export interface AiUsageDetails {
   organizationId: string;

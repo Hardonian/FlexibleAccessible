@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { requireSession } from "@/lib/session";
 import { requireOrgAccess } from "@/lib/auth-guard";
 import { apiError } from "@/lib/api-utils";
+import { ApiError } from "@aros/shared";
 
 export const runtime = "nodejs";
 

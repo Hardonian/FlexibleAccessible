@@ -13,7 +13,7 @@ import type { Page } from 'playwright';
 
 async function getAccessibilityTree(page: Page): Promise<unknown> {
   try {
-    return await page.accessibility.snapshot();
+    return await (page as any).accessibility.snapshot();
   } catch (err) {
     console.warn(`[Scan] Failed to capture accessibility tree:`, err);
     return null;
@@ -186,8 +186,11 @@ export async function handleScanJob(job: Job<ScanJobData>) {
 
     // Trigger AI Visual Review for high-signal findings
     const reviewQueue = new Queue('visual-review', { connection: bullmqConnectionOptions() });
-    await reviewQueue.add('visual-review', { siteId, scanRunId });
-    await reviewQueue.close();
+    try {
+      await reviewQueue.add('visual-review', { siteId, scanRunId });
+    } finally {
+      await reviewQueue.close();
+    }
 
     console.log(`[Scan] Completed scan ${scanRunId}: ${totalViolations} violations found across ${pagesScanned} pages`);
   } catch (err) {
