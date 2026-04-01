@@ -6,6 +6,7 @@ import type { MemberRole } from "@aros/db";
 import { buildFindingsOperationalSummary } from "@/lib/findings/reporting-summary";
 import { getRoutePlatformTruth } from "@/lib/platform-truth-cache";
 import { resolveDashboardOrgMembership } from "@/lib/route-data-boundary";
+import { getEntitlementState } from "@/lib/auth-guard";
 
 export async function GET(request: Request) {
   try {
@@ -65,6 +66,29 @@ export async function GET(request: Request) {
 
     if (!hasPermission(resolvedMembership.role, "reports:view")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const subscription = await prisma.subscription.findUnique({
+      where: { organizationId: resolvedMembership.organizationId },
+      select: {
+        plan: true,
+        status: true,
+        maxDomains: true,
+        maxPagesPerCrawl: true,
+        maxScansPerMonth: true,
+        maxSeats: true,
+        aiEnabled: true,
+        aiTokenLimit: true,
+        currentPeriodEnd: true,
+        cancelAtPeriodEnd: true,
+      },
+    });
+
+    if (!getEntitlementState(subscription).hasPaidAccess) {
+      return NextResponse.json(
+        { error: "Premium subscription required" },
+        { status: 403 },
+      );
     }
 
     const summary = await buildFindingsOperationalSummary(

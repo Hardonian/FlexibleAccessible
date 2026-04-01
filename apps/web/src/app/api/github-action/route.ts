@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { requireSession } from "@/lib/session";
+import { requireOrgAccess } from "@/lib/auth-guard";
 import { apiSuccess, apiError } from "@/lib/api-utils";
 import { ApiError } from "@aros/shared";
 import { Queue } from "bullmq";
@@ -31,19 +31,17 @@ const scanActionSchema = z.object({
  */
 export async function POST(request: Request) {
   try {
-    const user = await requireSession();
     const body = await request.json();
     const parsed = scanActionSchema.parse(body);
+    const ctx = await requireOrgAccess(parsed.organizationId, "scan:start", {
+      requirePaid: true,
+    });
 
     // Verify site exists and user has access
     const site = await prisma.site.findFirst({
       where: {
         id: parsed.siteId,
-        workspace: {
-          organization: {
-            memberships: { some: { userId: user.id } },
-          },
-        },
+        workspace: { organizationId: ctx.organizationId },
       },
       include: {
         workspace: {

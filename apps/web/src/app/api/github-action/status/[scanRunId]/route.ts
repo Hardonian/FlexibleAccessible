@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireSession } from "@/lib/session";
+import { getEntitlementState } from "@/lib/auth-guard";
 import { apiSuccess, apiError } from "@/lib/api-utils";
 import { ApiError } from "@aros/shared";
 
@@ -13,7 +14,7 @@ export async function GET(
   context: { params: Promise<{ scanRunId: string }> },
 ) {
   try {
-    await requireSession();
+    const user = await requireSession();
     const { scanRunId } = await context.params;
 
     const scanRun = await prisma.scanRun.findUnique({
@@ -28,11 +29,57 @@ export async function GET(
         startedAt: true,
         completedAt: true,
         siteId: true,
+        site: {
+          select: {
+            workspace: {
+              select: {
+                organizationId: true,
+                organization: {
+                  select: {
+                    subscription: {
+                      select: {
+                        plan: true,
+                        status: true,
+                        maxDomains: true,
+                        maxPagesPerCrawl: true,
+                        maxScansPerMonth: true,
+                        maxSeats: true,
+                        aiEnabled: true,
+                        aiTokenLimit: true,
+                        currentPeriodEnd: true,
+                        cancelAtPeriodEnd: true,
+                      },
+                    },
+                    memberships: {
+                      where: { userId: user.id },
+                      take: 1,
+                      select: { id: true },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
       },
     });
 
-    if (!scanRun) {
+    if (
+      !scanRun ||
+      scanRun.site.workspace.organization.memberships.length === 0
+    ) {
       return apiError(ApiError.notFound("Scan not found"));
+    }
+
+    if (
+      !getEntitlementState(
+        scanRun.site.workspace.organization.subscription,
+      ).hasPaidAccess
+    ) {
+      return NextResponse.json(
+        { success: false, error: { code: "SUBSCRIPTION_REQUIRED", message: "Premium subscription required" } },
+        { status: 403 },
+      );
     }
 
     // If completed, aggregate findings by severity

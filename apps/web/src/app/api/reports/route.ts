@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { hasPermission } from "@aros/config";
+import { getEntitlementState } from "@/lib/auth-guard";
 import {
   collectPlatformHealth,
   buildRoutePlatformTruth,
@@ -20,13 +21,40 @@ export async function GET(request: Request) {
         userId: user.id,
         ...(requestedOrgId ? { organizationId: requestedOrgId } : {}),
       },
-      select: { organizationId: true, role: true },
+      select: {
+        organizationId: true,
+        role: true,
+        organization: {
+          select: {
+            subscription: {
+              select: {
+                plan: true,
+                status: true,
+                maxDomains: true,
+                maxPagesPerCrawl: true,
+                maxScansPerMonth: true,
+                maxSeats: true,
+                aiEnabled: true,
+                aiTokenLimit: true,
+                currentPeriodEnd: true,
+                cancelAtPeriodEnd: true,
+              },
+            },
+          },
+        },
+      },
     });
     if (!membership) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
     if (!hasPermission(membership.role, "reports:export")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    if (!getEntitlementState(membership.organization.subscription).hasPaidAccess) {
+      return NextResponse.json(
+        { error: "Premium subscription required" },
+        { status: 403 },
+      );
     }
 
     const where: Record<string, unknown> = {

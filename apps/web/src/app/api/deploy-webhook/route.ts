@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { requireOrgAccess } from "@/lib/auth-guard";
 import { apiSuccess, apiError } from "@/lib/api-utils";
 import { ApiError } from "@aros/shared";
 import { createHmac, timingSafeEqual } from "crypto";
@@ -162,6 +163,10 @@ export async function GET(request: Request) {
         code: "BAD_REQUEST",
       });
     }
+
+    await requireOrgAccess(organizationId, "integrations:view", {
+      requirePaid: true,
+    });
 
     const webhooks = await prisma.deployWebhook.findMany({
       where: { organizationId },

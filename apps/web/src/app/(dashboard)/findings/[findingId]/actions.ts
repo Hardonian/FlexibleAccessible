@@ -10,6 +10,29 @@ import {
   revokeFindingGovernanceDecision,
 } from '@aros/core-services';
 import { transitionFindingRemediationStatus } from '@/lib/findings/remediation-server';
+import { getEntitlementState } from '@/lib/auth-guard';
+
+async function redirectIfUpgradeRequired(organizationId: string) {
+  const subscription = await prisma.subscription.findUnique({
+    where: { organizationId },
+    select: {
+      plan: true,
+      status: true,
+      maxDomains: true,
+      maxPagesPerCrawl: true,
+      maxScansPerMonth: true,
+      maxSeats: true,
+      aiEnabled: true,
+      aiTokenLimit: true,
+      currentPeriodEnd: true,
+      cancelAtPeriodEnd: true,
+    },
+  });
+
+  if (!getEntitlementState(subscription).hasPaidAccess) {
+    redirect('/settings/billing?status=upgrade_required&from=%2Ffindings');
+  }
+}
 
 export async function updateFindingStatusAction(formData: FormData) {
   const user = await requireSession();
@@ -27,6 +50,8 @@ export async function updateFindingStatusAction(formData: FormData) {
   if (orgRes.kind !== 'ok') {
     redirect('/findings');
   }
+
+  await redirectIfUpgradeRequired(orgRes.organizationId);
 
   const result = await transitionFindingRemediationStatus({
     prisma,
@@ -64,6 +89,8 @@ export async function createFindingGovernanceDecisionAction(formData: FormData) 
     redirect(`/findings/${findingId}?governance=not_found`);
   }
 
+  await redirectIfUpgradeRequired(orgRes.organizationId);
+
   const expiresAt = expiresAtRaw?.trim() ? new Date(expiresAtRaw) : null;
   const result = await createFindingGovernanceDecision({
     prisma,
@@ -99,6 +126,8 @@ export async function revokeFindingGovernanceDecisionAction(formData: FormData) 
   if (orgRes.kind !== 'ok') {
     redirect(`/findings/${findingId}?governance=not_found`);
   }
+
+  await redirectIfUpgradeRequired(orgRes.organizationId);
 
   const result = await revokeFindingGovernanceDecision({
     prisma,
