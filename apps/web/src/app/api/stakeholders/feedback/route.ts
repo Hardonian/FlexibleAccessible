@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { requireOrgAccess } from "@/lib/auth-guard";
 import {
   FeedbackLoopManager,
@@ -7,6 +8,19 @@ import {
 } from "@aros/stakeholders";
 
 const feedbackManager = new FeedbackLoopManager();
+
+const feedbackCreateSchema = z.object({
+  organizationId: z.string().min(1),
+  stakeholderId: z.string().min(1),
+  stakeholderName: z.string().max(255).optional(),
+  category: z.enum(FEEDBACK_CATEGORIES as unknown as [string, ...string[]]),
+  priority: z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]).default("MEDIUM"),
+  title: z.string().min(1).max(500),
+  description: z.string().min(1).max(5000),
+  source: z.string().max(255).optional(),
+  tags: z.array(z.string().max(100)).max(20).optional(),
+  attachments: z.array(z.string().url().max(2048)).max(10).optional(),
+});
 
 export async function GET(request: Request) {
   try {
@@ -73,29 +87,31 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const organizationId = body.organizationId;
+    const parsed = feedbackCreateSchema.safeParse(body);
 
-    if (!organizationId) {
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "organizationId is required" },
+        { error: "Invalid request body", details: parsed.error.flatten() },
         { status: 400 },
       );
     }
+
+    const { organizationId, ...feedbackInput } = parsed.data;
 
     await requireOrgAccess(organizationId, "stakeholders:manage", {
       requirePaid: true,
     });
 
     const item = await feedbackManager.create({
-      stakeholderId: body.stakeholderId,
-      stakeholderName: body.stakeholderName || "Unknown",
-      category: body.category,
-      priority: body.priority || "MEDIUM",
-      title: body.title,
-      description: body.description,
-      source: body.source,
-      tags: body.tags,
-      attachments: body.attachments,
+      stakeholderId: feedbackInput.stakeholderId,
+      stakeholderName: feedbackInput.stakeholderName ?? "Unknown",
+      category: feedbackInput.category as any,
+      priority: feedbackInput.priority as any,
+      title: feedbackInput.title,
+      description: feedbackInput.description,
+      source: feedbackInput.source,
+      tags: feedbackInput.tags,
+      attachments: feedbackInput.attachments,
     });
 
     return NextResponse.json(item, { status: 201 });

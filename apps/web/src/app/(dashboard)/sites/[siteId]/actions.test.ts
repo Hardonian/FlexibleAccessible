@@ -109,8 +109,8 @@ describe("Server Actions Auth Tests", () => {
       };
 
       mockRequireSiteAccess.mockResolvedValue(mockCtx);
-      mockPrisma.crawlRun.findFirst.mockResolvedValue(null); // No running crawl
-      mockPrisma.site.findUnique.mockResolvedValue({
+      (mockPrisma.crawlRun.findFirst as any).mockResolvedValue(null); // No running crawl
+      (mockPrisma.site.findUnique as any).mockResolvedValue({
         id: "site-1",
         crawlConfig: {
           sitemapUrl: null,
@@ -123,10 +123,10 @@ describe("Server Actions Auth Tests", () => {
           viewports: [{ width: 1280, height: 720 }],
         },
       });
-      mockPrisma.crawlRun.create.mockResolvedValue({ id: "crawl-1" });
+      (mockPrisma.crawlRun.create as any).mockResolvedValue({ id: "crawl-1" });
       mockGetCrawlQueue.mockReturnValue({
         add: vi.fn().mockResolvedValue(undefined),
-      });
+      } as any);
 
       const formData = new FormData();
       formData.set("siteId", "site-1");

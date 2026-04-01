@@ -29,12 +29,24 @@ function getScoreCategory(score: number | null): string {
  *
  * Usage: <img src="https://aros.dev/api/badge?domain=example.com" alt="Accessibility Score" />
  */
+/** Basic domain format validation – rejects obvious injection attempts. */
+function isValidDomain(domain: string): boolean {
+  // Max 253 chars per RFC 1035; allow subdomains and ports
+  if (domain.length > 253) return false;
+  // Must look like a hostname (optionally with port), no path separators or shell chars
+  return /^[a-zA-Z0-9]([a-zA-Z0-9\-_.]*[a-zA-Z0-9])?(:\d{1,5})?$/.test(domain);
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const domain = searchParams.get("domain");
 
   if (!domain) {
     return new NextResponse("Missing domain parameter", { status: 400 });
+  }
+
+  if (!isValidDomain(domain)) {
+    return new NextResponse("Invalid domain parameter", { status: 400 });
   }
 
   let score: number | null = null;
