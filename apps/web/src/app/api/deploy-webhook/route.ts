@@ -100,7 +100,11 @@ export async function POST(request: Request) {
           include: {
             workspace: {
               include: {
-                organization: true,
+                organization: {
+                  include: {
+                    subscription: true,
+                  },
+                },
               },
             },
           },

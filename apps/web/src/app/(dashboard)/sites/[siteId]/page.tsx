@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import { requireSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { hasPermission } from "@aros/config";
 import { getRoutePlatformTruth } from "@/lib/platform-truth-cache";
 import {
@@ -12,8 +11,19 @@ import {
 import { RouteReliabilityNotice } from "@/components/reliability/route-reliability-notice";
 import { StatusBadge, EmptyState } from "@aros/ui";
 import { ScanNowButton } from "./scan-now-button";
-import { ScanActionState } from "./scan-action-state";
+import { ScanSiteActionState, scanSiteInitialState } from "./scan-action-state";
 import { getAutomationEvidenceFreshnessDescriptor } from "@/lib/findings/evidence-freshness";
+import {
+  scanEnqueueFailureOperatorHint,
+  postCrawlKickoffOperatorSummary,
+  getSiteVerificationStatus,
+  getPostCrawlScanEnqueueFailureHint,
+} from "@/lib/sites/verification-status";
+import { startCrawlAction } from "./actions";
+import {
+  startSiteScanAction,
+  retryPostCrawlScanKickoffAction,
+} from "./scan-actions";
 
 export async function generateMetadata({
   params,
@@ -91,8 +101,13 @@ export default async function SiteDetailPage({
       where: { id: siteId, workspace: { organizationId } },
       include: {
         crawlConfig: true,
-        workspace: { select: { id: true } },
-        scans: {
+        workspace: {
+          select: {
+            id: true,
+            organizationId: true,
+          },
+        },
+        scanRuns: {
           take: 10,
           orderBy: { createdAt: "desc" },
           select: {
@@ -100,20 +115,23 @@ export default async function SiteDetailPage({
             status: true,
             createdAt: true,
             completedAt: true,
-            pagesFound: true,
+            pagesScanned: true,
             violationsFound: true,
-            criticalCount: true,
-            seriousCount: true,
-            moderateCount: true,
-            minorCount: true,
           },
         },
-        findings: {
+        canonicalFindings: {
           take: 20,
           orderBy: { occurrenceCount: "desc" },
           include: {
             _count: { select: { occurrences: true } },
             cluster: { select: { id: true, name: true } },
+          },
+        },
+        _count: {
+          select: {
+            pages: true,
+            crawlRuns: true,
+            scanRuns: true,
           },
         },
       },
@@ -128,6 +146,9 @@ export default async function SiteDetailPage({
   if (!hasPermission(orgRes.role, "site:view")) {
     notFound();
   }
+
+  const canStartScan = hasPermission(orgRes.role, "scan:start");
+  const canManageSite = hasPermission(orgRes.role, "site:manage");
 
   const subscription = await prisma.subscription.findUnique({
     where: { organizationId: orgRes.organizationId },

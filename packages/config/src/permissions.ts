@@ -14,11 +14,11 @@ export type Permission =
   | "crawl:view"
   | "scan:start"
   | "scan:view"
-  | "findings:view"
-  | "findings:manage"
-  | "suggestions:view"
-  | "suggestions:approve"
-  | "suggestions:export"
+  | "finding:view"
+  | "finding:manage"
+  | "suggestion:view"
+  | "suggestion:approve"
+  | "suggestion:export"
   | "review:view"
   | "review:manage"
   | "review:assign"
@@ -58,11 +58,11 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "crawl:view",
     "scan:start",
     "scan:view",
-    "findings:view",
-    "findings:manage",
-    "suggestions:view",
-    "suggestions:approve",
-    "suggestions:export",
+    "finding:view",
+    "finding:manage",
+    "suggestion:view",
+    "suggestion:approve",
+    "suggestion:export",
     "review:view",
     "review:manage",
     "review:assign",
@@ -91,11 +91,11 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "crawl:view",
     "scan:start",
     "scan:view",
-    "findings:view",
-    "findings:manage",
-    "suggestions:view",
-    "suggestions:approve",
-    "suggestions:export",
+    "finding:view",
+    "finding:manage",
+    "suggestion:view",
+    "suggestion:approve",
+    "suggestion:export",
     "review:view",
     "review:manage",
     "review:assign",
@@ -117,11 +117,11 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "crawl:view",
     "scan:start",
     "scan:view",
-    "findings:view",
-    "findings:manage",
-    "suggestions:view",
-    "suggestions:approve",
-    "suggestions:export",
+    "finding:view",
+    "finding:manage",
+    "suggestion:view",
+    "suggestion:approve",
+    "suggestion:export",
     "review:view",
     "integrations:view",
     "reports:view",
@@ -133,9 +133,9 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "site:view",
     "crawl:view",
     "scan:view",
-    "findings:view",
-    "suggestions:view",
-    "suggestions:approve",
+    "finding:view",
+    "suggestion:view",
+    "suggestion:approve",
     "review:view",
     "review:manage",
     "reports:view",
@@ -146,8 +146,8 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "site:view",
     "crawl:view",
     "scan:view",
-    "findings:view",
-    "suggestions:view",
+    "finding:view",
+    "suggestion:view",
     "review:view",
     "review:manage",
     "review:assign",
@@ -161,9 +161,9 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "site:view",
     "crawl:view",
     "scan:view",
-    "findings:view",
-    "suggestions:view",
-    "suggestions:approve",
+    "finding:view",
+    "suggestion:view",
+    "suggestion:approve",
     "review:view",
     "review:manage",
     "reports:view",

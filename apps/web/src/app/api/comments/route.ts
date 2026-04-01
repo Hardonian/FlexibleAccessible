@@ -31,7 +31,7 @@ export async function GET(request: Request) {
       });
     }
 
-    const ctx = await requireOrgAccess(organizationId, "findings:view", {
+    const ctx = await requireOrgAccess(organizationId, "finding:view", {
       requirePaid: true,
     });
 
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
 
     const ctx = await requireOrgAccess(
       parsed.organizationId,
-      "findings:manage",
+      "finding:manage",
       { requirePaid: true },
     );
 
@@ -85,20 +85,6 @@ export async function POST(request: Request) {
 
     if (!finding) {
       return apiError(ApiError.notFound("Finding not found"));
-    }
-
-    // If parentId, verify parent exists and belongs to same finding
-    if (parsed.parentId) {
-      const parent = await prisma.findingComment.findFirst({
-        where: {
-          id: parsed.parentId,
-          canonicalFindingId: parsed.findingId,
-        },
-      });
-
-      if (!parent) {
-        return apiError(ApiError.notFound("Parent comment not found"));
-      }
     }
 
     // If parentId, verify parent exists and belongs to same finding

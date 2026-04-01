@@ -1,22 +1,21 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireSession } from "@/lib/session";
-import { getEntitlementState } from "@/lib/auth-guard";
 import { apiSuccess, apiError } from "@/lib/api-utils";
 import { ApiError } from "@aros/shared";
 
 /**
  * GET /api/github-action/status/[scanRunId]
  * Poll scan status for GitHub Action. Returns findings summary when complete.
+ * Requires authentication and tenant isolation via session + organization membership.
  */
 export async function GET(
   _request: Request,
   context: { params: Promise<{ scanRunId: string }> },
 ) {
   try {
-    // This route is called by GitHub Actions and doesn't require user auth
-    // The scanRunId should be sufficient to identify and return status
-    const scanRunId = params.scanRunId;
+    const user = await requireSession();
+    const { scanRunId } = await context.params;
 
     const scanRun = await prisma.scanRun.findUnique({
       where: { id: scanRunId },
@@ -27,6 +26,10 @@ export async function GET(
               include: {
                 organization: {
                   include: {
+                    memberships: {
+                      where: { userId: user.id },
+                      take: 1,
+                    },
                     subscription: true,
                   },
                 },
@@ -41,9 +44,13 @@ export async function GET(
       return apiError(ApiError.notFound("Scan not found"));
     }
 
+    const membership = scanRun.site.workspace.organization.memberships;
+    if (membership.length === 0) {
+      return apiError(ApiError.forbidden("Access denied to this organization"));
+    }
+
     const { site, ...scanRunData } = scanRun;
 
-    // If completed, aggregate findings by severity
     if (scanRun.status === "COMPLETED") {
       const findings = await prisma.rawViolation.groupBy({
         by: ["impact"],
@@ -56,7 +63,6 @@ export async function GET(
         severityCounts[f.impact] = f._count._all;
       }
 
-      // Compute score
       const critical = severityCounts.CRITICAL ?? 0;
       const serious = severityCounts.SERIOUS ?? 0;
       const moderate = severityCounts.MODERATE ?? 0;

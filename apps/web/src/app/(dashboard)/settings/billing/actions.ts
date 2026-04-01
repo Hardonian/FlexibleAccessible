@@ -1,44 +1,48 @@
-'use server';
+"use server";
 
-import { redirect } from 'next/navigation';
-import { requireOrgAccess } from '@/lib/auth-guard';
-import { prisma } from '@/lib/db';
-import {
-  getAppBaseUrl,
-  getStripePriceIdForPlan,
-} from '@/lib/billing';
+import { redirect } from "next/navigation";
+import { requireOrgAccess } from "@/lib/auth-guard";
+import { prisma } from "@/lib/db";
+import { getAppBaseUrl, getStripePriceIdForPlan } from "@/lib/billing";
+import type { PlanTier } from "@aros/db";
 
 function redirectWithError(message: string) {
   redirect(`/settings/billing?error=${encodeURIComponent(message)}`);
 }
 
 export async function startSubscriptionCheckoutAction(formData: FormData) {
-  const organizationId = (formData.get('organizationId') as string | null) ?? '';
-  const requestedPlan = (formData.get('plan') as string | null) ?? '';
+  const organizationId =
+    (formData.get("organizationId") as string | null) ?? "";
+  const requestedPlanRaw = (formData.get("plan") as string | null) ?? "";
 
-  if (
-    requestedPlan !== 'STARTER' &&
-    requestedPlan !== 'PROFESSIONAL' &&
-    requestedPlan !== 'ENTERPRISE'
-  ) {
-    redirectWithError('Select a valid paid plan.');
+  const validPlans: PlanTier[] = ["STARTER", "PROFESSIONAL", "ENTERPRISE"];
+  if (!validPlans.includes(requestedPlanRaw as PlanTier)) {
+    redirectWithError("Select a valid paid plan.");
   }
 
-  const ctx = await requireOrgAccess(organizationId, 'org:billing');
+  const requestedPlan = requestedPlanRaw as
+    | "STARTER"
+    | "PROFESSIONAL"
+    | "ENTERPRISE";
+
+  const ctx = await requireOrgAccess(organizationId, "org:billing");
   const priceId = getStripePriceIdForPlan(requestedPlan);
   if (!priceId || !process.env.STRIPE_SECRET_KEY) {
-    redirectWithError('Billing is not configured for this deployment.');
+    redirectWithError("Billing is not configured for this deployment.");
   }
 
-  if (ctx.subscription?.plan === requestedPlan && ctx.subscription.status === 'ACTIVE') {
-    redirect('/settings/billing?status=already_on_plan');
+  if (
+    ctx.subscription?.plan === requestedPlan &&
+    ctx.subscription.status === "ACTIVE"
+  ) {
+    redirect("/settings/billing?status=already_on_plan");
   }
 
   let StripeCtor: any;
   try {
-    StripeCtor = (await import('stripe')).default;
+    StripeCtor = (await import("stripe")).default;
   } catch {
-    redirectWithError('The Stripe SDK is not installed on this deployment.');
+    redirectWithError("The Stripe SDK is not installed on this deployment.");
   }
 
   const stripe = new StripeCtor(process.env.STRIPE_SECRET_KEY);
@@ -67,7 +71,7 @@ export async function startSubscriptionCheckoutAction(formData: FormData) {
   }
 
   const session = await stripe.checkout.sessions.create({
-    mode: 'subscription',
+    mode: "subscription",
     customer: billingCustomer.stripeCustomerId,
     line_items: [{ price: priceId, quantity: 1 }],
     allow_promotion_codes: true,
@@ -87,18 +91,19 @@ export async function startSubscriptionCheckoutAction(formData: FormData) {
   });
 
   if (!session.url) {
-    redirectWithError('Stripe did not return a checkout URL.');
+    redirectWithError("Stripe did not return a checkout URL.");
   }
 
   redirect(session.url);
 }
 
 export async function openBillingPortalAction(formData: FormData) {
-  const organizationId = (formData.get('organizationId') as string | null) ?? '';
-  const ctx = await requireOrgAccess(organizationId, 'org:billing');
+  const organizationId =
+    (formData.get("organizationId") as string | null) ?? "";
+  const ctx = await requireOrgAccess(organizationId, "org:billing");
 
   if (!process.env.STRIPE_SECRET_KEY) {
-    redirectWithError('Billing is not configured for this deployment.');
+    redirectWithError("Billing is not configured for this deployment.");
   }
 
   const billingCustomer = await prisma.billingCustomer.findUnique({
@@ -106,14 +111,14 @@ export async function openBillingPortalAction(formData: FormData) {
   });
 
   if (!billingCustomer) {
-    redirect('/settings/billing?status=no_customer');
+    redirect("/settings/billing?status=no_customer");
   }
 
   let StripeCtor: any;
   try {
-    StripeCtor = (await import('stripe')).default;
+    StripeCtor = (await import("stripe")).default;
   } catch {
-    redirectWithError('The Stripe SDK is not installed on this deployment.');
+    redirectWithError("The Stripe SDK is not installed on this deployment.");
   }
 
   const stripe = new StripeCtor(process.env.STRIPE_SECRET_KEY);

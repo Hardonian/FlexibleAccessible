@@ -17,7 +17,7 @@ export async function GET(request: Request) {
     }
 
     // Use centralized auth guard - it handles org resolution and permission checks
-    const ctx = await requireOrgAccess(requestedOrgId, "findings:view", {
+    const ctx = await requireOrgAccess(requestedOrgId, "finding:view", {
       requirePaid: true,
     });
 

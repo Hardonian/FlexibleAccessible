@@ -1,4 +1,4 @@
-import { hasPermission } from '@aros/config';
+import { hasPermission } from "@aros/config";
 import type {
   FindingGovernanceDecision,
   FindingSourceType,
@@ -10,82 +10,94 @@ import type {
   Prisma,
   PrismaClient,
   VerificationStatus,
-} from '@aros/db';
-import { prisma } from '@aros/db';
-import { shouldReopenOnAutomatedDetection, type FindingStatusValue } from '@aros/shared';
-import type { NormalizedViolation } from '@aros/scan-engine';
+} from "@aros/db";
+import { prisma } from "@aros/db";
+import {
+  shouldReopenOnAutomatedDetection,
+  type FindingStatusValue,
+} from "@aros/shared";
+import type { NormalizedViolation } from "@aros/scan-engine";
 
 type TxLike = PrismaClient | Prisma.TransactionClient;
 
 type ActiveGovernanceKind = GovernanceDecisionKind | null;
 
-const CLOSED_WORKFLOW_STATUSES = new Set<FindingStatus>(['RESOLVED', 'MITIGATED']);
-const NO_FIX_WORKFLOW_STATUSES = new Set<FindingStatus>(['FALSE_POSITIVE', 'WONT_FIX']);
+const CLOSED_WORKFLOW_STATUSES = new Set<FindingStatus>([
+  "RESOLVED",
+  "MITIGATED",
+]);
+const NO_FIX_WORKFLOW_STATUSES = new Set<FindingStatus>([
+  "FALSE_POSITIVE",
+  "WONT_FIX",
+]);
 
 export function deriveFindingTruthStatus(input: {
   workflowStatus: FindingStatus;
   latestVerificationStatus: VerificationStatus | null;
   activeGovernanceKind: ActiveGovernanceKind;
 }): FindingTruthStatus {
-  if (input.latestVerificationStatus === 'PASSED') {
-    return 'VERIFIED_FIXED';
+  if (input.latestVerificationStatus === "PASSED") {
+    return "VERIFIED_FIXED";
   }
 
-  if (input.activeGovernanceKind === 'SUPPRESSION') {
-    return 'SUPPRESSED';
+  if (input.activeGovernanceKind === "SUPPRESSION") {
+    return "SUPPRESSED";
   }
 
-  if (input.activeGovernanceKind === 'WAIVER' || input.activeGovernanceKind === 'OVERRIDE') {
-    return 'WAIVED';
+  if (
+    input.activeGovernanceKind === "WAIVER" ||
+    input.activeGovernanceKind === "OVERRIDE"
+  ) {
+    return "WAIVED";
   }
 
-  if (input.latestVerificationStatus === 'FAILED') {
-    return 'OPEN';
+  if (input.latestVerificationStatus === "FAILED") {
+    return "OPEN";
   }
 
-  if (input.latestVerificationStatus === 'INCONCLUSIVE') {
-    return 'INCONCLUSIVE';
+  if (input.latestVerificationStatus === "INCONCLUSIVE") {
+    return "INCONCLUSIVE";
   }
 
-  if (input.latestVerificationStatus === 'ERRORED') {
-    return 'ERRORED';
+  if (input.latestVerificationStatus === "ERRORED") {
+    return "ERRORED";
   }
 
   if (CLOSED_WORKFLOW_STATUSES.has(input.workflowStatus)) {
-    return 'FIXED_PENDING_VERIFICATION';
+    return "FIXED_PENDING_VERIFICATION";
   }
 
   if (NO_FIX_WORKFLOW_STATUSES.has(input.workflowStatus)) {
-    return 'INCONCLUSIVE';
+    return "INCONCLUSIVE";
   }
 
-  return 'OPEN';
+  return "OPEN";
 }
 
 export async function expireGovernanceDecisionsForSite(
   prisma: TxLike,
   siteId: string,
-  now = new Date()
+  now = new Date(),
 ) {
   await prisma.findingGovernanceDecision.updateMany({
     where: {
       siteId,
-      status: 'ACTIVE',
+      status: "ACTIVE",
       expiresAt: { lt: now },
     },
     data: {
-      status: 'EXPIRED',
+      status: "EXPIRED",
     },
   });
 }
 
 async function getLatestVerificationStatus(
   prisma: TxLike,
-  canonicalFindingId: string
+  canonicalFindingId: string,
 ): Promise<VerificationStatus | null> {
   const latest = await prisma.findingVerificationRun.findFirst({
     where: { canonicalFindingId },
-    orderBy: [{ completedAt: 'desc' }, { createdAt: 'desc' }],
+    orderBy: [{ completedAt: "desc" }, { createdAt: "desc" }],
     select: { status: true },
   });
   return latest?.status ?? null;
@@ -94,15 +106,15 @@ async function getLatestVerificationStatus(
 async function getActiveGovernanceKind(
   prisma: TxLike,
   canonicalFindingId: string,
-  now = new Date()
+  now = new Date(),
 ): Promise<ActiveGovernanceKind> {
   const decision = await prisma.findingGovernanceDecision.findFirst({
     where: {
       canonicalFindingId,
-      status: 'ACTIVE',
+      status: "ACTIVE",
       OR: [{ expiresAt: null }, { expiresAt: { gte: now } }],
     },
-    orderBy: { createdAt: 'desc' },
+    orderBy: { createdAt: "desc" },
     select: { kind: true },
   });
   return decision?.kind ?? null;
@@ -113,7 +125,7 @@ async function buildTruthStatus(
   canonicalFindingId: string,
   workflowStatus: FindingStatus,
   siteId: string,
-  now = new Date()
+  now = new Date(),
 ) {
   await expireGovernanceDecisionsForSite(prisma, siteId, now);
   const [latestVerificationStatus, activeGovernanceKind] = await Promise.all([
@@ -165,7 +177,7 @@ export async function recordFindingEvidence(input: {
 
 export async function recomputeFindingTruthStatus(
   prisma: TxLike,
-  canonicalFindingId: string
+  canonicalFindingId: string,
 ): Promise<FindingTruthStatus | null> {
   const finding = await prisma.canonicalFinding.findUnique({
     where: { id: canonicalFindingId },
@@ -178,7 +190,7 @@ export async function recomputeFindingTruthStatus(
     finding.id,
     finding.status,
     finding.siteId,
-    new Date()
+    new Date(),
   );
 
   await prisma.canonicalFinding.update({
@@ -200,7 +212,7 @@ export async function recordAutomatedFindingObservation(
     rawViolationId: string;
     observedAt?: Date;
     violation: NormalizedViolation;
-  }
+  },
 ) {
   const observedAt = input.observedAt ?? new Date();
 
@@ -218,18 +230,18 @@ export async function recordAutomatedFindingObservation(
     });
 
     let findingId = existing?.id ?? null;
-    let workflowStatus = (existing?.status ?? 'OPEN') as FindingStatus;
+    let workflowStatus = (existing?.status ?? "OPEN") as FindingStatus;
     const shouldReopen =
       existing != null &&
       shouldReopenOnAutomatedDetection(existing.status as FindingStatusValue) &&
-      (existing.status === 'RESOLVED' || existing.status === 'MITIGATED');
+      (existing.status === "RESOLVED" || existing.status === "MITIGATED");
 
     if (!existing) {
       const created = await tx.canonicalFinding.create({
         data: {
           siteId: input.siteId,
-          sourceType: 'SCAN',
-          targetKind: input.violation.selector ? 'SELECTOR' : 'PAGE',
+          sourceType: "SCAN",
+          targetKind: input.violation.selector ? "SELECTOR" : "PAGE",
           targetLocator: {
             selector: input.violation.selector,
             pageUrl: input.pageUrl,
@@ -247,14 +259,14 @@ export async function recordAutomatedFindingObservation(
           helpUrl: input.violation.helpUrl,
           wcagTags: input.violation.wcagTags,
           fingerprint: input.violation.fingerprint,
-          evidenceSource: 'AUTOMATED_AXE',
-          status: 'OPEN',
-          truthStatus: 'OPEN',
+          evidenceSource: "AUTOMATED_AXE",
+          status: "OPEN",
+          truthStatus: "OPEN",
           occurrenceCount: 1,
           lastScanRunId: input.scanRunId,
           lastVerifiedAt: observedAt,
           provenance: {
-            sourceType: 'SCAN',
+            sourceType: "SCAN",
             scanRunId: input.scanRunId,
             rawViolationId: input.rawViolationId,
             pageId: input.pageId,
@@ -262,7 +274,7 @@ export async function recordAutomatedFindingObservation(
           } as Prisma.InputJsonValue,
           evidenceSummary: {
             latestObservationAt: observedAt.toISOString(),
-            latestVerificationStatus: 'FAILED',
+            latestVerificationStatus: "FAILED",
             pageUrl: input.pageUrl,
           } as Prisma.InputJsonValue,
         },
@@ -270,11 +282,15 @@ export async function recordAutomatedFindingObservation(
       findingId = created.id;
       workflowStatus = created.status;
     } else {
-      workflowStatus = shouldReopen ? 'OPEN' : existing.status;
-      const activeGovernanceKind = await getActiveGovernanceKind(tx, existing.id, observedAt);
+      workflowStatus = shouldReopen ? "OPEN" : existing.status;
+      const activeGovernanceKind = await getActiveGovernanceKind(
+        tx,
+        existing.id,
+        observedAt,
+      );
       const truthStatus = deriveFindingTruthStatus({
         workflowStatus,
-        latestVerificationStatus: 'FAILED',
+        latestVerificationStatus: "FAILED",
         activeGovernanceKind,
       });
 
@@ -285,7 +301,7 @@ export async function recordAutomatedFindingObservation(
           lastVerifiedAt: observedAt,
           occurrenceCount: { increment: 1 },
           lastScanRunId: input.scanRunId,
-          targetKind: input.violation.selector ? 'SELECTOR' : 'PAGE',
+          targetKind: input.violation.selector ? "SELECTOR" : "PAGE",
           targetLocator: {
             selector: input.violation.selector,
             pageUrl: input.pageUrl,
@@ -299,7 +315,7 @@ export async function recordAutomatedFindingObservation(
           confidence: input.violation.confidence,
           truthStatus,
           provenance: {
-            sourceType: 'SCAN',
+            sourceType: "SCAN",
             scanRunId: input.scanRunId,
             rawViolationId: input.rawViolationId,
             pageId: input.pageId,
@@ -307,12 +323,12 @@ export async function recordAutomatedFindingObservation(
           } as Prisma.InputJsonValue,
           evidenceSummary: {
             latestObservationAt: observedAt.toISOString(),
-            latestVerificationStatus: 'FAILED',
+            latestVerificationStatus: "FAILED",
             pageUrl: input.pageUrl,
           } as Prisma.InputJsonValue,
           ...(shouldReopen
             ? {
-                status: 'OPEN',
+                status: "OPEN",
                 reopenedCount: { increment: 1 },
               }
             : {}),
@@ -324,15 +340,15 @@ export async function recordAutomatedFindingObservation(
           data: {
             canonicalFindingId: existing.id,
             fromStatus: existing.status,
-            toStatus: 'OPEN',
-            note: 'Automated verification re-detected this finding.',
+            toStatus: "OPEN",
+            note: "Automated verification re-detected this finding.",
           },
         });
       }
     }
 
     if (!findingId) {
-      throw new Error('Could not resolve canonical finding for observation');
+      throw new Error("Could not resolve canonical finding for observation");
     }
 
     await tx.findingOccurrence.upsert({
@@ -363,11 +379,12 @@ export async function recordAutomatedFindingObservation(
         siteId: input.siteId,
         canonicalFindingId: findingId,
         scanRunId: input.scanRunId,
-        kind: 'SCAN_RECHECK',
-        status: 'FAILED',
+        kind: "SCAN_RECHECK",
+        status: "FAILED",
         startedAt: observedAt,
         completedAt: observedAt,
-        outcomeSummary: 'Automated verification detected the finding in the latest scan.',
+        outcomeSummary:
+          "Automated verification detected the finding in the latest scan.",
         metadata: {
           pageId: input.pageId,
           pageUrl: input.pageUrl,
@@ -383,7 +400,7 @@ export async function recordAutomatedFindingObservation(
         scanRunId: input.scanRunId,
         pageId: input.pageId,
         verificationRunId: verificationRun.id,
-        kind: 'RULE_EVALUATION',
+        kind: "RULE_EVALUATION",
         label: input.violation.ruleId,
         summary: input.violation.explainability,
         jsonValue: {
@@ -405,9 +422,11 @@ export async function recordAutomatedFindingObservation(
         canonicalFindingId: findingId,
         scanRunId: input.scanRunId,
         pageId: input.pageId,
-        kind: 'DOM_SNIPPET',
-        label: 'Observed DOM excerpt',
-        summary: input.violation.elementContext || 'DOM snippet captured during automated scan.',
+        kind: "DOM_SNIPPET",
+        label: "Observed DOM excerpt",
+        summary:
+          input.violation.elementContext ||
+          "DOM snippet captured during automated scan.",
         textValue: input.violation.elementHtml,
         capturedAt: observedAt,
       },
@@ -416,8 +435,8 @@ export async function recordAutomatedFindingObservation(
         canonicalFindingId: findingId,
         scanRunId: input.scanRunId,
         pageId: input.pageId,
-        kind: 'SELECTOR_TRACE',
-        label: 'Selector trace',
+        kind: "SELECTOR_TRACE",
+        label: "Selector trace",
         textValue: input.violation.selector,
         jsonValue: {
           selector: input.violation.selector,
@@ -432,8 +451,8 @@ export async function recordAutomatedFindingObservation(
         scanRunId: input.scanRunId,
         pageId: input.pageId,
         verificationRunId: verificationRun.id,
-        kind: 'PAGE_METADATA',
-        label: 'Observed page',
+        kind: "PAGE_METADATA",
+        label: "Observed page",
         summary: input.pageTitle ?? input.pageUrl,
         jsonValue: {
           pageId: input.pageId,
@@ -448,11 +467,12 @@ export async function recordAutomatedFindingObservation(
         scanRunId: input.scanRunId,
         pageId: input.pageId,
         verificationRunId: verificationRun.id,
-        kind: 'VERIFICATION_RESULT',
-        label: 'Verification result',
-        summary: 'Automated verification failed because the issue is still present.',
+        kind: "VERIFICATION_RESULT",
+        label: "Verification result",
+        summary:
+          "Automated verification failed because the issue is still present.",
         jsonValue: {
-          status: 'FAILED',
+          status: "FAILED",
           fingerprint: input.violation.fingerprint,
           scanRunId: input.scanRunId,
         } as Prisma.InputJsonValue,
@@ -462,7 +482,10 @@ export async function recordAutomatedFindingObservation(
 
     await tx.findingEvidence.createMany({ data: evidenceRows });
 
-    return { canonicalFindingId: findingId, verificationRunId: verificationRun.id };
+    return {
+      canonicalFindingId: findingId,
+      verificationRunId: verificationRun.id,
+    };
   });
 }
 
@@ -473,7 +496,7 @@ export async function finalizeAutomatedScanVerification(
     scanRunId: string;
     observedFingerprints: string[];
     completedAt?: Date;
-  }
+  },
 ) {
   const completedAt = input.completedAt ?? new Date();
 
@@ -482,8 +505,8 @@ export async function finalizeAutomatedScanVerification(
   const findings = await prisma.canonicalFinding.findMany({
     where: {
       siteId: input.siteId,
-      evidenceSource: 'AUTOMATED_AXE',
-      sourceType: 'SCAN',
+      evidenceSource: "AUTOMATED_AXE",
+      sourceType: "SCAN",
       fingerprint: { notIn: input.observedFingerprints },
     },
     select: {
@@ -492,7 +515,10 @@ export async function finalizeAutomatedScanVerification(
     },
   });
 
-  const verificationRuns: Array<{ canonicalFindingId: string; verificationRunId: string }> = [];
+  const verificationRuns: Array<{
+    canonicalFindingId: string;
+    verificationRunId: string;
+  }> = [];
 
   for (const finding of findings) {
     await prisma.$transaction(async (tx) => {
@@ -501,22 +527,27 @@ export async function finalizeAutomatedScanVerification(
           siteId: input.siteId,
           canonicalFindingId: finding.id,
           scanRunId: input.scanRunId,
-          kind: 'SCAN_RECHECK',
-          status: 'PASSED',
+          kind: "SCAN_RECHECK",
+          status: "PASSED",
           startedAt: completedAt,
           completedAt,
-          outcomeSummary: 'Automated verification did not detect this finding in the latest scan.',
+          outcomeSummary:
+            "Automated verification did not detect this finding in the latest scan.",
           metadata: {
             scanRunId: input.scanRunId,
-            reason: 'fingerprint_absent_from_scan',
+            reason: "fingerprint_absent_from_scan",
           } as Prisma.InputJsonValue,
         },
       });
 
-      const activeGovernanceKind = await getActiveGovernanceKind(tx, finding.id, completedAt);
+      const activeGovernanceKind = await getActiveGovernanceKind(
+        tx,
+        finding.id,
+        completedAt,
+      );
       const truthStatus = deriveFindingTruthStatus({
         workflowStatus: finding.status,
-        latestVerificationStatus: 'PASSED',
+        latestVerificationStatus: "PASSED",
         activeGovernanceKind,
       });
 
@@ -528,7 +559,7 @@ export async function finalizeAutomatedScanVerification(
           truthStatus,
           evidenceSummary: {
             latestObservationAt: completedAt.toISOString(),
-            latestVerificationStatus: 'PASSED',
+            latestVerificationStatus: "PASSED",
             scanRunId: input.scanRunId,
           } as Prisma.InputJsonValue,
         },
@@ -550,12 +581,12 @@ export async function finalizeAutomatedScanVerification(
           canonicalFindingId: finding.id,
           scanRunId: input.scanRunId,
           verificationRunId: verificationRun.id,
-          kind: 'VERIFICATION_RESULT',
-          label: 'Verification result',
+          kind: "VERIFICATION_RESULT",
+          label: "Verification result",
           summary:
-            'Automated verification passed because the finding was not re-detected in the latest scan.',
+            "Automated verification passed because the finding was not re-detected in the latest scan.",
           jsonValue: {
-            status: 'PASSED',
+            status: "PASSED",
             scanRunId: input.scanRunId,
           } as Prisma.InputJsonValue,
           capturedAt: completedAt,
@@ -577,15 +608,15 @@ type GovernanceMutationResult =
   | {
       ok: false;
       code:
-        | 'forbidden'
-        | 'not_found'
-        | 'invalid_kind'
-        | 'missing_rationale'
-        | 'invalid_expiry';
+        | "forbidden"
+        | "not_found"
+        | "invalid_kind"
+        | "missing_rationale"
+        | "invalid_expiry";
     };
 
 function normalizeDecisionKind(input: string): GovernanceDecisionKind | null {
-  if (input === 'WAIVER' || input === 'SUPPRESSION' || input === 'OVERRIDE') {
+  if (input === "WAIVER" || input === "SUPPRESSION" || input === "OVERRIDE") {
     return input;
   }
   return null;
@@ -594,7 +625,7 @@ function normalizeDecisionKind(input: string): GovernanceDecisionKind | null {
 async function loadFindingScopedToOrg(
   prisma: TxLike,
   findingId: string,
-  organizationId: string
+  organizationId: string,
 ) {
   return prisma.canonicalFinding.findFirst({
     where: {
@@ -621,32 +652,32 @@ export async function createFindingGovernanceDecision(input: {
   justification?: string | null;
   expiresAt?: Date | null;
 }): Promise<GovernanceMutationResult> {
-  if (!hasPermission(input.userRole, 'findings:manage')) {
-    return { ok: false, code: 'forbidden' };
+  if (!hasPermission(input.userRole, "finding:manage")) {
+    return { ok: false, code: "forbidden" };
   }
 
   const kind = normalizeDecisionKind(input.kind);
   if (!kind) {
-    return { ok: false, code: 'invalid_kind' };
+    return { ok: false, code: "invalid_kind" };
   }
 
   const rationale = input.rationale.trim();
   if (!rationale) {
-    return { ok: false, code: 'missing_rationale' };
+    return { ok: false, code: "missing_rationale" };
   }
 
   if (input.expiresAt && Number.isNaN(input.expiresAt.getTime())) {
-    return { ok: false, code: 'invalid_expiry' };
+    return { ok: false, code: "invalid_expiry" };
   }
 
   const finding = await loadFindingScopedToOrg(
     input.prisma,
     input.findingId,
-    input.organizationId
+    input.organizationId,
   );
 
   if (!finding) {
-    return { ok: false, code: 'not_found' };
+    return { ok: false, code: "not_found" };
   }
 
   const now = new Date();
@@ -658,10 +689,10 @@ export async function createFindingGovernanceDecision(input: {
     await tx.findingGovernanceDecision.updateMany({
       where: {
         canonicalFindingId: finding.id,
-        status: 'ACTIVE',
+        status: "ACTIVE",
       },
       data: {
-        status: 'REVOKED',
+        status: "REVOKED",
         revokedAt: now,
         revokedById: input.userId,
       },
@@ -672,7 +703,7 @@ export async function createFindingGovernanceDecision(input: {
         siteId: finding.siteId,
         canonicalFindingId: finding.id,
         kind,
-        status: 'ACTIVE',
+        status: "ACTIVE",
         rationale,
         justification,
         expiresAt: input.expiresAt ?? null,
@@ -680,12 +711,15 @@ export async function createFindingGovernanceDecision(input: {
         approvedById: input.userId,
         approvedAt: now,
         metadata: {
-          createdFrom: 'finding-detail',
+          createdFrom: "finding-detail",
         } as Prisma.InputJsonValue,
       },
     });
 
-    const latestVerificationStatus = await getLatestVerificationStatus(tx, finding.id);
+    const latestVerificationStatus = await getLatestVerificationStatus(
+      tx,
+      finding.id,
+    );
     const truthStatus = deriveFindingTruthStatus({
       workflowStatus: finding.status,
       latestVerificationStatus,
@@ -702,7 +736,7 @@ export async function createFindingGovernanceDecision(input: {
         siteId: finding.siteId,
         canonicalFindingId: finding.id,
         governanceDecisionId: decision.id,
-        kind: 'GOVERNANCE_NOTE',
+        kind: "GOVERNANCE_NOTE",
         label: `${decision.kind.toLowerCase()} decision`,
         summary: rationale,
         textValue: justification,
@@ -719,8 +753,8 @@ export async function createFindingGovernanceDecision(input: {
       data: {
         organizationId: input.organizationId,
         userId: input.userId,
-        action: 'finding.governance_created',
-        entityType: 'FindingGovernanceDecision',
+        action: "finding.governance_created",
+        entityType: "FindingGovernanceDecision",
         entityId: decision.id,
         metadata: {
           findingId: finding.id,
@@ -741,8 +775,8 @@ export async function revokeFindingGovernanceDecision(input: {
   userId: string;
   userRole: MemberRole;
 }): Promise<GovernanceMutationResult> {
-  if (!hasPermission(input.userRole, 'findings:manage')) {
-    return { ok: false, code: 'forbidden' };
+  if (!hasPermission(input.userRole, "finding:manage")) {
+    return { ok: false, code: "forbidden" };
   }
 
   const decision = await input.prisma.findingGovernanceDecision.findFirst({
@@ -763,7 +797,7 @@ export async function revokeFindingGovernanceDecision(input: {
   });
 
   if (!decision) {
-    return { ok: false, code: 'not_found' };
+    return { ok: false, code: "not_found" };
   }
 
   const now = new Date();
@@ -772,7 +806,7 @@ export async function revokeFindingGovernanceDecision(input: {
     await tx.findingGovernanceDecision.update({
       where: { id: decision.id },
       data: {
-        status: decision.status === 'EXPIRED' ? 'EXPIRED' : 'REVOKED',
+        status: decision.status === "EXPIRED" ? "EXPIRED" : "REVOKED",
         revokedAt: now,
         revokedById: input.userId,
       },
@@ -799,8 +833,8 @@ export async function revokeFindingGovernanceDecision(input: {
         siteId: decision.siteId,
         canonicalFindingId: decision.canonicalFindingId,
         governanceDecisionId: decision.id,
-        kind: 'GOVERNANCE_NOTE',
-        label: 'governance revoked',
+        kind: "GOVERNANCE_NOTE",
+        label: "governance revoked",
         summary: `Revoked ${decision.kind.toLowerCase()} decision.`,
         jsonValue: {
           kind: decision.kind,
@@ -814,8 +848,8 @@ export async function revokeFindingGovernanceDecision(input: {
       data: {
         organizationId: input.organizationId,
         userId: input.userId,
-        action: 'finding.governance_revoked',
-        entityType: 'FindingGovernanceDecision',
+        action: "finding.governance_revoked",
+        entityType: "FindingGovernanceDecision",
         entityId: decision.id,
         metadata: {
           findingId: decision.canonicalFindingId,
@@ -830,7 +864,7 @@ export async function revokeFindingGovernanceDecision(input: {
 
 export function deriveWorkflowTruthStatus(
   workflowStatus: FindingStatus,
-  activeGovernanceKind: ActiveGovernanceKind
+  activeGovernanceKind: ActiveGovernanceKind,
 ): FindingTruthStatus {
   return deriveFindingTruthStatus({
     workflowStatus,
@@ -841,7 +875,7 @@ export function deriveWorkflowTruthStatus(
 
 export async function getActiveFindingGovernanceDecision(
   prisma: PrismaClient,
-  canonicalFindingId: string
+  canonicalFindingId: string,
 ): Promise<FindingGovernanceDecision | null> {
   await expireGovernanceDecisionsForSite(
     prisma,
@@ -850,15 +884,15 @@ export async function getActiveFindingGovernanceDecision(
         where: { id: canonicalFindingId },
         select: { siteId: true },
       })
-    )?.siteId ?? ''
+    )?.siteId ?? "",
   );
 
   return prisma.findingGovernanceDecision.findFirst({
     where: {
       canonicalFindingId,
-      status: 'ACTIVE',
+      status: "ACTIVE",
       OR: [{ expiresAt: null }, { expiresAt: { gte: new Date() } }],
     },
-    orderBy: { createdAt: 'desc' },
+    orderBy: { createdAt: "desc" },
   });
 }

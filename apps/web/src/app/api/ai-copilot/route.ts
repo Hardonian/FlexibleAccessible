@@ -28,7 +28,7 @@ export async function POST(request: Request) {
 
     const ctx = await requireOrgAccess(
       parsed.organizationId,
-      "findings:manage",
+      "finding:manage",
       { requirePaid: true },
     );
 
