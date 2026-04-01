@@ -94,7 +94,7 @@ export interface ReviewFinding {
   severity: string;
   description: string;
   selector: string;
-  suggestedFix: string;
+  suggestedFix?: string;
   source: "vision" | "keyboard" | "screen_reader";
 }
 
