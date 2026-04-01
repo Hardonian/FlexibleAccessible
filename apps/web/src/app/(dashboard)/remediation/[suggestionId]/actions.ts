@@ -56,7 +56,7 @@ async function requireSuggestionAccess(suggestionId: string, userId: string) {
   }
 
   // Use centralized auth guard
-  const ctx = await requireOrgAccess(organizationId, "suggestions:manage", {
+  const ctx = await requireOrgAccess(organizationId, "suggestion:approve", {
     requirePaid: true,
   });
 
@@ -80,7 +80,7 @@ export async function approveSuggestionAction(formData: FormData) {
     redirect("/settings/billing?status=upgrade_required&from=%2Fremediation");
   }
 
-  if (!hasPermission(role, "suggestions:approve")) {
+  if (!hasPermission(role, "suggestion:approve")) {
     redirect(`/remediation/${suggestionId}?error=forbidden`);
   }
 
@@ -123,7 +123,7 @@ export async function rejectSuggestionAction(formData: FormData) {
     redirect("/settings/billing?status=upgrade_required&from=%2Fremediation");
   }
 
-  if (!hasPermission(role, "suggestions:approve")) {
+  if (!hasPermission(role, "suggestion:approve")) {
     redirect(`/remediation/${suggestionId}?error=forbidden`);
   }
 
@@ -162,7 +162,7 @@ export async function exportSnippetAction(formData: FormData) {
     redirect("/settings/billing?status=upgrade_required&from=%2Fremediation");
   }
 
-  if (!hasPermission(role, "suggestions:export")) {
+  if (!hasPermission(role, "suggestion:export")) {
     redirect(`/remediation/${suggestionId}?error=forbidden`);
   }
 

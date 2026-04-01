@@ -27,7 +27,7 @@ export async function GET(request: Request) {
       });
     }
 
-    const ctx = await requireOrgAccess(organizationId, "findings:view", {
+    const ctx = await requireOrgAccess(organizationId, "finding:view", {
       requirePaid: true,
     });
 
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
       });
     }
 
-    const ctx = await requireOrgAccess(organizationId, "findings:manage", {
+    const ctx = await requireOrgAccess(organizationId, "finding:manage", {
       requirePaid: true,
     });
 

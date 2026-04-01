@@ -217,7 +217,7 @@ export default async function FindingDetailPage({
 
   if (!finding) notFound();
 
-  const canManageFindings = hasPermission(orgRes.role, "findings:manage");
+  const canManageFindings = hasPermission(orgRes.role, "finding:manage");
 
   const latestCompleted = await prisma.scanRun.findFirst({
     where: {
@@ -249,9 +249,11 @@ export default async function FindingDetailPage({
       ? "bg-emerald-50 text-emerald-700 border-emerald-200"
       : finding.truthStatus === "FIXED_PENDING_VERIFICATION"
         ? "bg-amber-50 text-amber-700 border-amber-200"
-        : finding.truthStatus === "WAIVED" || finding.truthStatus === "SUPPRESSED"
+        : finding.truthStatus === "WAIVED" ||
+            finding.truthStatus === "SUPPRESSED"
           ? "bg-violet-50 text-violet-700 border-violet-200"
-          : finding.truthStatus === "INCONCLUSIVE" || finding.truthStatus === "ERRORED"
+          : finding.truthStatus === "INCONCLUSIVE" ||
+              finding.truthStatus === "ERRORED"
             ? "bg-rose-50 text-rose-700 border-rose-200"
             : "bg-slate-100 text-slate-700 border-slate-200";
 
@@ -483,16 +485,23 @@ export default async function FindingDetailPage({
                 </dt>
                 <dd className="bg-white border border-slate-200 rounded-md px-3 py-2 shadow-sm text-xs text-slate-700 space-y-1">
                   <div>
-                    <span className="font-medium text-slate-900">Normalized key:</span>{" "}
+                    <span className="font-medium text-slate-900">
+                      Normalized key:
+                    </span>{" "}
                     {finding.normalizedRuleKey ?? "unmapped"}
                   </div>
                   <div>
-                    <span className="font-medium text-slate-900">Rule version:</span>{" "}
+                    <span className="font-medium text-slate-900">
+                      Rule version:
+                    </span>{" "}
                     {finding.ruleVersion ?? "unknown"}{" "}
-                    {finding.evaluationKind && `• ${finding.evaluationKind.toLowerCase()}`}
+                    {finding.evaluationKind &&
+                      `• ${finding.evaluationKind.toLowerCase()}`}
                   </div>
                   <div>
-                    <span className="font-medium text-slate-900">WCAG version:</span>{" "}
+                    <span className="font-medium text-slate-900">
+                      WCAG version:
+                    </span>{" "}
                     {finding.wcagVersion ?? "unspecified"}
                     {finding.wcagCriteria.length > 0 &&
                       ` • ${finding.wcagCriteria.join(", ")}`}
@@ -657,7 +666,8 @@ export default async function FindingDetailPage({
                     </ul>
                   </div>
                   <p className="text-xs text-slate-500">
-                    Review level: {primaryRecipe.requiredReviewLevel.toLowerCase()} •
+                    Review level:{" "}
+                    {primaryRecipe.requiredReviewLevel.toLowerCase()} •
                     confidence {Math.round(primaryRecipe.confidence * 100)}% •
                     accepted {primaryRecipe.successCount} / rejected{" "}
                     {primaryRecipe.rejectionCount}
@@ -701,7 +711,9 @@ export default async function FindingDetailPage({
                       </span>
                     </div>
                     {evidence.summary && (
-                      <p className="text-sm text-slate-700">{evidence.summary}</p>
+                      <p className="text-sm text-slate-700">
+                        {evidence.summary}
+                      </p>
                     )}
                     {evidence.textValue && (
                       <pre className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700 whitespace-pre-wrap overflow-x-auto">
@@ -714,7 +726,9 @@ export default async function FindingDetailPage({
                       </pre>
                     )}
                     {evidence.errorMessage && (
-                      <p className="text-xs text-rose-700">{evidence.errorMessage}</p>
+                      <p className="text-xs text-rose-700">
+                        {evidence.errorMessage}
+                      </p>
                     )}
                   </div>
                 ))}
@@ -762,10 +776,14 @@ export default async function FindingDetailPage({
                       </span>
                     </div>
                     {run.outcomeSummary && (
-                      <p className="text-sm text-slate-700">{run.outcomeSummary}</p>
+                      <p className="text-sm text-slate-700">
+                        {run.outcomeSummary}
+                      </p>
                     )}
                     {run.failureReason && (
-                      <p className="text-xs text-rose-700">{run.failureReason}</p>
+                      <p className="text-xs text-rose-700">
+                        {run.failureReason}
+                      </p>
                     )}
                   </div>
                 ))}
@@ -896,8 +914,8 @@ export default async function FindingDetailPage({
                 Canonical truth: {finding.truthStatus.replaceAll("_", " ")}
               </p>
               <p className="mt-1 text-xs text-slate-600">
-                Workflow status and canonical truth are separated so the platform
-                can distinguish operator intent from verified evidence.
+                Workflow status and canonical truth are separated so the
+                platform can distinguish operator intent from verified evidence.
               </p>
             </div>
             <FindingStatusForm
@@ -933,7 +951,9 @@ export default async function FindingDetailPage({
                 </p>
                 <p>{activeGovernanceDecision.rationale}</p>
                 {activeGovernanceDecision.justification && (
-                  <p className="text-xs">{activeGovernanceDecision.justification}</p>
+                  <p className="text-xs">
+                    {activeGovernanceDecision.justification}
+                  </p>
                 )}
                 <p className="text-xs">
                   Created by{" "}
@@ -965,7 +985,10 @@ export default async function FindingDetailPage({
             )}
 
             {canManageFindings && (
-              <form action={createFindingGovernanceDecisionAction} className="space-y-3">
+              <form
+                action={createFindingGovernanceDecisionAction}
+                className="space-y-3"
+              >
                 <input type="hidden" name="findingId" value={findingId} />
                 <div>
                   <label htmlFor="governance-kind" className="label">
@@ -1034,7 +1057,8 @@ export default async function FindingDetailPage({
                       className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700"
                     >
                       <p className="font-medium text-slate-900">
-                        {decision.kind.toLowerCase()} • {decision.status.toLowerCase()}
+                        {decision.kind.toLowerCase()} •{" "}
+                        {decision.status.toLowerCase()}
                       </p>
                       <p className="mt-1">{decision.rationale}</p>
                       <p className="mt-1 text-slate-500">
@@ -1115,28 +1139,30 @@ export default async function FindingDetailPage({
                   <span className="text-xs font-medium text-slate-500 block mb-1.5">
                     Freshness Status
                   </span>
-                  {automationFreshness && freshnessPanelStyles && FreshnessIcon && (
-                    <div
-                      className={`flex rounded-lg border p-2.5 text-xs shadow-sm ${freshnessPanelStyles.container}`}
-                    >
-                      <FreshnessIcon
-                        className={`mt-0.5 mr-2 h-4 w-4 shrink-0 ${freshnessPanelStyles.iconClass}`}
-                      />
-                      <span>
-                        <strong className="uppercase tracking-wide">
-                          {automationFreshness.badgeLabel}:
-                        </strong>{" "}
-                        {automationFreshness.detail}
-                        {finding.lastVerifiedAt && (
-                          <>
-                            {" "}
-                            Last verified:{" "}
-                            {finding.lastVerifiedAt.toLocaleDateString()}.
-                          </>
-                        )}
-                      </span>
-                    </div>
-                  )}
+                  {automationFreshness &&
+                    freshnessPanelStyles &&
+                    FreshnessIcon && (
+                      <div
+                        className={`flex rounded-lg border p-2.5 text-xs shadow-sm ${freshnessPanelStyles.container}`}
+                      >
+                        <FreshnessIcon
+                          className={`mt-0.5 mr-2 h-4 w-4 shrink-0 ${freshnessPanelStyles.iconClass}`}
+                        />
+                        <span>
+                          <strong className="uppercase tracking-wide">
+                            {automationFreshness.badgeLabel}:
+                          </strong>{" "}
+                          {automationFreshness.detail}
+                          {finding.lastVerifiedAt && (
+                            <>
+                              {" "}
+                              Last verified:{" "}
+                              {finding.lastVerifiedAt.toLocaleDateString()}.
+                            </>
+                          )}
+                        </span>
+                      </div>
+                    )}
                 </div>
               )}
             </div>

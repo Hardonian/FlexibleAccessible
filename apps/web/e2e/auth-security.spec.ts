@@ -71,7 +71,7 @@ test.describe("Authentication and Authorization", () => {
   test("should handle concurrent session scenarios", async ({ page }) => {
     // Test that API routes properly validate session on each request
     // This is more of an integration test requiring proper session setup
-    test.skip("Requires complex session setup");
+    test.skip(true, "Requires complex session setup");
   });
 
   test("should validate site ownership in site-specific actions", async ({
@@ -100,13 +100,13 @@ test.describe("Authentication and Authorization", () => {
   test("should enforce permission-based access control", async ({ page }) => {
     // Test that users with different roles get appropriate access
     // This requires setting up users with different roles in test org
-    test.skip("Requires role-based test setup");
+    test.skip(true, "Requires role-based test setup");
   });
 
   test("should handle expired sessions gracefully", async ({ page }) => {
     // Test that expired sessions redirect to login
     // This requires manipulating session cookies/tokens
-    test.skip("Requires session manipulation setup");
+    test.skip(true, "Requires session manipulation setup");
   });
 
   test("should prevent access with malformed organization IDs", async ({

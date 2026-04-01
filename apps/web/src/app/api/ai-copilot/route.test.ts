@@ -37,7 +37,7 @@ describe("AI Copilot API", () => {
   it("should reject unauthorized users", async () => {
     const mockRequireOrgAccess = vi.mocked(requireOrgAccess);
     mockRequireOrgAccess.mockRejectedValueOnce(
-      ApiError.forbidden("Missing permission: findings:manage"),
+      ApiError.forbidden("Missing permission: finding:manage"),
     );
 
     const request = new Request("http://localhost/api/ai-copilot", {

@@ -15,7 +15,6 @@ import { resolveDashboardOrgMembership } from "@/lib/route-data-boundary";
 import { sanitizeAiCode } from "@/lib/sanitizer";
 import { AiUpsell } from "@/components/monetization/ai-upsell";
 
-
 export default async function SuggestionDetailPage({
   params,
   searchParams,
@@ -90,11 +89,10 @@ export default async function SuggestionDetailPage({
     },
   });
 
-
   if (!suggestion) notFound();
 
-  const canApprove = hasPermission(orgRes.role, "suggestions:approve");
-  const canExport = hasPermission(orgRes.role, "suggestions:export");
+  const canApprove = hasPermission(orgRes.role, "suggestion:approve");
+  const canExport = hasPermission(orgRes.role, "suggestion:export");
 
   const errorMessage = sp.error
     ? ({
@@ -211,7 +209,6 @@ export default async function SuggestionDetailPage({
         </div>
       </div>
 
-
       {suggestion.validationResult && (
         <div className="card">
           <h2 className="text-lg font-semibold text-slate-900 mb-2">
@@ -228,11 +225,17 @@ export default async function SuggestionDetailPage({
           <h2 className="text-lg font-semibold text-slate-900 mb-3">
             Linked Recipe
           </h2>
-          <p className="text-sm text-slate-700 mb-2">{suggestion.recipe.title}</p>
-          <p className="text-sm text-slate-600 mb-4">{suggestion.recipe.strategy}</p>
+          <p className="text-sm text-slate-700 mb-2">
+            {suggestion.recipe.title}
+          </p>
+          <p className="text-sm text-slate-600 mb-4">
+            {suggestion.recipe.strategy}
+          </p>
           <div className="grid gap-4 lg:grid-cols-2 text-sm">
             <div>
-              <p className="font-medium text-slate-900 mb-2">Verification steps</p>
+              <p className="font-medium text-slate-900 mb-2">
+                Verification steps
+              </p>
               <ul className="list-disc pl-5 space-y-1 text-slate-700">
                 {suggestion.recipe.verificationSteps.map((step) => (
                   <li key={step}>{step}</li>
@@ -255,13 +258,15 @@ export default async function SuggestionDetailPage({
         if (!subscription?.aiEnabled) {
           return <AiUpsell reason={subscription ? "tier_limit" : "disabled"} />;
         }
-        
+
         // Final gate for approval
         if (!(canApprove || canExport)) return null;
 
         return (
           <div className="card">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">Actions</h2>
+            <h2 className="text-lg font-semibold text-slate-900 mb-4">
+              Actions
+            </h2>
             <div className="flex flex-wrap gap-3">
               {canApprove &&
                 (suggestion.status === "DRAFT" ||
@@ -311,7 +316,6 @@ export default async function SuggestionDetailPage({
           </div>
         );
       })()}
-
     </div>
   );
 }
