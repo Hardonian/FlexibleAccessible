@@ -1,3 +1,9 @@
+import {
+  RETRY_MODEL_VERSION,
+  RETRY_PROMPT_MESSAGE,
+  RETRY_PROMPT_SECTIONS,
+  VISION_PROMPT_SECTIONS,
+} from "./constants.js";
 import { VISUAL_WCAG_CRITERIA } from "./criteria.js";
 
 /**
@@ -19,38 +25,36 @@ export function buildVisionPrompt(input: {
       ? input.axeViolations
           .map(
             (v) =>
-              `- [${(v.impact || "unknown").toUpperCase()}] ${v.ruleId}: ${v.description} at ${v.selector}`,
+              `- [${(v.impact || "unknown").toUpperCase()}] ${v.ruleId}: ${
+                v.description
+              } at ${v.selector}`,
           )
           .join("\n")
-      : "- No automated violations detected";
+      : VISION_PROMPT_SECTIONS.NO_AXE_VIOLATIONS;
 
   const criteriaList = VISUAL_WCAG_CRITERIA.map(
     (c) => `${c.id} ${c.name}: ${c.prompt}`,
   ).join("\n");
 
-  return `You are an expert web accessibility auditor analyzing a screenshot of a web page.
+  return `${VISION_PROMPT_SECTIONS.ROLE}
 
-## Page Context
+${VISION_PROMPT_SECTIONS.CONTEXT_HEADER}
 - URL: ${input.url}
 - Title: ${input.pageTitle}
 
-## Known Automated Findings (from axe-core)
+${VISION_PROMPT_SECTIONS.AXE_HEADER}
 ${axeList}
 
-## Accessibility Tree Summary
+${VISION_PROMPT_SECTIONS.A11Y_TREE_HEADER}
 ${(input.accessibilityTreeSummary || "").slice(0, 2000)}
 
-## Task
-Analyze the screenshot for WCAG 2.2 Level AA violations that automated tools CANNOT detect. Evaluate each criterion below:
+${VISION_PROMPT_SECTIONS.TASK_HEADER}
+${VISION_PROMPT_SECTIONS.TASK_INSTRUCTION}
 
 ${criteriaList}
 
-## Rules
-1. Only report issues you can EVIDENCE from the screenshot. Do not speculate.
-2. Set "uncertain" status when a static screenshot cannot confirm pass/fail (e.g., focus visible requires interaction).
-3. Set confidence based on how certain you are from the visual evidence alone.
-4. Compute overall_score as: 100 - (sum of severity weights across failed criteria). Weights: critical=15, serious=10, moderate=5, minor=2.
-5. Set requires_human_review=true if any criterion has confidence < 0.7 or status is "uncertain".
+${VISION_PROMPT_SECTIONS.RULES_HEADER}
+${VISION_PROMPT_SECTIONS.RULES_LIST}
 
 Your output must conform to the provided JSON schema.`;
 }
@@ -62,16 +66,16 @@ export function buildRetryPrompt(input: {
   url: string;
   pageTitle: string;
 }): string {
-  return `Analyze this screenshot for the TOP 3 most visible accessibility issues.
+  return `${RETRY_PROMPT_SECTIONS.INSTRUCTION}
 
 Page: ${input.url} (${input.pageTitle})
 
-Return ONLY this JSON (no markdown):
+${RETRY_PROMPT_SECTIONS.JSON_INSTRUCTION}
 {
   "page_id": "unknown",
   "url": ${JSON.stringify(input.url)},
   "timestamp": "${new Date().toISOString()}",
-  "model_version": "retry",
+  "model_version": "${RETRY_MODEL_VERSION}",
   "latency_ms": 0,
   "overall_score": 50,
   "criteria_status": [
@@ -85,32 +89,6 @@ Return ONLY this JSON (no markdown):
     }
   ],
   "requires_human_review": true,
-  "human_review_reasons": ["Initial analysis failed, retry with simplified prompt"]
+  "human_review_reasons": ["${RETRY_PROMPT_MESSAGE}"]
 }`;
-}
-
-/**
- * Compute an overall score from criteria statuses.
- */
-export function computeOverallScore(criteriaStatus: CriterionStatus[]): number {
-  if (!criteriaStatus || !Array.isArray(criteriaStatus)) return 100;
-
-  let deductions = 0;
-
-  for (const criteria of criteriaStatus) {
-    if (criteria.status !== "fail" && criteria.status !== "partial") continue;
-
-    const issues = criteria.issues || [];
-    const weight = issues.some((i) => i.severity === "critical")
-      ? 15
-      : issues.some((i) => i.severity === "serious")
-        ? 10
-        : issues.some((i) => i.severity === "moderate")
-          ? 5
-          : 2;
-
-    deductions += weight * (criteria.confidence ?? 1);
-  }
-
-  return Math.max(0, Math.round(100 - deductions));
 }

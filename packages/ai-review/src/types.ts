@@ -2,7 +2,7 @@ export type VisionProvider = "anthropic" | "openai";
 
 export interface AxeViolationSummary {
   ruleId: string;
-  impact: string;
+  impact: "minor" | "moderate" | "serious" | "critical" | null;
   selector: string;
   description: string;
 }
@@ -28,7 +28,7 @@ export interface CriterionIssue {
 export interface CriterionStatus {
   criterion_id: string;
   criterion_name: string;
-  level: string;
+  level: "A" | "AA";
   status: "pass" | "fail" | "partial" | "not_applicable" | "uncertain";
   confidence: number;
   issues: CriterionIssue[];

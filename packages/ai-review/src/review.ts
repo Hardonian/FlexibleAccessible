@@ -4,8 +4,19 @@ import {
   HarmBlockThreshold,
 } from "@google/generative-ai";
 import { buildVisionPrompt } from "./prompts.js";
-import type { VisionAnalysisOutput, VisionAnalysisInput } from "./types.js";
+import type { VisionAnalysisInput, VisionAnalysisOutput } from "./types.js";
+import {
+  AI_BLOCK_MESSAGE_PREFIX,
+  AI_FAILURE_MESSAGE,
+  ERROR_MODEL_VERSION,
+  JSON_RESPONSE_MIME_TYPE,
+  LATEST_GEMINI_MODEL,
+  PNG_MIME_TYPE,
+  UNKNOWN_PAGE_ID,
+  UNKNOWN_REASON,
+} from "./constants.js";
 import { VISION_ANALYSIS_SCHEMA } from "./criteria.js";
+import { VisionAnalysisOutputSchema } from "./schemas.js";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -21,16 +32,16 @@ export function createErrorResponse(
   error: Error,
 ): VisionAnalysisOutput {
   return {
-    page_id: "unknown",
+    page_id: UNKNOWN_PAGE_ID,
     url: input.url,
     timestamp: new Date().toISOString(),
-    model_version: "error",
+    model_version: ERROR_MODEL_VERSION,
     latency_ms: 0,
     overall_score: 0,
     criteria_status: [],
     requires_human_review: true,
     human_review_reasons: [
-      "The AI model failed to generate a review.",
+      AI_FAILURE_MESSAGE,
       `Error: ${error.message}`,
     ],
   };
@@ -46,9 +57,9 @@ export async function analyzeImage(
   input: VisionAnalysisInput,
 ): Promise<VisionAnalysisOutput> {
   const model = genAI.getGenerativeModel({
-    model: "gemini-1.5-pro-latest",
+    model: LATEST_GEMINI_MODEL,
     generationConfig: {
-      response_mime_type: "application/json",
+      response_mime_type: JSON_RESPONSE_MIME_TYPE,
       response_schema: VISION_ANALYSIS_SCHEMA,
     },
     // It's good practice to configure safety settings to avoid blocks for benign content.
@@ -74,7 +85,7 @@ export async function analyzeImage(
 
   const prompt = buildVisionPrompt(input);
   const imagePart = {
-    inlineData: { data: input.screenshotBase64, mimeType: "image/png" },
+    inlineData: { data: input.screenshotBase64, mimeType: PNG_MIME_TYPE },
   };
 
   try {
@@ -83,13 +94,26 @@ export async function analyzeImage(
 
     // The response might be blocked by safety settings even if the threshold is NONE.
     if (!response.text) {
-      const blockReason = response.promptFeedback?.blockReason;
-      const reason = `AI response was blocked. Reason: ${blockReason || "Unknown"}`;
+      const blockReason = response.promptFeedback?.blockReason || UNKNOWN_REASON;
+      const reason = `${AI_BLOCK_MESSAGE_PREFIX}${blockReason}`;
       console.error(reason, { feedback: response.promptFeedback });
       return createErrorResponse(input, new Error(reason));
     }
 
-    return JSON.parse(response.text()) as VisionAnalysisOutput;
+    const jsonText = response.text();
+    const validationResult = VisionAnalysisOutputSchema.safeParse(
+      JSON.parse(jsonText),
+    );
+
+    if (!validationResult.success) {
+      const parseError = new Error(
+        `AI response failed Zod validation: ${validationResult.error.message}`,
+      );
+      console.error("Zod validation error:", validationResult.error.issues);
+      return createErrorResponse(input, parseError);
+    }
+
+    return validationResult.data;
   } catch (error) {
     console.error("Error calling Generative AI model:", error);
     return createErrorResponse(input, error as Error);
