@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { requireSession } from "@/lib/session";
 import { requireOrgAccess } from "@/lib/auth-guard";
 import { apiSuccess, apiError } from "@/lib/api-utils";
+import { ApiError } from "@aros/shared";
 
 const purchaseSchema = z.object({
   organizationId: z.string().min(1),
@@ -36,7 +37,7 @@ export async function GET(request: Request) {
       });
     }
 
-    const ctx = await requireOrgAccess(organizationId, "billing:manage");
+    const ctx = await requireOrgAccess(organizationId, "org:billing");
 
     const balance = await prisma.fixCreditBalance.findUnique({
       where: { organizationId: ctx.organizationId },
