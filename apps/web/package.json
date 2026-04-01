@@ -25,7 +25,7 @@
     "bullmq": "^5.31.0",
     "clsx": "^2.1.0",
     "ioredis": "^5.4.0",
-    "lucide-react": "^0.468.0",
+    "lucide-react": "^1.7.0",
     "next": "^15.1.0",
     "postcss": "^8.4.0",
     "react": "^19.0.0",
