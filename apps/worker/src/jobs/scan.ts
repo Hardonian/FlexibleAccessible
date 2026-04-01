@@ -9,6 +9,16 @@ import {
   finalizeAutomatedScanVerification,
   recordAutomatedFindingObservation,
 } from '@aros/core-services';
+import type { Page } from 'playwright';
+
+async function getAccessibilityTree(page: Page): Promise<unknown> {
+  try {
+    return await page.accessibility.snapshot();
+  } catch (err) {
+    console.warn(`[Scan] Failed to capture accessibility tree:`, err);
+    return null;
+  }
+}
 
 interface ScanJobData {
   scanRunId: string;
@@ -80,6 +90,27 @@ export async function handleScanJob(job: Job<ScanJobData>) {
           });
         });
 
+        // Capture multimodal evidence for AI Visual Review
+        const path = new URL(pageRecord.url).pathname;
+        const domSnapshot = await page.content();
+        const accessibilityTree = await getAccessibilityTree(page);
+        
+        // Take screenshot - using data URI for now as a production-grade placeholder 
+        // until a dedicated storage service (S3/GCS) is configured.
+        // This ensures the operator has visual context immediately.
+        const screenshotBuffer = await page.screenshot({ fullPage: false, type: 'jpeg', quality: 80 });
+        const screenshotDataUri = `data:image/jpeg;base64,${screenshotBuffer.toString('base64')}`;
+
+        const snapshot = await prisma.pageSnapshot.create({
+          data: {
+            pageId: pageRecord.id,
+            domSnapshot,
+            screenshotKey: screenshotDataUri, // Temporarily storing data URI for high-signal preview
+            accessibilityTree: accessibilityTree as any,
+            viewport: { width: 1280, height: 720 },
+          },
+        });
+
         const normalizedViolations = normalizeViolations(results.violations, siteId);
 
         for (const violation of normalizedViolations) {
@@ -99,6 +130,7 @@ export async function handleScanJob(job: Job<ScanJobData>) {
               elementHtml: violation.elementHtml,
               elementContext: violation.elementContext,
               fingerprint: violation.fingerprint,
+              screenshotRef: snapshot.id, // Link to the specific visual state
             },
           });
 
@@ -149,8 +181,13 @@ export async function handleScanJob(job: Job<ScanJobData>) {
 
     // Trigger clustering after scan completes
     await clusterQueue.add('cluster', { siteId, scanRunId }, {
-      delay: 5000,
+      delay: 2000,
     });
+
+    // Trigger AI Visual Review for high-signal findings
+    const reviewQueue = new Queue('visual-review', { connection: bullmqConnectionOptions() });
+    await reviewQueue.add('visual-review', { siteId, scanRunId });
+    await reviewQueue.close();
 
     console.log(`[Scan] Completed scan ${scanRunId}: ${totalViolations} violations found across ${pagesScanned} pages`);
   } catch (err) {

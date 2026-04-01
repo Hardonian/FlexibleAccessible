@@ -1,6 +1,7 @@
 import { RemediationAgent } from "./remediation-agent";
 import { ScannerAgent } from "./scanner-agent";
 import { ReporterAgent } from "./reporter-agent";
+import { GeminiVisualReviewer } from "./visual-reviewer";
 import type {
   AgentContext,
   AgentResult,
@@ -118,12 +119,28 @@ export class AgentOrchestrator {
     return reportResult;
   }
 
+  private async runVisualReview(context: AgentContext): Promise<AgentResult> {
+    this.emit({ type: "step_start", step: "orchestrator:visual_review" });
+    const reviewer = new GeminiVisualReviewer(this.onEvent);
+    const result = await reviewer.execute(context);
+    this.emit({
+      type: "step_complete",
+      step: "orchestrator:visual_review",
+      output: result.output,
+    });
+    return result;
+  }
+
   async runFullPipeline(context: AgentContext): Promise<{
     scan: AgentResult;
+    visualReview: AgentResult;
     remediation: AgentResult[];
     report: AgentResult;
   }> {
     const scanResult = await this.runScanner(context);
+
+    // Run visual review if a scan was triggered and successful
+    const visualReviewResult = await this.runVisualReview(context);
 
     // Run remediation on all open findings in parallel batches
     const remediationResults = await this.runRemediation(context);
@@ -133,6 +150,7 @@ export class AgentOrchestrator {
 
     return {
       scan: scanResult,
+      visualReview: visualReviewResult,
       remediation: remediationResults,
       report: reportResult,
     };

@@ -11,6 +11,7 @@ import type {
   PrismaClient,
   VerificationStatus,
 } from '@aros/db';
+import { prisma } from '@aros/db';
 import { shouldReopenOnAutomatedDetection, type FindingStatusValue } from '@aros/shared';
 import type { NormalizedViolation } from '@aros/scan-engine';
 
@@ -124,6 +125,41 @@ async function buildTruthStatus(
     workflowStatus,
     latestVerificationStatus,
     activeGovernanceKind,
+  });
+}
+
+export async function recordFindingEvidence(input: {
+  findingId: string;
+  kind: string;
+  label?: string;
+  summary?: string;
+  textValue?: string;
+  jsonValue?: any;
+  metadata?: any;
+  scanRunId?: string;
+  pageId?: string;
+  capturedAt?: Date;
+}) {
+  const finding = await prisma.canonicalFinding.findUnique({
+    where: { id: input.findingId },
+    select: { siteId: true },
+  });
+
+  if (!finding) throw new Error(`Finding ${input.findingId} not found`);
+
+  return prisma.findingEvidence.create({
+    data: {
+      siteId: finding.siteId,
+      canonicalFindingId: input.findingId,
+      scanRunId: input.scanRunId,
+      pageId: input.pageId,
+      kind: input.kind as any,
+      label: input.label || input.kind,
+      summary: input.summary,
+      textValue: input.textValue,
+      jsonValue: (input.jsonValue || input.metadata) as any,
+      capturedAt: input.capturedAt ?? new Date(),
+    },
   });
 }
 
