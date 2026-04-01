@@ -28,7 +28,7 @@
     "@axe-core/playwright": "^4.11.1",
     "@ioredis/commands": "^1.5.1",
     "@playwright/experimental-ct-react": "^1.58.2",
-    "@types/node": "^22.10.0",
+    "@types/node": "^25.5.0",
     "cluster-key-slot": "^1.1.2",
     "lodash.defaults": "^4.2.0",
     "prettier": "^3.4.0",
