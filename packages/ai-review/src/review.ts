@@ -28,7 +28,17 @@ export async function analyzeImage(
   };
   logger.log("Starting AI analysis", baseLogContext);
 
-  const prompt = buildVisionPrompt(input);
+  const prompt = buildVisionPrompt({
+    url: input.url,
+    pageTitle: input.pageTitle,
+    axeViolations: input.axeViolations.map((v) => ({
+      ruleId: v.ruleId,
+      impact: v.impact ?? "unknown",
+      selector: v.selector,
+      description: v.description,
+    })),
+    accessibilityTreeSummary: input.accessibilityTreeSummary,
+  });
   logger.debug("Generated vision prompt", {
     prompt: prompt.substring(0, DEBUG_PROMPT_LENGTH),
   });
