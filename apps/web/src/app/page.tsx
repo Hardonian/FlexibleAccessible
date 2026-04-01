@@ -1,6 +1,58 @@
+"use client";
+
+import { useState, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function HomePage() {
+  const [scanDomain, setScanDomain] = useState("");
+  const [scanning, setScanning] = useState(false);
+  const [scanError, setScanError] = useState("");
+  const router = useRouter();
+
+  const handleInstantScan = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!scanDomain.trim()) return;
+
+      setScanning(true);
+      setScanError("");
+
+      try {
+        const res = await fetch("/api/public-scan", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ domain: scanDomain.trim() }),
+        });
+
+        const json = await res.json();
+
+        if (!res.ok) {
+          if (res.status === 429) {
+            setScanError(
+              json.error?.message ??
+                "Please wait before scanning this domain again.",
+            );
+          } else {
+            setScanError(
+              json.error?.message ?? "Failed to start scan. Please try again.",
+            );
+          }
+          return;
+        }
+
+        if (json.data?.resultsUrl) {
+          router.push(json.data.resultsUrl);
+        }
+      } catch {
+        setScanError("Network error. Please try again.");
+      } finally {
+        setScanning(false);
+      }
+    },
+    [scanDomain, router],
+  );
+
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
@@ -41,7 +93,7 @@ export default function HomePage() {
         </nav>
       </header>
 
-      {/* Hero */}
+      {/* Hero with Instant Scan */}
       <section className="mx-auto max-w-7xl px-6 py-24 text-center">
         <h1 className="text-5xl font-bold text-slate-900 leading-tight max-w-3xl mx-auto">
           Accessibility remediation at the source level
@@ -51,17 +103,51 @@ export default function HomePage() {
           browser-accurate scanning, component-level root cause analysis, and
           AI-assisted remediation suggestions.
         </p>
+
+        {/* Instant Scan Form */}
+        <form
+          onSubmit={handleInstantScan}
+          className="mt-10 max-w-xl mx-auto"
+          aria-label="Instant accessibility scan"
+        >
+          <div className="flex gap-3">
+            <label htmlFor="scan-domain" className="sr-only">
+              Domain to scan
+            </label>
+            <input
+              id="scan-domain"
+              type="text"
+              value={scanDomain}
+              onChange={(e) => setScanDomain(e.target.value)}
+              placeholder="Enter any URL (e.g., example.com)"
+              className="input flex-1 text-base"
+              disabled={scanning}
+              autoComplete="url"
+              required
+            />
+            <button
+              type="submit"
+              className="btn-primary px-6 py-3 text-base whitespace-nowrap"
+              disabled={scanning}
+            >
+              {scanning ? "Scanning..." : "Scan Free"}
+            </button>
+          </div>
+          {scanError && (
+            <p className="mt-2 text-sm text-red-600" role="alert">
+              {scanError}
+            </p>
+          )}
+          <p className="mt-2 text-sm text-slate-400">
+            No signup required. Results in seconds.
+          </p>
+        </form>
+
         <div className="mt-8 flex items-center justify-center gap-4">
-          <Link href="/signup" className="btn-primary text-base px-6 py-3">
-            Start Free Trial
-          </Link>
-          <Link href="#features" className="btn-secondary text-base px-6 py-3">
-            Learn More
+          <Link href="/signup" className="btn-secondary text-base px-6 py-3">
+            Create Free Account
           </Link>
         </div>
-        <p className="mt-4 text-sm text-slate-400">
-          No credit card required. Free plan includes 1 site and 50 pages.
-        </p>
       </section>
 
       {/* Anti-Overlay Statement */}
@@ -87,9 +173,15 @@ export default function HomePage() {
         <div className="grid md:grid-cols-3 gap-8">
           {features.map((feature) => (
             <article key={feature.title} className="card">
-              <div className="text-2xl mb-3" aria-hidden="true">{feature.icon}</div>
-              <h3 className="text-lg font-semibold text-slate-900">{feature.title}</h3>
-              <p className="mt-2 text-sm text-slate-500">{feature.description}</p>
+              <div className="text-2xl mb-3" aria-hidden="true">
+                {feature.icon}
+              </div>
+              <h3 className="text-lg font-semibold text-slate-900">
+                {feature.title}
+              </h3>
+              <p className="mt-2 text-sm text-slate-500">
+                {feature.description}
+              </p>
             </article>
           ))}
         </div>
@@ -180,7 +272,7 @@ export default function HomePage() {
               <Link
                 href="/signup"
                 className={`mt-6 w-full inline-flex justify-center ${
-                  plan.highlighted ? 'btn-primary' : 'btn-secondary'
+                  plan.highlighted ? "btn-primary" : "btn-secondary"
                 }`}
                 aria-label={`Get started with ${plan.name} plan`}
               >
@@ -274,6 +366,7 @@ const plans = [
       "3 seats",
       "Component clustering",
       "AI suggestions",
+      "Pay-per-fix credits",
     ],
   },
   {
@@ -288,6 +381,7 @@ const plans = [
       "Review workflows",
       "Evidence reports",
       "Jira integration",
+      "AI copilot chat",
     ],
   },
   {
@@ -302,6 +396,7 @@ const plans = [
       "SSO",
       "Custom integrations",
       "SLA",
+      "VPAT export",
     ],
   },
 ];

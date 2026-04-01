@@ -9,6 +9,9 @@ const commands: Record<string, string> = {
   report: "./commands/report",
   init: "./commands/init",
   auth: "./commands/auth",
+  ci: "./commands/ci",
+  diff: "./commands/diff",
+  watch: "./commands/watch",
 };
 
 function printHelp() {
@@ -20,6 +23,9 @@ function printHelp() {
 
   COMMANDS
     scan <url>              Scan a website for accessibility issues
+    ci <url>                CI mode: scan and fail on threshold
+    diff <url>              Compare scan against a baseline JSON
+    watch <url>             Watch mode: scan at intervals
     fix                     Generate remediation suggestions for open findings
     report                  Generate a conformance report
     init                    Initialize AROS in the current project
@@ -36,7 +42,9 @@ function printHelp() {
   EXAMPLES
     npx aros scan https://example.com
     npx aros scan https://example.com --format csv --output results.csv
-    npx aros scan https://example.com --ci --threshold serious
+    npx aros ci https://example.com --threshold 95 --fail-on critical
+    npx aros diff https://example.com --baseline baseline.json
+    npx aros watch https://example.com --interval 30
     npx aros auth arsk_live_abc123
     npx aros fix --api-key arsk_live_abc123
     npx aros report --format json
@@ -62,7 +70,7 @@ async function main() {
   }
 
   if (command === "--version" || command === "-v") {
-    console.log("0.1.0");
+    console.log("1.0.0");
     process.exit(0);
   }
 

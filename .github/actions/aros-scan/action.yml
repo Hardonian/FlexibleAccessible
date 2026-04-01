@@ -1,0 +1,213 @@
+name: "AROS Accessibility Scan"
+description: "Run accessibility scans with AROS and comment results on PRs"
+author: "AROS"
+
+branding:
+  icon: "check-circle"
+  color: "blue"
+
+inputs:
+  aros-url:
+    description: "AROS instance URL"
+    required: false
+    default: "https://aros.dev"
+  api-key:
+    description: "AROS API key for authentication"
+    required: true
+  organization-id:
+    description: "AROS organization ID"
+    required: true
+  site-id:
+    description: "AROS site ID to scan"
+    required: true
+  fail-on:
+    description: "Fail on severity level (critical, serious, moderate, minor)"
+    required: false
+    default: "critical"
+  fail-threshold:
+    description: "Fail if score drops below this value (0-100)"
+    required: false
+  comment-pr:
+    description: "Comment scan results on pull request"
+    required: false
+    default: "true"
+  auto-fix:
+    description: "Create fix PR for high-confidence issues"
+    required: false
+    default: "false"
+
+outputs:
+  score:
+    description: "Accessibility score (0-100)"
+    value: ${{ steps.scan.outputs.score }}
+  total-violations:
+    description: "Total number of violations found"
+    value: ${{ steps.scan.outputs.total-violations }}
+  scan-run-id:
+    description: "AROS scan run ID"
+    value: ${{ steps.scan.outputs.scan-run-id }}
+  passed:
+    description: "Whether the scan passed thresholds"
+    value: ${{ steps.scan.outputs.passed }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Trigger AROS Scan
+      id: trigger
+      shell: bash
+      run: |
+        RESPONSE=$(curl -sf -X POST "${{ inputs.aros-url }}/api/github-action" \
+          -H "Content-Type: application/json" \
+          -H "Cookie: aros_session=${{ inputs.api-key }}" \
+          -d '{
+            "organizationId": "${{ inputs.organization-id }}",
+            "siteId": "${{ inputs.site-id }}",
+            "pullRequestNumber": ${{ github.event.pull_request.number || 0 }},
+            "repoFullName": "${{ github.repository }}",
+            "commitSha": "${{ github.sha }}",
+            "failThreshold": ${{ inputs.fail-threshold || 'null' }},
+            "failOn": "${{ inputs.fail-on }}"
+          }' 2>&1) || {
+            echo "::error::Failed to trigger AROS scan: $RESPONSE"
+            exit 1
+          }
+
+        SCAN_RUN_ID=$(echo "$RESPONSE" | jq -r '.data.scanRunId // empty')
+        if [ -z "$SCAN_RUN_ID" ]; then
+          echo "::error::No scanRunId in response: $RESPONSE"
+          exit 1
+        fi
+        echo "scan-run-id=$SCAN_RUN_ID" >> "$GITHUB_OUTPUT"
+        echo "::notice::AROS scan triggered: $SCAN_RUN_ID"
+
+    - name: Wait for Scan Results
+      id: scan
+      shell: bash
+      run: |
+        SCAN_RUN_ID="${{ steps.trigger.outputs.scan-run-id }}"
+        MAX_WAIT=600  # 10 minutes
+        ELAPSED=0
+        POLL_INTERVAL=10
+
+        echo "::group::Waiting for scan to complete..."
+        while [ $ELAPSED -lt $MAX_WAIT ]; do
+          RESPONSE=$(curl -sf "${{ inputs.aros-url }}/api/github-action/status/$SCAN_RUN_ID" \
+            -H "Cookie: aros_session=${{ inputs.api-key }}" 2>&1) || true
+
+          STATUS=$(echo "$RESPONSE" | jq -r '.data.status // "UNKNOWN"')
+          echo "  Status: $STATUS (${ELAPSED}s elapsed)"
+
+          if [ "$STATUS" = "COMPLETED" ]; then
+            SCORE=$(echo "$RESPONSE" | jq -r '.data.score // 0')
+            TOTAL=$(echo "$RESPONSE" | jq -r '.data.violationsFound // 0')
+            CRITICAL=$(echo "$RESPONSE" | jq -r '.data.severityCounts.CRITICAL // 0')
+            SERIOUS=$(echo "$RESPONSE" | jq -r '.data.severityCounts.SERIOUS // 0')
+            MODERATE=$(echo "$RESPONSE" | jq -r '.data.severityCounts.MODERATE // 0')
+            MINOR=$(echo "$RESPONSE" | jq -r '.data.severityCounts.MINOR // 0')
+
+            echo "score=$SCORE" >> "$GITHUB_OUTPUT"
+            echo "total-violations=$TOTAL" >> "$GITHUB_OUTPUT"
+            echo "critical=$CRITICAL" >> "$GITHUB_OUTPUT"
+            echo "serious=$SERIOUS" >> "$GITHUB_OUTPUT"
+            echo "moderate=$MODERATE" >> "$GITHUB_OUTPUT"
+            echo "minor=$MINOR" >> "$GITHUB_OUTPUT"
+
+            # Check thresholds
+            PASSED="true"
+            if [ -n "${{ inputs.fail-threshold }}" ] && [ "$SCORE" -lt "${{ inputs.fail-threshold }}" ]; then
+              echo "::error::Accessibility score $SCORE is below threshold ${{ inputs.fail-threshold }}"
+              PASSED="false"
+            fi
+
+            FAIL_ON="${{ inputs.fail-on }}"
+            if [ "$FAIL_ON" = "critical" ] && [ "$CRITICAL" -gt 0 ]; then
+              echo "::error::$CRITICAL critical accessibility issue(s) found"
+              PASSED="false"
+            elif [ "$FAIL_ON" = "serious" ] && ([ "$CRITICAL" -gt 0 ] || [ "$SERIOUS" -gt 0 ]); then
+              echo "::error::Critical or serious accessibility issue(s) found"
+              PASSED="false"
+            elif [ "$FAIL_ON" = "moderate" ] && ([ "$CRITICAL" -gt 0 ] || [ "$SERIOUS" -gt 0 ] || [ "$MODERATE" -gt 0 ]); then
+              echo "::error::Critical, serious, or moderate accessibility issue(s) found"
+              PASSED="false"
+            fi
+
+            echo "passed=$PASSED" >> "$GITHUB_OUTPUT"
+            echo "::endgroup::"
+            echo "::notice::Scan complete: score=$SCORE, violations=$TOTAL"
+            exit 0
+          elif [ "$STATUS" = "FAILED" ]; then
+            echo "::endgroup::"
+            echo "::error::AROS scan failed"
+            exit 1
+          fi
+
+          sleep $POLL_INTERVAL
+          ELAPSED=$((ELAPSED + POLL_INTERVAL))
+        done
+
+        echo "::endgroup::"
+        echo "::error::AROS scan timed out after ${MAX_WAIT}s"
+        exit 1
+
+    - name: Comment on PR
+      if: inputs.comment-pr == 'true' && github.event.pull_request.number
+      shell: bash
+      run: |
+        SCORE="${{ steps.scan.outputs.score }}"
+        TOTAL="${{ steps.scan.outputs.total-violations }}"
+        CRITICAL="${{ steps.scan.outputs.critical }}"
+        SERIOUS="${{ steps.scan.outputs.serious }}"
+        MODERATE="${{ steps.scan.outputs.moderate }}"
+        MINOR="${{ steps.scan.outputs.minor }}"
+
+        if [ "$SCORE" -ge 90 ]; then
+          EMOJI="✅"
+        elif [ "$SCORE" -ge 70 ]; then
+          EMOJI="⚠️"
+        else
+          EMOJI="❌"
+        fi
+
+        BODY="## ${EMOJI} AROS Accessibility Scan
+
+        | Metric | Value |
+        |--------|-------|
+        | **Score** | ${SCORE}/100 |
+        | **Total Issues** | ${TOTAL} |
+        | Critical | ${CRITICAL} |
+        | Serious | ${SERIOUS} |
+        | Moderate | ${MODERATE} |
+        | Minor | ${MINOR} |
+
+        [View full report](${{ inputs.aros-url }}/scan/${{ inputs.site-id }})
+
+        <sub>Powered by [AROS](https://aros.dev) — source-level accessibility remediation</sub>"
+
+        # Find existing comment to update
+        EXISTING_COMMENT_ID=$(gh api \
+          "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+          --jq '.[] | select(.body | test("AROS Accessibility Scan")) | .id' \
+          2>/dev/null | head -1 || true)
+
+        if [ -n "$EXISTING_COMMENT_ID" ]; then
+          gh api \
+            "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments/$EXISTING_COMMENT_ID" \
+            -X PATCH \
+            -f body="$BODY" \
+            --silent 2>/dev/null || true
+        else
+          gh api \
+            "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+            -f body="$BODY" \
+            --silent 2>/dev/null || true
+        fi
+      env:
+        GH_TOKEN: ${{ github.token }}
+
+    - name: Fail on threshold
+      if: steps.scan.outputs.passed == 'false'
+      shell: bash
+      run: |
+        echo "::error::Accessibility scan failed threshold check"
+        exit 1

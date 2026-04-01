@@ -1,0 +1,75 @@
+
+[1m[46m RUN [49m[22m [36mv4.1.2 [39m[90mC:/Users/scott/GitHub/FlexibleAccessible/packages/agents[39m
+
+stderr | src/scanner-agent.test.ts > ScannerAgent > should trigger remediation for open findings without suggestions
+[vitest] The vi.fn() mock did not use 'function' or 'class' in its implementation, see https://vitest.dev/api/vi#vi-spyon for examples.
+
+stderr | src/scanner-agent.test.ts > ScannerAgent > should trigger remediation for open findings without suggestions
+Step "trigger_remediation" failed: TypeError: () => mockQueue is not a constructor
+    at new Mock (file:///C:/Users/scott/GitHub/FlexibleAccessible/node_modules/@vitest/spy/dist/index.js:309:27)
+    at C:/Users/scott/GitHub/FlexibleAccessible/packages/agents/src/scanner-agent.ts:115:36
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at ScannerAgent.runStep (C:/Users/scott/GitHub/FlexibleAccessible/packages/agents/src/base-agent.ts:51:22)
+    at ScannerAgent.execute (C:/Users/scott/GitHub/FlexibleAccessible/packages/agents/src/scanner-agent.ts:94:33)
+    at C:/Users/scott/GitHub/FlexibleAccessible/packages/agents/src/scanner-agent.test.ts:86:20
+    at file:///C:/Users/scott/GitHub/FlexibleAccessible/node_modules/@vitest/runner/dist/chunk-artifact.js:1893:20
+
+stderr | src/scanner-agent.test.ts > ScannerAgent > should trigger remediation for open findings without suggestions
+ScannerAgent execution failed: TypeError: () => mockQueue is not a constructor
+    at new Mock (file:///C:/Users/scott/GitHub/FlexibleAccessible/node_modules/@vitest/spy/dist/index.js:309:27)
+    at C:/Users/scott/GitHub/FlexibleAccessible/packages/agents/src/scanner-agent.ts:115:36
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at ScannerAgent.runStep (C:/Users/scott/GitHub/FlexibleAccessible/packages/agents/src/base-agent.ts:51:22)
+    at ScannerAgent.execute (C:/Users/scott/GitHub/FlexibleAccessible/packages/agents/src/scanner-agent.ts:94:33)
+    at C:/Users/scott/GitHub/FlexibleAccessible/packages/agents/src/scanner-agent.test.ts:86:20
+    at file:///C:/Users/scott/GitHub/FlexibleAccessible/node_modules/@vitest/runner/dist/chunk-artifact.js:1893:20
+
+[90mstdout[2m | src/scanner-agent.test.ts[2m > [22m[2mScannerAgent[2m > [22m[2mshould trigger remediation for open findings without suggestions
+[22m[39mDEBUG SCANNER AGENT FAILURE: () => mockQueue is not a constructor
+
+stderr | src/scanner-agent.test.ts > ScannerAgent > should handle failure when siteId is missing
+ScannerAgent execution failed: Error: siteId required
+    at ScannerAgent.execute (C:/Users/scott/GitHub/FlexibleAccessible/packages/agents/src/scanner-agent.ts:37:34)
+    at C:/Users/scott/GitHub/FlexibleAccessible/packages/agents/src/scanner-agent.test.ts:106:32
+    at file:///C:/Users/scott/GitHub/FlexibleAccessible/node_modules/@vitest/runner/dist/chunk-artifact.js:302:11
+    at file:///C:/Users/scott/GitHub/FlexibleAccessible/node_modules/@vitest/runner/dist/chunk-artifact.js:1893:26
+    at file:///C:/Users/scott/GitHub/FlexibleAccessible/node_modules/@vitest/runner/dist/chunk-artifact.js:2316:20
+    at new Promise (<anonymous>)
+    at runWithCancel (file:///C:/Users/scott/GitHub/FlexibleAccessible/node_modules/@vitest/runner/dist/chunk-artifact.js:2313:10)
+    at file:///C:/Users/scott/GitHub/FlexibleAccessible/node_modules/@vitest/runner/dist/chunk-artifact.js:2295:20
+    at new Promise (<anonymous>)
+    at runWithTimeout (file:///C:/Users/scott/GitHub/FlexibleAccessible/node_modules/@vitest/runner/dist/chunk-artifact.js:2262:10)
+
+ [31mΓ¥»[39m src/scanner-agent.test.ts [2m([22m[2m4 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 15[2mms[22m[39m
+     [32mΓ£ô[39m should schedule a scan if the last scan is stale[32m 4[2mms[22m[39m
+     [32mΓ£ô[39m should skip scan if a recent scan exists[32m 1[2mms[22m[39m
+[31m     [31m├ù[31m should trigger remediation for open findings without suggestions[39m[32m 8[2mms[22m[39m
+     [32mΓ£ô[39m should handle failure when siteId is missing[32m 1[2mms[22m[39m
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Failed Tests 1 ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+
+ FAIL  src/scanner-agent.test.ts > ScannerAgent > should trigger remediation for open findings without suggestions
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ Γ¥» src/scanner-agent.test.ts:92:28
+     90|       console.log('DEBUG SCANNER AGENT FAILURE:', result.error);
+     91|     }
+     92|     expect(result.success).toBe(true);
+       |                            ^
+     93|     expect((result.output as any).remediation.remediationJobsQueued).tΓÇª
+     94|     expect(Queue).toHaveBeenCalledWith('remediation', expect.any(ObjecΓÇª
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[1/1]ΓÄ»
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m3 passed[39m[22m[90m (4)[39m
+[2m   Start at [22m 22:07:11
+[2m   Duration [22m 666ms[2m (transform 129ms, setup 0ms, import 394ms, tests 15ms, environment 0ms)[22m
+

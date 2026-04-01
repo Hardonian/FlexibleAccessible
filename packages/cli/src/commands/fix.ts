@@ -15,7 +15,6 @@ export async function run(args: string[]) {
 
   console.log(`[AROS] Generating fixes for site ${siteId}...`);
 
-  // Find open findings that don't have any suggestions yet
   const allOpen = await prisma.canonicalFinding.findMany({
     where: { siteId, status: "OPEN" },
     include: {

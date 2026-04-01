@@ -54,6 +54,7 @@ export abstract class BaseAgent {
       this.emit({ type: "step_complete", step: name, output });
       return output;
     } catch (err) {
+      console.error(`Step "${name}" failed:`, err);
       step.status = "failed";
       step.error = err instanceof Error ? err.message : String(err);
       this.emit({ type: "step_error", step: name, error: step.error });

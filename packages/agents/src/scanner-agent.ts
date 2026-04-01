@@ -138,6 +138,7 @@ export class ScannerAgent extends BaseAgent {
         remediation: remediationResult,
       });
     } catch (err) {
+      console.error("ScannerAgent execution failed:", err);
       return this.createFailureResult(err);
     }
   }

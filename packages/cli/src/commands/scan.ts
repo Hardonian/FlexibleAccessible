@@ -1,4 +1,5 @@
 import { chromium } from "playwright";
+import { normalizeViolations } from "@aros/scan-engine";
 
 interface ScanOptions {
   url: string;
@@ -30,7 +31,6 @@ export async function run(args: string[]) {
     await page.goto(options.url, { waitUntil: "networkidle", timeout: 30000 });
     await page.waitForTimeout(1000);
 
-    // Inject axe-core
     const axeSource = require("axe-core").source;
     await page.evaluate(axeSource);
 
@@ -45,30 +45,32 @@ export async function run(args: string[]) {
       });
     });
 
-    const violations = results.violations.map((v: any) => ({
-      ruleId: v.id,
-      impact: v.impact,
-      description: v.description,
-      helpUrl: v.helpUrl,
-      wcagTags: v.tags.filter((t: string) => t.startsWith("wcag")),
-      nodes: v.nodes.map((n: any) => ({
-        selector: n.target?.join(" > ") ?? "",
-        html: n.html?.slice(0, 500) ?? "",
-        failureSummary: n.failureSummary ?? "",
-      })),
-    }));
+    const normalized = normalizeViolations(results.violations, "cli-scan");
 
-    // Filter by threshold
     const thresholdOrder: Record<string, number> = {
-      critical: 0,
-      serious: 1,
-      moderate: 2,
-      minor: 3,
+      CRITICAL: 0,
+      SERIOUS: 1,
+      MODERATE: 2,
+      MINOR: 3,
     };
-    const maxThreshold = thresholdOrder[options.threshold] ?? 3;
-    const filtered = violations.filter(
-      (v: any) => (thresholdOrder[v.impact] ?? 3) <= maxThreshold,
+    const maxThreshold = thresholdOrder[options.threshold.toUpperCase()] ?? 3;
+    const filtered = normalized.filter(
+      (v) => (thresholdOrder[v.impact] ?? 3) <= maxThreshold,
     );
+
+    // Compute score
+    let critical = 0,
+      serious = 0,
+      moderate = 0,
+      minor = 0;
+    for (const v of filtered) {
+      if (v.impact === "CRITICAL") critical++;
+      else if (v.impact === "SERIOUS") serious++;
+      else if (v.impact === "MODERATE") moderate++;
+      else minor++;
+    }
+    const penalty = critical * 10 + serious * 5 + moderate * 2 + minor * 0.5;
+    const score = Math.max(0, Math.round(100 - penalty * 2));
 
     if (options.format === "csv") {
       const headers = [
@@ -79,17 +81,15 @@ export async function run(args: string[]) {
         "Selector",
         "Element",
       ];
-      const rows = filtered.flatMap((v: any) =>
-        v.nodes.map((n: any) =>
-          [
-            v.ruleId,
-            v.impact,
-            `"${v.description.replace(/"/g, '""')}"`,
-            v.wcagTags.join(";"),
-            n.selector,
-            `"${n.html.replace(/"/g, '""')}"`,
-          ].join(","),
-        ),
+      const rows = filtered.map((v) =>
+        [
+          v.ruleId,
+          v.impact,
+          `"${v.description.replace(/"/g, '""')}"`,
+          v.wcagTags.join(";"),
+          v.selector,
+          `"${v.elementHtml.replace(/"/g, '""')}"`,
+        ].join(","),
       );
       const csv = [headers.join(","), ...rows].join("\n");
 
@@ -104,8 +104,20 @@ export async function run(args: string[]) {
       const output = {
         url: options.url,
         scannedAt: new Date().toISOString(),
+        score,
         totalViolations: filtered.length,
-        violations: filtered,
+        criticalCount: critical,
+        seriousCount: serious,
+        moderateCount: moderate,
+        minorCount: minor,
+        findings: filtered.map((v) => ({
+          ruleId: v.ruleId,
+          impact: v.impact,
+          description: v.description,
+          helpUrl: v.helpUrl,
+          selector: v.selector,
+          elementHtml: v.elementHtml.slice(0, 200),
+        })),
       };
 
       if (options.output) {
@@ -117,7 +129,9 @@ export async function run(args: string[]) {
       }
     }
 
-    console.log(`\n[AROS] Scan complete: ${filtered.length} violations found`);
+    console.log(
+      `\n[AROS] Scan complete: score=${score}/100, ${filtered.length} violations (C:${critical} S:${serious} M:${moderate} m:${minor})`,
+    );
 
     if (options.ci && filtered.length > 0) {
       console.error(

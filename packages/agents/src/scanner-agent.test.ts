@@ -24,7 +24,7 @@ vi.mock('@aros/shared', async (importOriginal) => {
 });
 
 vi.mock('bullmq', () => ({
-  Queue: vi.fn(() => mockQueue),
+  Queue: vi.fn(function() { return mockQueue; }),
 }));
 
 describe('ScannerAgent', () => {
