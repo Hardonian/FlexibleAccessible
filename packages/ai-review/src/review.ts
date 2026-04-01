@@ -29,7 +29,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
  */
 export function createErrorResponse(
   input: VisionAnalysisInput,
-  error: Error,
+  reasons: string[],
 ): VisionAnalysisOutput {
   return {
     page_id: UNKNOWN_PAGE_ID,
@@ -40,10 +40,7 @@ export function createErrorResponse(
     overall_score: 0,
     criteria_status: [],
     requires_human_review: true,
-    human_review_reasons: [
-      AI_FAILURE_MESSAGE,
-      `Error: ${error.message}`,
-    ],
+    human_review_reasons: reasons,
   };
 }
 
@@ -97,25 +94,38 @@ export async function analyzeImage(
       const blockReason = response.promptFeedback?.blockReason || UNKNOWN_REASON;
       const reason = `${AI_BLOCK_MESSAGE_PREFIX}${blockReason}`;
       console.error(reason, { feedback: response.promptFeedback });
-      return createErrorResponse(input, new Error(reason));
+      return createErrorResponse(input, [AI_FAILURE_MESSAGE, `Error: ${reason}`]);
     }
 
     const jsonText = response.text();
-    const validationResult = VisionAnalysisOutputSchema.safeParse(
-      JSON.parse(jsonText),
-    );
+    let parsedJson;
+    try {
+      parsedJson = JSON.parse(jsonText);
+    } catch (error) {
+      console.error("Error parsing AI response JSON:", error);
+      return createErrorResponse(input, [
+        AI_FAILURE_MESSAGE,
+        `Error: Failed to parse AI response as JSON. ${(error as Error).message}`,
+      ]);
+    }
+
+    const validationResult = VisionAnalysisOutputSchema.safeParse(parsedJson);
 
     if (!validationResult.success) {
-      const parseError = new Error(
-        `AI response failed Zod validation: ${validationResult.error.message}`,
-      );
+      const errorMessage = `AI response failed Zod validation: ${validationResult.error.message}`;
       console.error("Zod validation error:", validationResult.error.issues);
-      return createErrorResponse(input, parseError);
+      return createErrorResponse(input, [
+        AI_FAILURE_MESSAGE,
+        `Error: ${errorMessage}`,
+      ]);
     }
 
     return validationResult.data;
   } catch (error) {
     console.error("Error calling Generative AI model:", error);
-    return createErrorResponse(input, error as Error);
+    return createErrorResponse(input, [
+      AI_FAILURE_MESSAGE,
+      `Error: ${(error as Error).message}`,
+    ]);
   }
 }

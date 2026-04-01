@@ -34,39 +34,33 @@ describe("createErrorResponse", () => {
     accessibilityTreeSummary: "...",
   };
 
-  it("should create a structured error response with a simple error message", () => {
-    const error = new Error("Simple test error");
-    const response = createErrorResponse(mockInput, error);
+  it("should create a structured error response with the provided reasons", () => {
+    const reasons = ["Reason 1", "Reason 2"];
+    const response = createErrorResponse(mockInput, reasons);
 
     expect(response.model_version).toBe("error");
     expect(response.overall_score).toBe(0);
     expect(response.requires_human_review).toBe(true);
     expect(response.criteria_status).toEqual([]);
     expect(response.url).toBe(mockInput.url);
-    expect(response.human_review_reasons).toEqual([
-      "The AI model failed to generate a review.",
-      "Error: Simple test error",
-    ]);
+    expect(response.human_review_reasons).toEqual(reasons);
   });
 
   it("should correctly include the input URL in the response", () => {
-    const error = new Error("URL test");
-    const response = createErrorResponse(mockInput, error);
+    const response = createErrorResponse(mockInput, ["URL test"]);
 
     expect(response.url).toBe("https://example.com/test-page");
   });
 
   it("should handle error messages with special characters", () => {
     const errorMessage = 'Error with "quotes" and \\slashes\\';
-    const error = new Error(errorMessage);
-    const response = createErrorResponse(mockInput, error);
+    const response = createErrorResponse(mockInput, [errorMessage]);
 
-    expect(response.human_review_reasons[1]).toBe(`Error: ${errorMessage}`);
+    expect(response.human_review_reasons[0]).toBe(errorMessage);
   });
 
   it("should produce a valid ISO timestamp", () => {
-    const error = new Error("Timestamp test");
-    const response = createErrorResponse(mockInput, error);
+    const response = createErrorResponse(mockInput, ["Timestamp test"]);
     const timestamp = new Date(response.timestamp);
 
     expect(isNaN(timestamp.getTime())).toBe(false);
@@ -123,7 +117,10 @@ describe("analyzeImage", () => {
 
     expect(result.model_version).toBe("error");
     expect(result.requires_human_review).toBe(true);
-    expect(result.human_review_reasons).toContain("Error: API Failure");
+    expect(result.human_review_reasons).toEqual([
+      "The AI model failed to generate a review.",
+      "Error: API Failure",
+    ]);
     expect(result.url).toBe(mockInput.url);
   });
 
@@ -141,9 +138,10 @@ describe("analyzeImage", () => {
 
     expect(result.model_version).toBe("error");
     expect(result.requires_human_review).toBe(true);
-    expect(result.human_review_reasons).toContain(
+    expect(result.human_review_reasons).toEqual([
+      "The AI model failed to generate a review.",
       "Error: AI response was blocked. Reason: SAFETY",
-    );
+    ]);
   });
 
   it("should handle blocked responses with unknown reasons", async () => {
@@ -152,8 +150,42 @@ describe("analyzeImage", () => {
     });
 
     const result = await analyzeImage(mockInput);
-    expect(result.human_review_reasons).toContain(
+    expect(result.human_review_reasons).toEqual([
+      "The AI model failed to generate a review.",
       "Error: AI response was blocked. Reason: Unknown",
+    ]);
+  });
+
+  it("should return a structured error when the AI response is not valid JSON", async () => {
+    mockGenerateContent.mockResolvedValue({
+      response: {
+        text: () => '{"page_id": "123", "url": "https://example.com", "invalid_json"',
+      },
+    });
+
+    const result = await analyzeImage(mockInput);
+    expect(result.model_version).toBe("error");
+    expect(result.human_review_reasons[1]).toContain(
+      "Error: Failed to parse AI response as JSON.",
     );
+  });
+
+  it("should return a structured error when the AI response fails Zod validation", async () => {
+    const malformedApiResponse = {
+      page_id: "123",
+      url: "https://example.com/test-page",
+      // Missing several required fields like 'timestamp', 'model_version', etc.
+    };
+
+    mockGenerateContent.mockResolvedValue({
+      response: {
+        text: () => JSON.stringify(malformedApiResponse),
+      },
+    });
+
+    const result = await analyzeImage(mockInput);
+    expect(result.model_version).toBe("error");
+    expect(result.requires_human_review).toBe(true);
+    expect(result.human_review_reasons[1]).toContain("Error: AI response failed Zod validation");
   });
 });
