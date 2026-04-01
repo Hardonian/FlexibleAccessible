@@ -22,7 +22,7 @@
     "@aros/shared": "*",
     "@aros/stakeholders": "*",
     "autoprefixer": "^10.4.0",
-    "bullmq": "^5.31.0",
+    "bullmq": "^5.71.1",
     "clsx": "^2.1.0",
     "ioredis": "^5.4.0",
     "lucide-react": "^0.468.0",
