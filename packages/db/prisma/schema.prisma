@@ -152,6 +152,8 @@ model Site {
   verificationRuns  FindingVerificationRun[]
   governanceDecisions FindingGovernanceDecision[]
   deployWebhooks    DeployWebhook[]
+  aiVisualReviewRuns AiVisualReviewRun[]
+  aiVisualFindings   AiVisualFinding[]
 
 
   @@index([workspaceId])
@@ -253,6 +255,7 @@ model Page {
   violations RawViolation[]
   findings   FindingOccurrence[]
   evidenceRecords FindingEvidence[]
+  aiVisualFindings AiVisualFinding[]
 
   @@unique([siteId, url])
   @@index([siteId])
@@ -308,6 +311,7 @@ model ScanRun {
   findingsLastVerified CanonicalFinding[]
   evidenceRecords FindingEvidence[]
   verificationRuns FindingVerificationRun[]
+  visualReviewRuns AiVisualReviewRun[]
 
   @@index([siteId])
   @@index([crawlRunId])
@@ -448,6 +452,7 @@ model CanonicalFinding {
   verificationRuns FindingVerificationRun[]
   governanceDecisions FindingGovernanceDecision[]
   comments          FindingComment[]
+  aiVisualFindings  AiVisualFinding[]
 
 
   @@index([siteId])
