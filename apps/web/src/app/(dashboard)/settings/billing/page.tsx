@@ -46,6 +46,16 @@ function noticeFromSearchParams(searchParams: Awaited<PageProps['searchParams']>
     };
   }
 
+  if (searchParams.status === 'upgrade_required') {
+    return {
+      variant: 'info' as const,
+      title: 'Upgrade required',
+      message: searchParams.from
+        ? `The private route ${searchParams.from} is only available on a paid plan.`
+        : 'That private route is only available on a paid plan.',
+    };
+  }
+
   if (searchParams.status === 'no_customer') {
     return {
       variant: 'info' as const,
@@ -71,6 +81,7 @@ interface PageProps {
     checkout?: string;
     error?: string;
     status?: string;
+    from?: string;
   }>;
 }
 

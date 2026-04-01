@@ -1,5 +1,6 @@
 import { requireSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
+import Link from "next/link";
 import { getRoutePlatformTruth } from "@/lib/platform-truth-cache";
 import {
   resolveDashboardOrgMembership,
@@ -150,7 +151,9 @@ export default async function SettingsPage() {
                   Status: {subscription.status.toLowerCase()}
                 </p>
               </div>
-              <button className="btn-secondary text-xs">Manage in Stripe</button>
+              <Link href="/settings/billing" className="btn-secondary text-xs">
+                Billing details
+              </Link>
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 pt-3 border-t border-slate-200">
               <div>

@@ -83,5 +83,5 @@ export async function signupAction(
   });
 
   await createSession(result.id);
-  redirect('/dashboard');
+  redirect('/settings/billing?status=upgrade_required&from=%2Fdashboard');
 }

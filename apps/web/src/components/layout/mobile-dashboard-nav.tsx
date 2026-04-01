@@ -16,6 +16,7 @@ interface MobileDashboardNavProps {
   orgs: OrgInfo[];
   user: { id: string; email: string; name: string | null };
   canViewSystem?: boolean;
+  hasPaidAccess?: boolean;
   activeOrgId?: string;
   aiUsage?: {
     enabled: boolean;
@@ -28,6 +29,7 @@ export function MobileDashboardNav({
   orgs,
   user,
   canViewSystem,
+  hasPaidAccess,
   activeOrgId,
   aiUsage,
 }: MobileDashboardNavProps) {
@@ -127,7 +129,7 @@ export function MobileDashboardNav({
 
         <nav className="flex-1 overflow-y-auto p-3" aria-label="Main">
           <ul className="space-y-1" role="list">
-            {DASHBOARD_NAV_ITEMS.map((item, i) => {
+            {DASHBOARD_NAV_ITEMS.filter((item) => hasPaidAccess || !item.premium).map((item, i) => {
               const isActive =
                 pathname === item.href || pathname.startsWith(item.href + "/");
               const Icon = NAV_ICON_MAP[item.icon];
@@ -152,7 +154,7 @@ export function MobileDashboardNav({
                 </li>
               );
             })}
-            {canViewSystem && (
+            {canViewSystem && hasPaidAccess && (
               <li>
                 <Link
                   href="/system"

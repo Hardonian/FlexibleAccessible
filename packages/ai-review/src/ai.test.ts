@@ -1,24 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Part } from "@google/generative-ai";
 
+// Set environment variable before importing
+process.env.GOOGLE_GENERATIVE_AI_API_KEY = "test-api-key";
+
 // Create mocks
 const mockGenerateContent = vi.fn();
 const mockGetGenerativeModel = vi.fn(() => ({
   generateContent: mockGenerateContent,
 }));
 
-// Mock the entire services/ai module
-vi.mock("./services/ai.js", () => ({
-  getVisionAnalysisFromModel: vi.fn(),
-}));
-
-// Mock the constants module
-vi.mock("../constants.js", () => ({
-  VISION_TIMEOUT_MS: 30000,
-  PNG_MIME_TYPE: "image/png",
-}));
-
-// Mock @google/generative-ai
+// Mock @google/generative-ai before importing the module
 vi.mock("@google/generative-ai", () => ({
   GoogleGenerativeAI: vi.fn(() => ({
     getGenerativeModel: mockGetGenerativeModel,
@@ -35,7 +27,7 @@ vi.mock("@google/generative-ai", () => ({
 }));
 
 // Import after mocking
-import { getVisionAnalysisFromModel } from "./services/ai.js";
+import { getVisionAnalysisFromModel } from "./ai.js";
 
 describe("getVisionAnalysisFromModel", () => {
   const mockPrompt = "You are an expert web accessibility auditor.";

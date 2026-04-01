@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { Sidebar } from "@/components/layout/sidebar";
@@ -11,6 +11,9 @@ import type { Prisma } from "@aros/db";
 import { getRoutePlatformTruth } from "@/lib/platform-truth-cache";
 import { PlatformShellBanner } from "@/components/reliability/platform-shell-banner";
 import { RouteReliabilityNotice } from "@/components/reliability/route-reliability-notice";
+import { getEntitlementState, isBillingAccessiblePath } from "@/lib/auth-guard";
+
+export const dynamic = "force-dynamic";
 
 const membershipLayoutInclude = {
   organization: {
@@ -18,8 +21,16 @@ const membershipLayoutInclude = {
       workspaces: { select: { id: true, name: true, slug: true } },
       subscription: {
         select: {
+          plan: true,
+          status: true,
+          maxDomains: true,
+          maxPagesPerCrawl: true,
+          maxScansPerMonth: true,
+          maxSeats: true,
           aiEnabled: true,
           aiTokenLimit: true,
+          currentPeriodEnd: true,
+          cancelAtPeriodEnd: true,
         },
       },
     },
@@ -79,8 +90,24 @@ export default async function DashboardLayout({
   }
 
   const shellAudience = canViewSystem ? "operator" : "user";
+  const headerStore = await headers();
+  const pathname = headerStore.get("x-pathname") ?? "/dashboard";
 
   const activeOrg = orgs.find((o) => o.id === activeOrgId);
+  const entitlement = getEntitlementState(activeOrg?.subscription);
+  const requiresPaidAccess = !isBillingAccessiblePath(pathname);
+
+  if (
+    !layoutDbError &&
+    activeOrg &&
+    requiresPaidAccess &&
+    !entitlement.hasPaidAccess
+  ) {
+    redirect(
+      `/settings/billing?status=upgrade_required&from=${encodeURIComponent(pathname)}`,
+    );
+  }
+
   let aiUsage = undefined;
   if (activeOrg) {
     const usage = await prisma.aiUsageLog.aggregate({
@@ -107,6 +134,7 @@ export default async function DashboardLayout({
           orgs={orgs}
           user={user}
           canViewSystem={canViewSystem}
+          hasPaidAccess={entitlement.hasPaidAccess}
           activeOrgId={activeOrgId}
           aiUsage={aiUsage}
         />
@@ -114,6 +142,7 @@ export default async function DashboardLayout({
           orgs={orgs}
           user={user}
           canViewSystem={canViewSystem}
+          hasPaidAccess={entitlement.hasPaidAccess}
           activeOrgId={activeOrgId}
           aiUsage={aiUsage}
         />

@@ -15,6 +15,7 @@ interface SidebarProps {
   orgs: OrgInfo[];
   user: { id: string; email: string; name: string | null };
   canViewSystem?: boolean;
+  hasPaidAccess?: boolean;
   activeOrgId?: string;
   aiUsage?: {
     enabled: boolean;
@@ -27,6 +28,7 @@ export function Sidebar({
   orgs,
   user,
   canViewSystem,
+  hasPaidAccess,
   activeOrgId,
   aiUsage,
 }: SidebarProps) {
@@ -79,7 +81,7 @@ export function Sidebar({
 
       <nav className="flex-1 overflow-y-auto p-3">
         <ul className="space-y-1" role="list">
-          {DASHBOARD_NAV_ITEMS.map((item) => {
+          {DASHBOARD_NAV_ITEMS.filter((item) => hasPaidAccess || !item.premium).map((item) => {
             const isActive =
               pathname === item.href || pathname.startsWith(item.href + "/");
             const Icon = NAV_ICON_MAP[item.icon];
@@ -102,7 +104,7 @@ export function Sidebar({
               </li>
             );
           })}
-          {canViewSystem && (
+          {canViewSystem && hasPaidAccess && (
             <li>
               <Link
                 href="/system"
