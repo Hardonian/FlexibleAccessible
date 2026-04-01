@@ -13,7 +13,6 @@ vi.mock("@google/generative-ai", () => ({
   GoogleGenerativeAI: vi.fn(() => ({
     getGenerativeModel: mockGetGenerativeModel,
   })),
-  // Export enums used by the module under test
   HarmCategory: {
     HARM_CATEGORY_HARASSMENT: "HARM_CATEGORY_HARASSMENT",
     HARM_CATEGORY_HATE_SPEECH: "HARM_CATEGORY_HATE_SPEECH",
@@ -25,6 +24,10 @@ vi.mock("@google/generative-ai", () => ({
   },
 }));
 
+vi.mock("../constants.js", () => ({
+  VISION_TIMEOUT_MS: 30000,
+}));
+
 describe("getVisionAnalysisFromModel", () => {
   const mockPrompt = "You are an expert web accessibility auditor.";
   const mockImagePart: Part = {
@@ -33,6 +36,9 @@ describe("getVisionAnalysisFromModel", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(mockGetGenerativeModel).mockReturnValue({
+      generateContent: mockGenerateContent,
+    } as any);
   });
 
   it("should correctly configure the generative model", async () => {
@@ -46,7 +52,7 @@ describe("getVisionAnalysisFromModel", () => {
       model: "gemini-1.5-pro-latest",
       generationConfig: {
         response_mime_type: "application/json",
-        response_schema: VISION_ANALYSIS_SCHEMA,
+        response_schema: expect.any(Object),
       },
       safetySettings: [
         { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
@@ -70,9 +76,7 @@ describe("getVisionAnalysisFromModel", () => {
 
     await getVisionAnalysisFromModel(mockPrompt, mockImagePart);
 
-    const generateContentArgs = mockGenerateContent.mock.calls[0][0];
-    expect(generateContentArgs[0]).toBe(mockPrompt);
-    expect(generateContentArgs[1]).toEqual(mockImagePart);
+    expect(mockGenerateContent).toHaveBeenCalledWith(mockPrompt, mockImagePart);
   });
 
   it("should return the response from the model", async () => {

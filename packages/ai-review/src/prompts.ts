@@ -25,13 +25,14 @@ import type {
 export function createErrorResponse(
   input: VisionAnalysisInput,
   reasons: string[],
+  latency_ms: number = 0,
 ): VisionAnalysisOutput {
   return {
     page_id: UNKNOWN_PAGE_ID,
     url: input.url,
     timestamp: new Date().toISOString(),
     model_version: ERROR_MODEL_VERSION,
-    latency_ms: 0,
+    latency_ms,
     overall_score: 0,
     criteria_status: [],
     requires_human_review: true,
