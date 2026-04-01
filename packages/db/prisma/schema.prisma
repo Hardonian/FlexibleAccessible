@@ -507,15 +507,19 @@ model IssueCluster {
   pageCount       Int      @default(0)
   findingCount    Int      @default(0)
   severity        Severity
+  /** Cached impact score (recomputed by ClusterImpact). */
+  impactScore     Float    @default(0)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   site     Site               @relation(fields: [siteId], references: [id], onDelete: Cascade)
   findings CanonicalFinding[]
   suggestions RemediationSuggestion[]
+  impact   ClusterImpact?
 
   @@index([siteId])
   @@index([severity])
+  @@index([impactScore(sort: Desc)])
   @@map("issue_clusters")
 }
 
@@ -1054,4 +1058,179 @@ model Report {
 
   @@index([siteId])
   @@map("reports")
+}
+
+// ─── PUBLIC SCANS (NO-AUTH INSTANT SCANS) ──────────────────
+
+enum PublicScanStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+/// Anonymous instant scans triggered from the landing page (no account required).
+model PublicScanResult {
+  id              String           @id @default(cuid())
+  domain          String
+  url             String
+  status          PublicScanStatus @default(PENDING)
+  score           Int?
+  totalViolations Int              @default(0)
+  criticalCount   Int              @default(0)
+  seriousCount    Int              @default(0)
+  moderateCount   Int              @default(0)
+  minorCount      Int              @default(0)
+  pagesScanned    Int              @default(0)
+  /** Max pages for free tier instant scan. */
+  maxPages        Int              @default(5)
+  violations      Json?
+  /** SHA-256 of IP+domain for abuse prevention. */
+  ipHash          String?
+  /** Seconds until this result expires and can be re-scanned. */
+  rateLimitReset  Int              @default(300)
+  screenshotKeys  String[]         @default([])
+  createdAt       DateTime         @default(now())
+  completedAt     DateTime?
+  expiresAt       DateTime?
+
+  @@index([domain])
+  @@index([createdAt])
+  @@map("public_scan_results")
+}
+
+// ─── FIX CREDITS (PAY-PER-FIX) ─────────────────────────────
+
+enum CreditTransactionType {
+  PURCHASE
+  FIX_APPLIED
+  REFUND
+  GRANT
+  EXPIRY
+}
+
+/// Ledger of fix credit purchases, deductions, and refunds.
+model FixCredit {
+  id             String               @id @default(cuid())
+  organizationId String
+  type           CreditTransactionType
+  amount         Int
+  balance        Int
+  /** Stripe PaymentIntent ID for purchases. */
+  stripePaymentId String?
+  /** ID of the remediation suggestion this credit was spent on. */
+  suggestionId   String?
+  description    String
+  metadata       Json?
+  createdAt      DateTime             @default(now())
+  expiresAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([type])
+  @@index([createdAt])
+  @@map("fix_credits")
+}
+
+// ─── CLUSTER IMPACT PROJECTION ─────────────────────────────
+
+/// Cached impact scores for issue clusters (recomputed after each scan).
+model ClusterImpact {
+  id              String   @id @default(cuid())
+  clusterId       String   @unique
+  impactScore     Float
+  estimatedTraffic BigInt  @default(0)
+  pagesAffected   Int      @default(0)
+  severityWeight  Float    @default(1)
+  /** Pareto rank: 1 = highest impact fix. */
+  paretoRank      Int?
+  /** Percentage of total site issues this cluster represents. */
+  issuePercentage Float    @default(0)
+  /** Estimated hours to fix manually. */
+  estimatedHours  Float?
+  /** Estimated cost to fix manually (hours * avg dev rate). */
+  estimatedCost   Float?
+  computedAt      DateTime @default(now())
+
+  cluster IssueCluster @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+
+  @@index([impactScore(sort: Desc)])
+  @@index([paretoRank])
+  @@map("cluster_impacts")
+}
+
+// ─── COLLABORATIVE REVIEW COMMENTS ─────────────────────────
+
+/// Threaded comments on findings for team collaboration.
+model FindingComment {
+  id                String   @id @default(cuid())
+  canonicalFindingId String
+  userId            String
+  organizationId    String
+  body              String
+  parentId          String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  finding      CanonicalFinding @relation(fields: [canonicalFindingId], references: [id], onDelete: Cascade)
+  user         User             @relation(fields: [userId], references: [id])
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  parent       FindingComment?  @relation("commentThread", fields: [parentId], references: [id])
+  replies      FindingComment[] @relation("commentThread")
+
+  @@index([canonicalFindingId])
+  @@index([organizationId])
+  @@index([userId])
+  @@index([parentId])
+  @@map("finding_comments")
+}
+
+// ─── WEBHOOK TRIGGERS (SELF-HEALING) ───────────────────────
+
+enum WebhookSource {
+  VERCEL
+  NETLIFY
+  GITHUB_DEPLOY
+  CUSTOM
+}
+
+/// Registered deploy webhooks that trigger automatic post-deploy scans.
+model DeployWebhook {
+  id             String       @id @default(cuid())
+  siteId         String
+  organizationId String
+  source         WebhookSource
+  /** Shared secret for verifying webhook signatures. */
+  secret         String
+  isActive       Boolean      @default(true)
+  /** Only trigger scans for these branches (empty = all). */
+  branches       String[]     @default([])
+  /** Slack/email notification channel for regression alerts. */
+  notifyChannel  String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  site         Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([siteId])
+  @@index([organizationId])
+  @@map("deploy_webhooks")
+}
+
+// ─── FIX CREDIT BALANCE (MATERIALIZED VIEW) ────────────────
+
+/// Denormalized running balance per organization for fast lookups.
+model FixCreditBalance {
+  organizationId String   @id
+  balance        Int      @default(0)
+  totalPurchased Int      @default(0)
+  totalSpent     Int      @default(0)
+  totalRefunded  Int      @default(0)
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("fix_credit_balances")
 }

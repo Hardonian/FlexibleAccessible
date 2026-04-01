@@ -1,0 +1,301 @@
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
+
+interface ScanData {
+  id: string;
+  domain: string;
+  status: string;
+  score: number | null;
+  totalViolations: number;
+  criticalCount: number;
+  seriousCount: number;
+  moderateCount: number;
+  minorCount: number;
+  pagesScanned: number;
+  violations: Record<string, unknown>[] | null;
+  createdAt: string;
+  completedAt: string | null;
+}
+
+interface Props {
+  domain: string;
+  initialScan: ScanData | null;
+}
+
+const SEVERITY_COLORS: Record<string, string> = {
+  critical: "bg-red-100 text-red-800 border-red-200",
+  serious: "bg-orange-100 text-orange-800 border-orange-200",
+  moderate: "bg-amber-100 text-amber-800 border-amber-200",
+  minor: "bg-green-100 text-green-800 border-green-200",
+};
+
+const SCORE_COLORS: Record<string, string> = {
+  good: "text-green-500",
+  fair: "text-amber-500",
+  poor: "text-orange-500",
+  critical: "text-red-500",
+};
+
+function getScoreColor(score: number): string {
+  if (score >= 90) return SCORE_COLORS.good;
+  if (score >= 70) return SCORE_COLORS.fair;
+  if (score >= 50) return SCORE_COLORS.poor;
+  return SCORE_COLORS.critical;
+}
+
+function getScoreLabel(score: number): string {
+  if (score >= 90) return "Good";
+  if (score >= 70) return "Needs Work";
+  if (score >= 50) return "Poor";
+  return "Critical";
+}
+
+export function PublicScanResults({ domain, initialScan }: Props) {
+  const [scan, setScan] = useState<ScanData | null>(initialScan);
+  const [polling, setPolling] = useState(
+    !initialScan || initialScan.status !== "COMPLETED",
+  );
+
+  const fetchScan = useCallback(async () => {
+    if (!scan?.id && !initialScan?.id) return;
+    const id = scan?.id ?? initialScan?.id;
+    try {
+      const res = await fetch(`/api/public-scan/${id}`);
+      const json = await res.json();
+      if (json.success) {
+        setScan(json.data);
+        if (json.data.status === "COMPLETED" || json.data.status === "FAILED") {
+          setPolling(false);
+        }
+      }
+    } catch {
+      // Silent poll failure; will retry
+    }
+  }, [scan?.id, initialScan?.id]);
+
+  useEffect(() => {
+    if (!polling) return;
+    const interval = setInterval(fetchScan, 2000);
+    return () => clearInterval(interval);
+  }, [polling, fetchScan]);
+
+  const violations: Record<string, unknown>[] =
+    (scan?.violations as Record<string, unknown>[] | null) ?? [];
+
+  return (
+    <div className="min-h-screen bg-white">
+      {/* Header */}
+      <header className="border-b border-slate-200">
+        <nav className="mx-auto max-w-5xl px-6 py-4 flex items-center justify-between">
+          <Link href="/" className="text-xl font-bold text-brand-600">
+            AROS
+          </Link>
+          <div className="flex items-center gap-4">
+            <Link
+              href="/login"
+              className="text-sm text-slate-600 hover:text-slate-900"
+            >
+              Sign In
+            </Link>
+            <Link href="/signup" className="btn-primary text-sm">
+              Get Full Report
+            </Link>
+          </div>
+        </nav>
+      </header>
+
+      <main className="mx-auto max-w-5xl px-6 py-12">
+        {/* Domain Header */}
+        <div className="mb-8">
+          <p className="text-sm text-slate-500 mb-1">Accessibility Report</p>
+          <h1 className="text-3xl font-bold text-slate-900">{domain}</h1>
+          {scan?.completedAt && (
+            <p className="mt-1 text-sm text-slate-400">
+              Scanned {new Date(scan.completedAt).toLocaleDateString()}
+            </p>
+          )}
+        </div>
+
+        {/* Loading State */}
+        {polling && (!scan || scan.status !== "COMPLETED") && (
+          <div className="text-center py-20">
+            <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-slate-200 border-t-brand-600" />
+            <p className="mt-4 text-lg text-slate-600">Scanning {domain}...</p>
+            <p className="mt-2 text-sm text-slate-400">
+              Running accessibility checks on up to 5 pages
+            </p>
+          </div>
+        )}
+
+        {/* Failed State */}
+        {scan?.status === "FAILED" && (
+          <div className="card border-red-200 bg-red-50 text-center py-12">
+            <p className="text-lg text-red-800 font-semibold">Scan Failed</p>
+            <p className="mt-2 text-sm text-red-600">
+              We couldn&apos;t scan this domain. Please verify it&apos;s a
+              valid, publicly accessible website.
+            </p>
+            <Link href="/" className="btn-primary mt-6 inline-block">
+              Try Another Domain
+            </Link>
+          </div>
+        )}
+
+        {/* Results */}
+        {scan?.status === "COMPLETED" && scan.score !== null && (
+          <div className="space-y-8">
+            {/* Score + Summary */}
+            <div className="grid md:grid-cols-3 gap-6">
+              {/* Score Card */}
+              <div className="card text-center md:col-span-1">
+                <div
+                  className={`text-6xl font-extrabold ${getScoreColor(scan.score)}`}
+                >
+                  {scan.score}
+                </div>
+                <p
+                  className={`mt-2 font-semibold ${getScoreColor(scan.score)}`}
+                >
+                  {getScoreLabel(scan.score)}
+                </p>
+                <p className="mt-1 text-sm text-slate-400">
+                  Accessibility Score
+                </p>
+              </div>
+
+              {/* Severity Breakdown */}
+              <div className="card md:col-span-2">
+                <h2 className="text-lg font-semibold text-slate-900 mb-4">
+                  Issues Found: {scan.totalViolations}
+                </h2>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  {[
+                    {
+                      label: "Critical",
+                      count: scan.criticalCount,
+                      key: "critical",
+                    },
+                    {
+                      label: "Serious",
+                      count: scan.seriousCount,
+                      key: "serious",
+                    },
+                    {
+                      label: "Moderate",
+                      count: scan.moderateCount,
+                      key: "moderate",
+                    },
+                    { label: "Minor", count: scan.minorCount, key: "minor" },
+                  ].map(({ label, count, key }) => (
+                    <div
+                      key={key}
+                      className={`rounded-lg border p-4 text-center ${SEVERITY_COLORS[key]}`}
+                    >
+                      <div className="text-2xl font-bold">{count}</div>
+                      <div className="text-sm">{label}</div>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-4 text-sm text-slate-400">
+                  Scanned {scan.pagesScanned} page
+                  {scan.pagesScanned !== 1 ? "s" : ""}
+                </p>
+              </div>
+            </div>
+
+            {/* Violations List (top 10) */}
+            {violations.length > 0 && (
+              <div>
+                <h2 className="text-xl font-semibold text-slate-900 mb-4">
+                  Top Issues
+                </h2>
+                <div className="space-y-3">
+                  {violations.slice(0, 10).map((v, i) => (
+                    <div key={i} className="card">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span
+                              className={`badge badge-${(v.impact as string)?.toLowerCase() ?? "minor"}`}
+                            >
+                              {v.impact as string}
+                            </span>
+                            <span className="text-sm font-mono text-slate-500 truncate">
+                              {v.ruleId as string}
+                            </span>
+                          </div>
+                          <p className="text-sm text-slate-700">
+                            {v.description as string}
+                          </p>
+                          {(v.helpUrl as string) && (
+                            <a
+                              href={v.helpUrl as string}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-brand-600 hover:underline mt-1 inline-block"
+                            >
+                              Learn more
+                            </a>
+                          )}
+                        </div>
+                        <span className="text-sm text-slate-400 whitespace-nowrap">
+                          {(v.count as number) ?? 1} occurrence
+                          {((v.count as number) ?? 1) !== 1 ? "s" : ""}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* CTA */}
+            <div className="card bg-brand-50 border-brand-200 text-center py-12">
+              <h2 className="text-2xl font-bold text-slate-900">
+                Want to fix these issues?
+              </h2>
+              <p className="mt-2 text-slate-600 max-w-xl mx-auto">
+                Get AI-powered remediation suggestions, component clustering,
+                GitHub PR export, and full evidence reports.
+              </p>
+              <div className="mt-6 flex items-center justify-center gap-4">
+                <Link href="/signup" className="btn-primary px-6 py-3">
+                  Start Free — Fix These Issues
+                </Link>
+                <Link href="/" className="btn-secondary px-6 py-3">
+                  Scan Another Site
+                </Link>
+              </div>
+            </div>
+
+            {/* Share */}
+            <div className="text-center text-sm text-slate-400">
+              <p>
+                Share this report:{" "}
+                <code className="bg-slate-100 px-2 py-1 rounded">
+                  {typeof window !== "undefined"
+                    ? window.location.href
+                    : `aros.dev/scan/${encodeURIComponent(domain)}`}
+                </code>
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* No Scan Yet */}
+        {!scan && !polling && (
+          <div className="card text-center py-16">
+            <p className="text-lg text-slate-600">
+              No scan found for this domain.
+            </p>
+            <Link href="/" className="btn-primary mt-6 inline-block">
+              Scan This Domain
+            </Link>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
