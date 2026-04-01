@@ -20,9 +20,9 @@ export interface CriterionIssue {
   description: string;
   severity: "critical" | "serious" | "moderate" | "minor";
   selector: string;
-  element_description: string;
-  suggested_fix: string;
-  evidence: string;
+  element_description?: string;
+  suggested_fix?: string;
+  evidence?: string;
 }
 
 export interface CriterionStatus {

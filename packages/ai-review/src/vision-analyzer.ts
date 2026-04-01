@@ -33,7 +33,12 @@ export async function analyzeWithVision(
   const prompt = buildVisionPrompt({
     url: input.url,
     pageTitle: input.pageTitle,
-    axeViolations: input.axeViolations,
+    axeViolations: input.axeViolations.map((v) => ({
+      ruleId: v.ruleId,
+      impact: v.impact ?? "unknown",
+      selector: v.selector,
+      description: v.description,
+    })),
     accessibilityTreeSummary: input.accessibilityTreeSummary,
   });
 
