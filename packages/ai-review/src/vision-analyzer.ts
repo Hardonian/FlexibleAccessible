@@ -8,7 +8,6 @@ import {
   buildVisionPrompt,
   buildRetryPrompt,
   computeOverallScore,
-  JSON_SCHEMA,
 } from "./prompts.js";
 import { VISION_TIMEOUT_MS } from "./types.js";
 

@@ -54,7 +54,7 @@ export async function simulateScreenReader(
         [];
 
       for (const selector of interactiveSelectors) {
-        const elements = document.querySelectorAll(selector);
+        const elements = Array.from(document.querySelectorAll(selector));
         for (const el of elements) {
           const text = el.textContent?.trim() ?? "";
           const alt = el.getAttribute("alt") ?? "";
@@ -114,7 +114,7 @@ export async function simulateScreenReader(
       };
 
       // Check explicit ARIA roles
-      for (const el of document.querySelectorAll("[role]")) {
+      for (const el of Array.from(document.querySelectorAll("[role]"))) {
         roles.add(el.getAttribute("role")!);
       }
 

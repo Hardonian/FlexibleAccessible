@@ -28,7 +28,7 @@ export async function simulateKeyboardFlow(
   try {
     // Check for skip link before starting tab navigation
     const skipLink = await page.evaluate(() => {
-      const links = document.querySelectorAll("a[href^='#']");
+      const links = Array.from(document.querySelectorAll("a[href^='#']"));
       for (const link of links) {
         const text = (link.textContent ?? "").toLowerCase().trim();
         const href = link.getAttribute("href") ?? "";
