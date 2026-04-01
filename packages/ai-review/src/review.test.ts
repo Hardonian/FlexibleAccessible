@@ -83,18 +83,23 @@ describe("analyzeImage", () => {
     vi.clearAllMocks();
   });
 
+  const createMockApiResponse = (
+    overrides: Partial<VisionAnalysisOutput> = {},
+  ): VisionAnalysisOutput => ({
+    page_id: "123",
+    url: "https://example.com/test-page",
+    timestamp: new Date().toISOString(),
+    model_version: "gemini-1.5-pro-test",
+    latency_ms: 500,
+    overall_score: 95,
+    criteria_status: [],
+    requires_human_review: false,
+    human_review_reasons: [],
+    ...overrides,
+  });
+
   it("should return a valid analysis on success", async () => {
-    const mockApiResponse: VisionAnalysisOutput = {
-      page_id: "123",
-      url: "https://example.com/test-page",
-      timestamp: new Date().toISOString(),
-      model_version: "gemini-1.5-pro-test",
-      latency_ms: 500,
-      overall_score: 95,
-      criteria_status: [],
-      requires_human_review: false,
-      human_review_reasons: [],
-    };
+    const mockApiResponse = createMockApiResponse();
 
     mockGenerateContent.mockResolvedValue({
       response: {
@@ -112,17 +117,7 @@ describe("analyzeImage", () => {
   });
 
   it("should correctly configure the generative model", async () => {
-    const mockApiResponse: VisionAnalysisOutput = {
-      page_id: "123",
-      url: "https://example.com/test-page",
-      timestamp: new Date().toISOString(),
-      model_version: "gemini-1.5-pro-test",
-      latency_ms: 500,
-      overall_score: 95,
-      criteria_status: [],
-      requires_human_review: false,
-      human_review_reasons: [],
-    };
+    const mockApiResponse = createMockApiResponse();
     mockGenerateContent.mockResolvedValue({
       response: { text: () => JSON.stringify(mockApiResponse) },
     });
@@ -145,17 +140,7 @@ describe("analyzeImage", () => {
   });
 
   it("should call the model with the correct prompt and image data", async () => {
-    const mockApiResponse: VisionAnalysisOutput = {
-      page_id: "123",
-      url: "https://example.com/test-page",
-      timestamp: new Date().toISOString(),
-      model_version: "gemini-1.5-pro-test",
-      latency_ms: 500,
-      overall_score: 95,
-      criteria_status: [],
-      requires_human_review: false,
-      human_review_reasons: [],
-    };
+    const mockApiResponse = createMockApiResponse();
     mockGenerateContent.mockResolvedValue({
       response: { text: () => JSON.stringify(mockApiResponse) },
     });

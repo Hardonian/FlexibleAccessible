@@ -19,7 +19,33 @@ import {
 import { VISION_ANALYSIS_SCHEMA } from "./criteria.js";
 import { VisionAnalysisOutputSchema } from "./schemas.js";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+if (!process.env.GEMINI_API_KEY) {
+  throw new Error("The GEMINI_API_KEY environment variable is not set.");
+}
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+/**
+ * Safety settings to avoid blocking for benign content.
+ */
+const SAFETY_SETTINGS = [
+  {
+    category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+    threshold: HarmBlockThreshold.BLOCK_NONE,
+  },
+  {
+    category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+    threshold: HarmBlockThreshold.BLOCK_NONE,
+  },
+  {
+    category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+    threshold: HarmBlockThreshold.BLOCK_NONE,
+  },
+  {
+    category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+    threshold: HarmBlockThreshold.BLOCK_NONE,
+  },
+];
 
 /**
  * Calls the generative AI model with the given prompt and image.
@@ -38,24 +64,7 @@ async function getVisionAnalysisFromModel(
       response_schema: VISION_ANALYSIS_SCHEMA,
     },
     // It's good practice to configure safety settings to avoid blocks for benign content.
-    safetySettings: [
-      {
-        category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-        threshold: HarmBlockThreshold.BLOCK_NONE,
-      },
-      {
-        category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-        threshold: HarmBlockThreshold.BLOCK_NONE,
-      },
-      {
-        category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-        threshold: HarmBlockThreshold.BLOCK_NONE,
-      },
-      {
-        category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-        threshold: HarmBlockThreshold.BLOCK_NONE,
-      },
-    ],
+    safetySettings: SAFETY_SETTINGS,
   });
 
   const result = await model.generateContent([prompt, imagePart]);
