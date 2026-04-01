@@ -91,25 +91,29 @@ Your output must conform to the provided JSON schema.`;
 }
 
 /**
- * Build a simplified retry prompt when initial parse fails.
+ * Build a simplified retry response when initial parse fails.
  */
 export function createRetryResponse(
   input: VisionAnalysisInput,
 ): VisionAnalysisOutput {
-  const response = createErrorResponse(input, [RETRY_PROMPT_MESSAGE]);
-
-  response.model_version = RETRY_MODEL_VERSION;
-  response.overall_score = 50;
-  response.criteria_status = [
-    {
-      criterion_id: "1.4.3",
-      criterion_name: "Contrast (Minimum)",
-      level: "AA",
-      status: "uncertain",
-      confidence: 0.5,
-      issues: [],
-    },
-  ];
-
-  return response;
+  return {
+    page_id: UNKNOWN_PAGE_ID,
+    url: input.url,
+    timestamp: new Date().toISOString(),
+    model_version: RETRY_MODEL_VERSION,
+    latency_ms: 0,
+    overall_score: 50,
+    criteria_status: [
+      {
+        criterion_id: "1.4.3",
+        criterion_name: "Contrast (Minimum)",
+        level: "AA",
+        status: "uncertain",
+        confidence: 0.5,
+        issues: [],
+      },
+    ],
+    requires_human_review: true,
+    human_review_reasons: [RETRY_PROMPT_MESSAGE],
+  };
 }

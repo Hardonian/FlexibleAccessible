@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { analyzeImage } from "./review.js";
 import { createErrorResponse } from "./prompts.js";
+import { VISION_ANALYSIS_SCHEMA } from "./criteria.js";
 import type { VisionAnalysisInput, VisionAnalysisOutput } from "./types.js";
 
 // Mock the Generative AI SDK
@@ -108,6 +109,69 @@ describe("analyzeImage", () => {
       expect.objectContaining({ model: "gemini-1.5-pro-latest" }),
     );
     expect(mockGenerateContent).toHaveBeenCalledOnce();
+  });
+
+  it("should correctly configure the generative model", async () => {
+    const mockApiResponse: VisionAnalysisOutput = {
+      page_id: "123",
+      url: "https://example.com/test-page",
+      timestamp: new Date().toISOString(),
+      model_version: "gemini-1.5-pro-test",
+      latency_ms: 500,
+      overall_score: 95,
+      criteria_status: [],
+      requires_human_review: false,
+      human_review_reasons: [],
+    };
+    mockGenerateContent.mockResolvedValue({
+      response: { text: () => JSON.stringify(mockApiResponse) },
+    });
+
+    await analyzeImage(mockInput);
+
+    expect(mockGetGenerativeModel).toHaveBeenCalledWith({
+      model: "gemini-1.5-pro-latest",
+      generationConfig: {
+        response_mime_type: "application/json",
+        response_schema: VISION_ANALYSIS_SCHEMA,
+      },
+      safetySettings: [
+        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+      ],
+    });
+  });
+
+  it("should call the model with the correct prompt and image data", async () => {
+    const mockApiResponse: VisionAnalysisOutput = {
+      page_id: "123",
+      url: "https://example.com/test-page",
+      timestamp: new Date().toISOString(),
+      model_version: "gemini-1.5-pro-test",
+      latency_ms: 500,
+      overall_score: 95,
+      criteria_status: [],
+      requires_human_review: false,
+      human_review_reasons: [],
+    };
+    mockGenerateContent.mockResolvedValue({
+      response: { text: () => JSON.stringify(mockApiResponse) },
+    });
+
+    await analyzeImage(mockInput);
+
+    const generateContentArgs = mockGenerateContent.mock.calls[0][0];
+    expect(generateContentArgs[0]).toContain(
+      "You are an expert web accessibility auditor",
+    );
+    expect(generateContentArgs[1]).toEqual({
+      inlineData: {
+        data: mockInput.screenshotBase64,
+        mimeType: "image/png",
+      },
+    });
   });
 
   it("should return a structured error when the API call fails", async () => {
