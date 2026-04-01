@@ -66,7 +66,10 @@ export async function POST(request: Request) {
     const body = await request.json();
     const parsed = commentSchema.parse(body);
 
-    const ctx = await requireOrgAccess(parsed.organizationId, "findings:edit");
+    const ctx = await requireOrgAccess(
+      parsed.organizationId,
+      "findings:manage",
+    );
 
     // Verify finding access
     const finding = await prisma.canonicalFinding.findFirst({
@@ -77,7 +80,21 @@ export async function POST(request: Request) {
     });
 
     if (!finding) {
-      return apiError({ message: "Finding not found", code: "NOT_FOUND" }, 404);
+      return apiError(ApiError.notFound("Finding not found"));
+    }
+
+    // If parentId, verify parent exists and belongs to same finding
+    if (parsed.parentId) {
+      const parent = await prisma.findingComment.findFirst({
+        where: {
+          id: parsed.parentId,
+          canonicalFindingId: parsed.findingId,
+        },
+      });
+
+      if (!parent) {
+        return apiError(ApiError.notFound("Parent comment not found"));
+      }
     }
 
     // If parentId, verify parent exists and belongs to same finding

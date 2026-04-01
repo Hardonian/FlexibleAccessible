@@ -25,7 +25,10 @@ export async function POST(request: Request) {
     const body = await request.json();
     const parsed = chatSchema.parse(body);
 
-    const ctx = await requireOrgAccess(parsed.organizationId, "findings:edit");
+    const ctx = await requireOrgAccess(
+      parsed.organizationId,
+      "findings:manage",
+    );
 
     // Load finding context for RAG
     const finding = await prisma.canonicalFinding.findFirst({
