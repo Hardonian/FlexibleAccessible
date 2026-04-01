@@ -2,12 +2,14 @@ import path from "path";
 import type { NextConfig } from "next";
 import withPWAInit from "@ducanh2912/next-pwa";
 
+const pwaEnabled =
+  process.env.NODE_ENV === "production" && process.env.ENABLE_PWA === "true";
+
 const withPWA = withPWAInit({
   dest: "public",
-  disable: process.env.NODE_ENV === "development",
-  register: true,
+  disable: !pwaEnabled,
+  register: pwaEnabled,
   reloadOnOnline: true,
-  /** Logged-in vs logged-out start URL differs; avoid precaching a single HTML shell. */
   cacheStartUrl: false,
   dynamicStartUrl: true,
   fallbacks: {
@@ -31,6 +33,9 @@ const withPWA = withPWAInit({
 });
 
 const nextConfig: NextConfig = {
+  reactStrictMode: true,
+  poweredByHeader: false,
+  typedRoutes: true,
   outputFileTracingRoot: path.resolve(__dirname, "../.."),
   transpilePackages: [
     "@aros/db",
@@ -43,6 +48,27 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: "2mb",
     },
+  },
+  async headers() {
+    return [
+      {
+        source: "/_next/static/(.*)",
+        headers: [
+          {
+            key: "X-Content-Type-Options",
+            value: "nosniff",
+          },
+          {
+            key: "X-Frame-Options",
+            value: "DENY",
+          },
+          {
+            key: "Referrer-Policy",
+            value: "strict-origin-when-cross-origin",
+          },
+        ],
+      },
+    ];
   },
 };
 

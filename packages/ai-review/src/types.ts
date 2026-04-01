@@ -28,7 +28,7 @@ export interface CriterionIssue {
 export interface CriterionStatus {
   criterion_id: string;
   criterion_name: string;
-  level: "A" | "AA";
+  level: "A" | "AA" | "AAA";
   status: "pass" | "fail" | "partial" | "not_applicable" | "uncertain";
   confidence: number;
   issues: CriterionIssue[];
