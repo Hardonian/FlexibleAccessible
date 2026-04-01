@@ -18,19 +18,6 @@ test.describe("Authentication and Authorization", () => {
     }
   });
 
-  test("should prevent unauthorized access to premium features", async ({
-    page,
-  }) => {
-    // This would require setting up a test user with free plan
-    // For now, we test the UI-level blocking
-    await page.goto("/dashboard");
-
-    // Check that premium features show upgrade prompts
-    // This is UI-level protection; server-side protection is tested in API tests
-    const upgradeLinks = page.locator('a[href*="billing"]').first();
-    // We expect some upgrade prompts to be visible for free users
-  });
-
   test("should allow access to public routes without authentication", async ({
     page,
   }) => {
@@ -43,13 +30,130 @@ test.describe("Authentication and Authorization", () => {
     }
   });
 
-  test("should handle organization switching correctly", async ({ page }) => {
-    // This requires a user with multiple organizations
-    // Test that org switching works and maintains proper access control
+  test("should redirect to billing when accessing premium features without subscription", async ({
+    page,
+  }) => {
+    // This test requires authenticated user with free plan
+    // Test API endpoints directly since UI might not show upgrade prompts immediately
+
+    // Test findings summary API
+    const findingsResponse = await page.request.get(
+      "/api/findings/summary?organizationId=test-org",
+    );
+    expect(findingsResponse.status()).toBe(403);
+
+    // Test reports API
+    const reportsResponse = await page.request.get(
+      "/api/reports?organizationId=test-org&format=json",
+    );
+    expect(reportsResponse.status()).toBe(403);
+
+    // Test credits API
+    const creditsResponse = await page.request.get(
+      "/api/credits?organizationId=test-org",
+    );
+    expect(creditsResponse.status()).toBe(403);
   });
 
-  test("should prevent cross-organization data access", async ({ page }) => {
-    // Test that users cannot access data from organizations they don't belong to
-    // This would require crafting URLs with IDs from other orgs
+  test("should prevent cross-organization access in API routes", async ({
+    page,
+  }) => {
+    // Test with authenticated user trying to access different org's data
+    // This requires setting up test data with multiple orgs
+
+    // Test findings summary with wrong org
+    const response = await page.request.get(
+      "/api/findings/summary?organizationId=wrong-org-id",
+    );
+    expect([401, 403, 404]).toContain(response.status()); // Should be rejected
+  });
+
+  test("should handle concurrent session scenarios", async ({ page }) => {
+    // Test that API routes properly validate session on each request
+    // This is more of an integration test requiring proper session setup
+    test.skip("Requires complex session setup");
+  });
+
+  test("should validate site ownership in site-specific actions", async ({
+    page,
+  }) => {
+    // Test that actions like startCrawlAction validate site belongs to user's org
+    const response = await page.request.post(
+      "/sites/non-existent-site/actions",
+      {
+        data: { siteId: "non-existent-site", action: "startCrawl" },
+      },
+    );
+    expect([401, 403, 404]).toContain(response.status());
+  });
+
+  test("should prevent non-members from accessing organization data", async ({
+    page,
+  }) => {
+    // Test API routes reject requests from users not in the organization
+    const response = await page.request.get(
+      "/api/findings/summary?organizationId=stranger-org",
+    );
+    expect([401, 403]).toContain(response.status());
+  });
+
+  test("should enforce permission-based access control", async ({ page }) => {
+    // Test that users with different roles get appropriate access
+    // This requires setting up users with different roles in test org
+    test.skip("Requires role-based test setup");
+  });
+
+  test("should handle expired sessions gracefully", async ({ page }) => {
+    // Test that expired sessions redirect to login
+    // This requires manipulating session cookies/tokens
+    test.skip("Requires session manipulation setup");
+  });
+
+  test("should prevent access with malformed organization IDs", async ({
+    page,
+  }) => {
+    // Test API routes with invalid/malformed org IDs
+    const invalidIds = ["", "invalid-id", "../escape", "<script>"];
+
+    for (const invalidId of invalidIds) {
+      const response = await page.request.get(
+        `/api/findings/summary?organizationId=${encodeURIComponent(invalidId)}`,
+      );
+      expect([400, 401, 403, 404]).toContain(response.status());
+    }
+  });
+
+  test("should prevent access with malformed site IDs", async ({ page }) => {
+    // Test site-specific actions with invalid IDs
+    const invalidIds = ["", "invalid-site", "../escape"];
+
+    for (const invalidId of invalidIds) {
+      const response = await page.request.post(
+        `/sites/${encodeURIComponent(invalidId)}/actions`,
+        {
+          data: { siteId: invalidId, action: "startCrawl" },
+        },
+      );
+      expect([400, 401, 403, 404]).toContain(response.status());
+    }
+  });
+
+  test("should validate request body structure in POST endpoints", async ({
+    page,
+  }) => {
+    // Test that malformed request bodies are rejected
+    const invalidBodies = [
+      {},
+      { organizationId: "" },
+      { organizationId: "test-org", findingId: "" },
+      { organizationId: "test-org", message: "a".repeat(10000) }, // Too long
+    ];
+
+    for (const body of invalidBodies) {
+      const response = await page.request.post("/api/ai-copilot", {
+        data: body,
+      });
+      expect([400, 401, 403]).toContain(response.status());
+    }
   });
 });

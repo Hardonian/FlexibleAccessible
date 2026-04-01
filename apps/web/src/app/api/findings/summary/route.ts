@@ -2,14 +2,22 @@ import { NextResponse } from "next/server";
 import { requireOrgAccess } from "@/lib/auth-guard";
 import { getRoutePlatformTruth } from "@/lib/platform-truth-cache";
 import { buildFindingsOperationalSummary } from "@/lib/findings/reporting-summary";
-import { getRoutePlatformTruth } from "@/lib/platform-truth-cache";
-import { resolveDashboardOrgMembership } from "@/lib/route-data-boundary";
-import { getEntitlementState } from "@/lib/auth-guard";
+import { prisma } from "@/lib/db";
 
 export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const requestedOrgId = searchParams.get("organizationId");
+
+    if (!requestedOrgId) {
+      return NextResponse.json(
+        { error: "organizationId is required" },
+        { status: 400 },
+      );
+    }
+
     // Use centralized auth guard - it handles org resolution and permission checks
-    const ctx = await requireOrgAccess(requestedOrgId || "", "findings:view", {
+    const ctx = await requireOrgAccess(requestedOrgId, "findings:view", {
       requirePaid: true,
     });
 

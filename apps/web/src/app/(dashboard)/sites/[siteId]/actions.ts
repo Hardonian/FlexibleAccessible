@@ -96,13 +96,15 @@ export async function startCrawlAction(formData: FormData) {
 
     redirect(`/sites/${ctx.siteId}`);
   } catch (e) {
-    if (e instanceof ApiError && e.code === 'SUBSCRIPTION_REQUIRED') {
-      redirect('/settings/billing?status=upgrade_required&from=%2Fsites');
+    if (e instanceof ApiError && e.code === "SUBSCRIPTION_REQUIRED") {
+      redirect("/settings/billing?status=upgrade_required&from=%2Fsites");
     }
-    if (e instanceof ApiError && (e.statusCode === 403 || e.statusCode === 404)) {
+    if (
+      e instanceof ApiError &&
+      (e.statusCode === 403 || e.statusCode === 404)
+    ) {
       redirect(`/sites/${siteId}`);
     }
     throw e;
   }
-}
 }
