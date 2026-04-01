@@ -6,7 +6,8 @@
   "types": "src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./scan-enqueue": "./src/scan-enqueue.ts"
+    "./scan-enqueue": "./src/scan-enqueue.ts",
+    "./finding-control-plane": "./src/finding-control-plane.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

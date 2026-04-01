@@ -15,6 +15,9 @@ vi.mock('@aros/db', () => ({
     reviewTask: {
       create: vi.fn(),
     },
+    aiUsageLog: {
+      create: vi.fn(),
+    },
   },
   SuggestionType: {
     CODE: 'CODE',

@@ -58,6 +58,7 @@ export {
   getActiveFindingGovernanceDecision,
   recomputeFindingTruthStatus,
   recordAutomatedFindingObservation,
+  recordFindingEvidence,
   revokeFindingGovernanceDecision,
 } from './finding-control-plane';
 export { getDefaultRemediationRecipe, resolveRemediationRecipe } from './remediation-recipes';
