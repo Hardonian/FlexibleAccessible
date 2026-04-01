@@ -3,12 +3,14 @@ import { AgentOrchestrator } from './orchestrator';
 import { ScannerAgent } from './scanner-agent';
 import { RemediationAgent } from './remediation-agent';
 import { ReporterAgent } from './reporter-agent';
+import { GeminiVisualReviewer } from './visual-reviewer';
 import { prisma } from '@aros/db';
 
 // Mock the individual agents
 vi.mock('./scanner-agent');
 vi.mock('./remediation-agent');
 vi.mock('./reporter-agent');
+vi.mock('./visual-reviewer');
 
 vi.mock('@aros/db', () => ({
   prisma: {
@@ -31,6 +33,7 @@ describe('AgentOrchestrator', () => {
     (orchestrator as any).onEvent = onEvent;
 
     (ScannerAgent.prototype.execute as any).mockResolvedValue({ success: true, output: 'scan-output' });
+    (GeminiVisualReviewer.prototype.execute as any).mockResolvedValue({ success: true, output: 'visual-review-output' });
     (ReporterAgent.prototype.execute as any).mockResolvedValue({ success: true, output: 'report-output' });
     
     // Mock 2 open findings to trigger 2 remediation agent executions
@@ -42,6 +45,7 @@ describe('AgentOrchestrator', () => {
 
     // Assert
     expect(ScannerAgent.prototype.execute).toHaveBeenCalledWith(mockContext);
+    expect(GeminiVisualReviewer.prototype.execute).toHaveBeenCalledWith(mockContext);
     expect(ReporterAgent.prototype.execute).toHaveBeenCalledWith(mockContext);
     
     // Remediation agent should be instantiated and executed for each finding
@@ -49,12 +53,14 @@ describe('AgentOrchestrator', () => {
 
     // Check the structure of the returned composite result
     expect(result.scan.output).toBe('scan-output');
+    expect(result.visualReview.output).toBe('visual-review-output');
     expect(result.report.output).toBe('report-output');
     expect(result.remediation.length).toBe(2);
     expect(result.remediation[0].output).toBe('remediation-output');
 
     // Verify events were emitted bridging the boundaries
     expect(onEvent).toHaveBeenCalledWith({ type: 'step_start', step: 'orchestrator:scan' });
+    expect(onEvent).toHaveBeenCalledWith({ type: 'step_start', step: 'orchestrator:visual_review' });
     expect(onEvent).toHaveBeenCalledWith({ type: 'step_start', step: 'orchestrator:remediation' });
     expect(onEvent).toHaveBeenCalledWith({ type: 'step_start', step: 'orchestrator:report' });
   });

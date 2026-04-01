@@ -12,6 +12,7 @@ export { paginationSchema, buildPaginationMeta } from './pagination';
 export { wcagCriteriaMap, getWcagLevel } from './wcag';
 export { bullmqConnectionOptions, getRedisClient } from './redis-connection';
 export { SCAN_QUEUE_NAME, getSharedScanQueue } from './scan-queue';
+export const VISUAL_REVIEW_QUEUE_NAME = 'visual-review' as const;
 export {
   FINDING_STATUSES,
   OPERATOR_ALLOWED_TRANSITIONS,

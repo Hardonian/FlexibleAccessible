@@ -40,7 +40,7 @@ export class GeminiVisualReviewer extends BaseAgent {
           },
           take: 10 // Cost-disciplined limit per run
         });
-        return findings;
+        return (findings as unknown) as Array<any & { id: string, canonicalFindingId: string, ruleId: string, selector: string }>;
       });
 
       if (candidates.length === 0) {
