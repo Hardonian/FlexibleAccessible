@@ -30,10 +30,29 @@ export async function POST(request: Request) {
       isValid = verifyNetlifySignature(body, headers["x-webhook-signature"]);
     } else if (headers["x-github-event"] === "deployment_status") {
       source = "GITHUB_DEPLOY";
-      isValid = true; // GitHub uses different auth - validated via shared secret in config
-    } else {
+      // GitHub webhooks use HMAC-SHA256 via x-hub-signature-256
+      const githubSig = headers["x-hub-signature-256"];
+      if (githubSig) {
+        isValid = verifyGitHubSignature(body, githubSig);
+      } else {
+        // No signature header – only allow if no GitHub webhook secret is configured
+        // (development fallback; in production GITHUB_WEBHOOK_SECRET should always be set)
+        isValid = !process.env.GITHUB_WEBHOOK_SECRET;
+      }
+    } else if (headers["x-webhook-secret"]) {
+      // Generic custom webhook validated via a shared secret header
       source = "CUSTOM";
-      isValid = true; // Custom webhooks validated via shared secret in body/config
+      const customSecret = process.env.CUSTOM_WEBHOOK_SECRET;
+      isValid =
+        !!customSecret &&
+        timingSafeEqual(
+          Buffer.from(headers["x-webhook-secret"]),
+          Buffer.from(customSecret),
+        );
+    } else {
+      // Unknown source with no recognisable auth header – reject
+      source = "UNKNOWN";
+      isValid = false;
     }
 
     if (!isValid) {
@@ -228,6 +247,23 @@ function verifyNetlifySignature(body: string, signature: string): boolean {
   const hmac = createHmac("sha256", secret).update(body).digest("hex");
   try {
     return timingSafeEqual(Buffer.from(hmac), Buffer.from(signature));
+  } catch {
+    return false;
+  }
+}
+
+function verifyGitHubSignature(body: string, signature: string): boolean {
+  const secret = process.env.GITHUB_WEBHOOK_SECRET;
+  if (!secret) return false;
+
+  // GitHub sends "sha256=<hex-digest>"
+  const expectedPrefix = "sha256=";
+  if (!signature.startsWith(expectedPrefix)) return false;
+
+  const hmac = createHmac("sha256", secret).update(body).digest("hex");
+  const expected = `${expectedPrefix}${hmac}`;
+  try {
+    return timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
   } catch {
     return false;
   }

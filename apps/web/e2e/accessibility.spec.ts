@@ -21,7 +21,9 @@ async function checkAccessibility(
   const headings = await page.locator("h1, h2, h3, h4, h5, h6").all();
   if (headings.length > 0) {
     // First heading should be h1
-    const firstHeading = await headings[0].tagName();
+    const firstHeading = await headings[0].evaluate((el) =>
+      el.tagName.toLowerCase(),
+    );
     expect(firstHeading).toBe("h1");
   }
 }

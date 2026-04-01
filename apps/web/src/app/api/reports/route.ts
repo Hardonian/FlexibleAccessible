@@ -16,8 +16,16 @@ export async function GET(request: Request) {
     const format = searchParams.get("format") ?? "json";
 
     const requestedOrgId = searchParams.get("organizationId");
+
+    if (!requestedOrgId) {
+      return NextResponse.json(
+        { error: "organizationId is required" },
+        { status: 400 },
+      );
+    }
+
     // Use centralized auth guard
-    const ctx = await requireOrgAccess(requestedOrgId || "", "reports:export", {
+    const ctx = await requireOrgAccess(requestedOrgId, "reports:export", {
       requirePaid: true,
     });
 
