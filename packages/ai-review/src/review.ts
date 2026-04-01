@@ -3,8 +3,9 @@ import {
   HarmCategory,
   HarmBlockThreshold,
 } from "@google/generative-ai";
-import { buildVisionPrompt, VISION_ANALYSIS_SCHEMA } from "./prompts.js";
+import { buildVisionPrompt } from "./prompts.js";
 import type { VisionAnalysisOutput, VisionAnalysisInput } from "./types.js";
+import { VISION_ANALYSIS_SCHEMA } from "./criteria.js";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -15,7 +16,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
  * @param error The error that occurred.
  * @returns A `VisionAnalysisOutput` object representing the failure.
  */
-function createErrorResponse(
+export function createErrorResponse(
   input: VisionAnalysisInput,
   error: Error,
 ): VisionAnalysisOutput {
