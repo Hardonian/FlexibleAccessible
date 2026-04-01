@@ -18,9 +18,13 @@ export async function generateReportAction(formData: FormData) {
     redirect("/reports?report_error=no_org");
   }
 
-  await requireOrgAccess(orgRes.organizationId, "reports:export", {
-    requirePaid: true,
-  });
+  try {
+    await requireOrgAccess(orgRes.organizationId, "reports:export", {
+      requirePaid: true,
+    });
+  } catch {
+    redirect("/settings/billing?status=upgrade_required&from=%2Freports");
+  }
 
   const params = new URLSearchParams({
     format,

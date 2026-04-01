@@ -304,29 +304,38 @@ function parseVisionResponse(
   // Normalize and validate criteria
   const criteriaStatus: CriterionStatus[] = (
     parsed.criteria_status as any[]
-  ).map((c) => ({
-    criterion_id: String(c.criterion_id ?? ""),
-    criterion_name: String(c.criterion_name ?? ""),
-    level: String(c.level ?? "AA"),
-    status: ["pass", "fail", "partial", "not_applicable", "uncertain"].includes(
-      c.status,
-    )
-      ? c.status
-      : "uncertain",
-    confidence: Math.max(0, Math.min(1, Number(c.confidence ?? 0.5))),
-    issues: Array.isArray(c.issues)
-      ? c.issues.map((i: any) => ({
-          description: String(i.description ?? ""),
-          severity: ["critical", "serious", "moderate", "minor"].includes(
-            i.severity,
-          )
-            ? i.severity
-            : "moderate",
-          selector: String(i.selector ?? ""),
-          element_description: String(i.element_description ?? ""),
-          suggested_fix: String(i.suggested_fix ?? ""),
-          evidence: String(i.evidence ?? ""),
-        }))
+  ).map((c) => {
+    const rawLevel = String(c.level ?? "AA");
+    const level: "A" | "AA" | "AAA" =
+      rawLevel === "AAA" ? "AAA" : rawLevel === "AA" ? "AA" : "A";
+    return {
+      criterion_id: String(c.criterion_id ?? ""),
+      criterion_name: String(c.criterion_name ?? ""),
+      level,
+      status: ["pass", "fail", "partial", "not_applicable", "uncertain"].includes(
+        c.status,
+      )
+        ? c.status
+        : "uncertain",
+      confidence: Math.max(0, Math.min(1, Number(c.confidence ?? 0.5))),
+      issues: Array.isArray(c.issues)
+        ? c.issues.map((i: any) => ({
+            description: String(i.description ?? ""),
+            severity: ["critical", "serious", "moderate", "minor"].includes(
+              i.severity,
+            )
+              ? i.severity
+              : "moderate",
+            selector: String(i.selector ?? ""),
+            element_description: i.element_description
+              ? String(i.element_description)
+              : undefined,
+            suggested_fix: i.suggested_fix ? String(i.suggested_fix) : undefined,
+            evidence: i.evidence ? String(i.evidence) : undefined,
+          }))
+        : [],
+    };
+  });
       : [],
   }));
 

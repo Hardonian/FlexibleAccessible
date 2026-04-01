@@ -7,6 +7,8 @@ import {
   runOrgScopedQuery,
 } from "@/lib/route-data-boundary";
 import { RouteReliabilityNotice } from "@/components/reliability/route-reliability-notice";
+import { EntitlementWall } from "@/components/monetization/entitlement-wall";
+import { getEntitlementState } from "@/lib/auth-guard";
 import { hasPermission } from "@aros/config";
 
 export const metadata = { title: "Settings - AROS" };
@@ -110,6 +112,41 @@ export default async function SettingsPage() {
   const membership = orgResult.data;
   const org = membership.organization;
   const subscription = org.subscription;
+  const entitlement = getEntitlementState(subscription);
+
+  if (!entitlement.hasPaidAccess) {
+    return (
+      <div className="space-y-6 max-w-4xl">
+        <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
+        <EntitlementWall
+          subscription={subscription}
+          entitlement={entitlement}
+          title="Billing and recovery"
+          description="Billing stays available so you can upgrade or restore service, but the broader private settings workspace stays locked until the organization has an active paid subscription."
+        />
+        <div className="card">
+          <h2 className="text-lg font-semibold text-slate-900 mb-3">
+            Organization
+          </h2>
+          <dl className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <dt className="text-slate-500">Name</dt>
+              <dd className="font-medium text-slate-900">{org.name}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Slug</dt>
+              <dd className="font-mono text-slate-900">{org.slug}</dd>
+            </div>
+          </dl>
+          <div className="mt-4">
+            <Link href="/settings/billing" className="btn-primary">
+              Open billing
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-4xl">
