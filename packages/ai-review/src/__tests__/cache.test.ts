@@ -1,4 +1,12 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+
+vi.mock("@aros/shared", () => ({
+  getRedisClient: vi.fn().mockReturnValue({
+    get: vi.fn().mockResolvedValue(null),
+    set: vi.fn().mockResolvedValue("OK"),
+  }),
+}));
+
 import { generateCacheKey } from "../cache.js";
 
 describe("cache", () => {

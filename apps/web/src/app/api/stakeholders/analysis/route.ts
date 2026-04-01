@@ -1,10 +1,9 @@
 // ─── Comprehensive Analysis API ────────────────────────────────────────
-// GET: Build comprehensive stakeholder analysis
+// GET: Build comprehensive stakeholder analysis - requires org access + paid
 
 import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/session";
-import { prisma } from "@/lib/db";
-import { hasPermission } from "@aros/config";
+import { requireOrgAccess } from "@/lib/auth-guard";
 import {
   buildStakeholderAnalysis,
   generateGapAnalysis,
@@ -14,16 +13,18 @@ export async function GET(request: Request) {
   try {
     const user = await requireSession();
     const { searchParams } = new URL(request.url);
-    const organizationId = searchParams.get("organizationId") || "default";
+    const organizationId = searchParams.get("organizationId");
 
-    if (searchParams.get("organizationId")) {
-      const membership = await prisma.membership.findFirst({
-        where: { userId: user.id, organizationId },
-      });
-      if (!membership || !hasPermission(membership.role, "stakeholders:view")) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-      }
+    if (!organizationId) {
+      return NextResponse.json(
+        { error: "organizationId is required" },
+        { status: 400 },
+      );
     }
+
+    await requireOrgAccess(organizationId, "stakeholders:view", {
+      requirePaid: true,
+    });
 
     const includeGapAnalysis = searchParams.get("includeGaps") === "true";
 

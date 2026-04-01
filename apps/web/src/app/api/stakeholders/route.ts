@@ -1,11 +1,5 @@
-// ─── Stakeholder Registry API ──────────────────────────────────────────
-// GET: List stakeholders with filtering
-// POST: Create new stakeholder
-
 import { NextResponse } from "next/server";
-import { requireSession } from "@/lib/session";
-import { prisma } from "@/lib/db";
-import { hasPermission } from "@aros/config";
+import { requireOrgAccess } from "@/lib/auth-guard";
 import {
   StakeholderRegistry,
   stakeholderCreateSchema,
@@ -15,10 +9,20 @@ const registry = new StakeholderRegistry();
 
 export async function GET(request: Request) {
   try {
-    const user = await requireSession();
     const { searchParams } = new URL(request.url);
+    const organizationId = searchParams.get("organizationId");
 
-    // Parse filter params
+    if (!organizationId) {
+      return NextResponse.json(
+        { error: "organizationId is required" },
+        { status: 400 },
+      );
+    }
+
+    await requireOrgAccess(organizationId, "stakeholders:view", {
+      requirePaid: true,
+    });
+
     const segment = searchParams.get("segment") || undefined;
     const power = searchParams.get("power") || undefined;
     const interest = searchParams.get("interest") || undefined;
@@ -37,22 +41,19 @@ export async function GET(request: Request) {
       | "asc"
       | "desc";
 
-    // Get membership for permission check
-    const organizationId = searchParams.get("organizationId");
-    if (organizationId) {
-      const membership = await prisma.membership.findFirst({
-        where: { userId: user.id, organizationId },
-      });
-      if (!membership || !hasPermission(membership.role, "stakeholders:view")) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-      }
-    }
-
     const result = await registry.list({
-      segment: segment as any,
-      power: power as any,
-      interest: interest as any,
-      engagementStatus: engagementStatus as any,
+      segment: segment as
+        | (typeof import("@aros/stakeholders").STAKEHOLDER_SEGMENTS)[number]
+        | undefined,
+      power: power as
+        | (typeof import("@aros/stakeholders").POWER_LEVELS_SCHEMA)[number]
+        | undefined,
+      interest: interest as
+        | (typeof import("@aros/stakeholders").INTEREST_LEVELS_SCHEMA)[number]
+        | undefined,
+      engagementStatus: engagementStatus as
+        | (typeof import("@aros/stakeholders").ENGAGEMENT_STATUSES)[number]
+        | undefined,
       search,
       page,
       pageSize,
@@ -65,6 +66,12 @@ export async function GET(request: Request) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    if (
+      error instanceof Error &&
+      error.message.includes("do not have access")
+    ) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
     console.error("[api/stakeholders]", error);
     return NextResponse.json(
       { error: "Internal server error" },
@@ -75,25 +82,39 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const user = await requireSession();
     const body = await request.json();
-
-    // Validate input
-    const input = stakeholderCreateSchema.parse(body);
-
-    // Get organization for permission check
     const organizationId = body.organizationId;
-    if (organizationId) {
-      const membership = await prisma.membership.findFirst({
-        where: { userId: user.id, organizationId },
-      });
-      if (
-        !membership ||
-        !hasPermission(membership.role, "stakeholders:manage")
-      ) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-      }
+
+    if (!organizationId) {
+      return NextResponse.json(
+        { error: "organizationId is required" },
+        { status: 400 },
+      );
     }
+
+    await requireOrgAccess(organizationId, "stakeholders:manage", {
+      requirePaid: true,
+    });
+
+    const input = stakeholderCreateSchema.parse({
+      name: body.name,
+      email: body.email,
+      organization: organizationId,
+      role: body.role,
+      segment: body.segment,
+      power: body.power,
+      interest: body.interest,
+      engagementStatus: body.engagementStatus,
+      phone: body.phone,
+      preferredChannel: body.preferredChannel,
+      accessibilityNeeds: body.accessibilityNeeds,
+      notes: body.notes,
+      tags: body.tags,
+      underrepresentedGroups: body.underrepresentedGroups,
+      region: body.region,
+      language: body.language,
+      metadata: body.metadata,
+    });
 
     const stakeholder = await registry.create(input);
 
@@ -101,6 +122,12 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (
+      error instanceof Error &&
+      error.message.includes("do not have access")
+    ) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     console.error("[api/stakeholders POST]", error);
     return NextResponse.json(

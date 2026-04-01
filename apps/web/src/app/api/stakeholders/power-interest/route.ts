@@ -1,35 +1,36 @@
-// ─── Power/Interest Matrix API ─────────────────────────────────────────
-// GET: Matrix summary
-// POST: Create assessment
-
 import { NextResponse } from "next/server";
-import { requireSession } from "@/lib/session";
-import { prisma } from "@/lib/db";
-import { hasPermission } from "@aros/config";
+import { requireOrgAccess } from "@/lib/auth-guard";
 import { PowerInterestMatrix } from "@aros/stakeholders";
 
 const matrix = new PowerInterestMatrix();
 
 export async function GET(request: Request) {
   try {
-    const user = await requireSession();
     const { searchParams } = new URL(request.url);
     const organizationId = searchParams.get("organizationId");
 
-    if (organizationId) {
-      const membership = await prisma.membership.findFirst({
-        where: { userId: user.id, organizationId },
-      });
-      if (!membership || !hasPermission(membership.role, "stakeholders:view")) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-      }
+    if (!organizationId) {
+      return NextResponse.json(
+        { error: "organizationId is required" },
+        { status: 400 },
+      );
     }
+
+    await requireOrgAccess(organizationId, "stakeholders:view", {
+      requirePaid: true,
+    });
 
     const summary = await matrix.getMatrixSummary();
     return NextResponse.json(summary);
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (
+      error instanceof Error &&
+      error.message.includes("do not have access")
+    ) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     console.error("[api/stakeholders/power-interest]", error);
     return NextResponse.json(
@@ -41,21 +42,19 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const user = await requireSession();
     const body = await request.json();
-
     const organizationId = body.organizationId;
-    if (organizationId) {
-      const membership = await prisma.membership.findFirst({
-        where: { userId: user.id, organizationId },
-      });
-      if (
-        !membership ||
-        !hasPermission(membership.role, "stakeholders:manage")
-      ) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-      }
+
+    if (!organizationId) {
+      return NextResponse.json(
+        { error: "organizationId is required" },
+        { status: 400 },
+      );
     }
+
+    await requireOrgAccess(organizationId, "stakeholders:manage", {
+      requirePaid: true,
+    });
 
     const entry = await matrix.createAssessment({
       stakeholderId: body.stakeholderId,
@@ -64,13 +63,19 @@ export async function POST(request: Request) {
       power: body.power,
       interest: body.interest,
       notes: body.notes,
-      assessedBy: user.id,
+      assessedBy: body.userId,
     });
 
     return NextResponse.json(entry, { status: 201 });
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (
+      error instanceof Error &&
+      error.message.includes("do not have access")
+    ) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     console.error("[api/stakeholders/power-interest POST]", error);
     return NextResponse.json(

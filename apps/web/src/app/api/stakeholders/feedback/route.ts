@@ -1,40 +1,41 @@
-// ─── Feedback API ──────────────────────────────────────────────────────
-// GET: List feedback items
-// POST: Create feedback item
-
 import { NextResponse } from "next/server";
-import { requireSession } from "@/lib/session";
-import { prisma } from "@/lib/db";
-import { hasPermission } from "@aros/config";
-import { FeedbackLoopManager } from "@aros/stakeholders";
+import { requireOrgAccess } from "@/lib/auth-guard";
+import {
+  FeedbackLoopManager,
+  FEEDBACK_STATUSES,
+  FEEDBACK_CATEGORIES,
+  type FeedbackStatus,
+  type FeedbackCategory,
+} from "@aros/stakeholders";
 
 const feedbackManager = new FeedbackLoopManager();
 
 export async function GET(request: Request) {
   try {
-    const user = await requireSession();
     const { searchParams } = new URL(request.url);
     const organizationId = searchParams.get("organizationId");
 
-    if (organizationId) {
-      const membership = await prisma.membership.findFirst({
-        where: { userId: user.id, organizationId },
-      });
-      if (!membership || !hasPermission(membership.role, "stakeholders:view")) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-      }
+    if (!organizationId) {
+      return NextResponse.json(
+        { error: "organizationId is required" },
+        { status: 400 },
+      );
     }
 
-    const status = searchParams.get("status") as any;
-    const category = searchParams.get("category") as any;
+    await requireOrgAccess(organizationId, "stakeholders:view", {
+      requirePaid: true,
+    });
+
+    const status = searchParams.get("status") as FeedbackStatus | null;
+    const category = searchParams.get("category") as FeedbackCategory | null;
     const stakeholderId = searchParams.get("stakeholderId");
 
     let items;
     if (stakeholderId) {
       items = await feedbackManager.listByStakeholder(stakeholderId);
-    } else if (status) {
+    } else if (status && FEEDBACK_STATUSES.includes(status)) {
       items = await feedbackManager.listByStatus(status);
-    } else if (category) {
+    } else if (category && FEEDBACK_CATEGORIES.includes(category)) {
       items = await feedbackManager.listByCategory(category);
     } else {
       items = await feedbackManager.exportAll();
@@ -47,6 +48,12 @@ export async function GET(request: Request) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    if (
+      error instanceof Error &&
+      error.message.includes("do not have access")
+    ) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
     console.error("[api/stakeholders/feedback]", error);
     return NextResponse.json(
       { error: "Internal server error" },
@@ -57,8 +64,19 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const user = await requireSession();
     const body = await request.json();
+    const organizationId = body.organizationId;
+
+    if (!organizationId) {
+      return NextResponse.json(
+        { error: "organizationId is required" },
+        { status: 400 },
+      );
+    }
+
+    await requireOrgAccess(organizationId, "stakeholders:manage", {
+      requirePaid: true,
+    });
 
     const item = await feedbackManager.create({
       stakeholderId: body.stakeholderId,
@@ -76,6 +94,12 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (
+      error instanceof Error &&
+      error.message.includes("do not have access")
+    ) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     console.error("[api/stakeholders/feedback POST]", error);
     return NextResponse.json(

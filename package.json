@@ -27,7 +27,6 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.11.1",
     "@playwright/experimental-ct-react": "^1.58.2",
-    "@rollup/rollup-linux-x64-gnu": "^4.60.1",
     "@types/node": "^22.10.0",
     "prettier": "^3.4.0",
     "typescript": "^5.7.0"
