@@ -312,9 +312,13 @@ function parseVisionResponse(
       criterion_id: String(c.criterion_id ?? ""),
       criterion_name: String(c.criterion_name ?? ""),
       level,
-      status: ["pass", "fail", "partial", "not_applicable", "uncertain"].includes(
-        c.status,
-      )
+      status: [
+        "pass",
+        "fail",
+        "partial",
+        "not_applicable",
+        "uncertain",
+      ].includes(c.status)
         ? c.status
         : "uncertain",
       confidence: Math.max(0, Math.min(1, Number(c.confidence ?? 0.5))),
@@ -330,14 +334,14 @@ function parseVisionResponse(
             element_description: i.element_description
               ? String(i.element_description)
               : undefined,
-            suggested_fix: i.suggested_fix ? String(i.suggested_fix) : undefined,
+            suggested_fix: i.suggested_fix
+              ? String(i.suggested_fix)
+              : undefined,
             evidence: i.evidence ? String(i.evidence) : undefined,
           }))
         : [],
     };
   });
-      : [],
-  }));
 
   const overallScore = Number(parsed.overall_score ?? 50);
   const requiresHumanReview = Boolean(parsed.requires_human_review);
