@@ -20,7 +20,9 @@ export async function startSiteScanAction(
   }
 
   try {
-    const ctx = await requireSiteAccess(siteId, 'scan:start');
+    const ctx = await requireSiteAccess(siteId, 'scan:start', {
+      requirePaid: true,
+    });
     const result = await enqueueSiteScan(
       { prisma },
       {
@@ -103,7 +105,9 @@ export async function retryPostCrawlScanKickoffAction(formData: FormData) {
   }
 
   try {
-    const ctx = await requireSiteAccess(siteId, 'scan:start');
+    const ctx = await requireSiteAccess(siteId, 'scan:start', {
+      requirePaid: true,
+    });
     const crawl = await prisma.crawlRun.findFirst({
       where: {
         id: crawlRunId,
@@ -179,4 +183,3 @@ export async function retryPostCrawlScanKickoffAction(formData: FormData) {
 
   redirect(`/sites/${siteId}`);
 }
-

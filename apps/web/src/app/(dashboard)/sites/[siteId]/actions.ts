@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { getCrawlQueue, type CrawlJobData } from "@/lib/queue";
+import { getEntitlementState } from "@/lib/auth-guard";
 
 export async function startCrawlAction(formData: FormData) {
   const user = await requireSession();
@@ -34,6 +35,11 @@ export async function startCrawlAction(formData: FormData) {
   const membership = site.workspace.organization.memberships[0];
   if (!membership) {
     redirect(`/sites?error=forbidden`);
+  }
+
+  const entitlement = getEntitlementState(site.workspace.organization.subscription);
+  if (!entitlement.hasPaidAccess) {
+    redirect(`/settings/billing?status=upgrade_required&from=${encodeURIComponent(`/sites/${siteId}`)}`);
   }
 
   // Check for running crawl

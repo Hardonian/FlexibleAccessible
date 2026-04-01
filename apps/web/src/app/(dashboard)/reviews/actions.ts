@@ -6,6 +6,7 @@ import { requireSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import type { ReviewStatus } from "@aros/db";
 import { hasPermission } from "@aros/config";
+import { getEntitlementState } from "@/lib/auth-guard";
 
 const VALID_REVIEW_STATUSES: ReviewStatus[] = [
   "PENDING",
@@ -83,6 +84,28 @@ export async function updateReviewAction(formData: FormData) {
 
   if (!hasPermission(membership.role, "review:manage")) {
     redirect("/reviews?review_error=forbidden");
+  }
+
+  const entitlement = getEntitlementState(
+    await prisma.subscription.findUnique({
+      where: { organizationId: orgId },
+      select: {
+        plan: true,
+        status: true,
+        maxDomains: true,
+        maxPagesPerCrawl: true,
+        maxScansPerMonth: true,
+        maxSeats: true,
+        aiEnabled: true,
+        aiTokenLimit: true,
+        currentPeriodEnd: true,
+        cancelAtPeriodEnd: true,
+      },
+    }),
+  );
+
+  if (!entitlement.hasPaidAccess) {
+    redirect("/settings/billing?status=upgrade_required&from=%2Freviews");
   }
 
   try {

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/session";
 import { resolveDashboardOrgMembership } from "@/lib/route-data-boundary";
 import { getRoutePlatformTruth } from "@/lib/platform-truth-cache";
+import { requireOrgAccess } from "@/lib/auth-guard";
 
 export async function generateReportAction(formData: FormData) {
   const user = await requireSession();
@@ -16,6 +17,10 @@ export async function generateReportAction(formData: FormData) {
   if (orgRes.kind !== "ok") {
     redirect("/reports?report_error=no_org");
   }
+
+  await requireOrgAccess(orgRes.organizationId, "reports:export", {
+    requirePaid: true,
+  });
 
   const params = new URLSearchParams({
     format,

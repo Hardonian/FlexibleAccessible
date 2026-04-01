@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { hasPermission } from "@aros/config";
+import { getEntitlementState } from "@/lib/auth-guard";
 
 async function requireSuggestionAccess(suggestionId: string, userId: string) {
   if (!suggestionId) {
@@ -75,17 +76,47 @@ async function requireSuggestionAccess(suggestionId: string, userId: string) {
     redirect("/remediation?error=forbidden");
   }
 
-  return { suggestion, role: orgMembership.role };
+  const organizationId =
+    suggestion.finding?.site.workspace.organizationId ??
+    suggestion.cluster?.site.workspace.organizationId;
+
+  const subscription = organizationId
+    ? await prisma.subscription.findUnique({
+        where: { organizationId },
+        select: {
+          plan: true,
+          status: true,
+          maxDomains: true,
+          maxPagesPerCrawl: true,
+          maxScansPerMonth: true,
+          maxSeats: true,
+          aiEnabled: true,
+          aiTokenLimit: true,
+          currentPeriodEnd: true,
+          cancelAtPeriodEnd: true,
+        },
+      })
+    : null;
+
+  return {
+    suggestion,
+    role: orgMembership.role,
+    entitlement: getEntitlementState(subscription),
+  };
 }
 
 export async function approveSuggestionAction(formData: FormData) {
   const user = await requireSession();
   const suggestionId = (formData.get("suggestionId") as string) || "";
 
-  const { suggestion, role } = await requireSuggestionAccess(
+  const { suggestion, role, entitlement } = await requireSuggestionAccess(
     suggestionId,
     user.id,
   );
+
+  if (!entitlement.hasPaidAccess) {
+    redirect("/settings/billing?status=upgrade_required&from=%2Fremediation");
+  }
 
   if (!hasPermission(role, "suggestions:approve")) {
     redirect(`/remediation/${suggestionId}?error=forbidden`);
@@ -121,10 +152,14 @@ export async function rejectSuggestionAction(formData: FormData) {
   const user = await requireSession();
   const suggestionId = (formData.get("suggestionId") as string) || "";
 
-  const { suggestion, role } = await requireSuggestionAccess(
+  const { suggestion, role, entitlement } = await requireSuggestionAccess(
     suggestionId,
     user.id,
   );
+
+  if (!entitlement.hasPaidAccess) {
+    redirect("/settings/billing?status=upgrade_required&from=%2Fremediation");
+  }
 
   if (!hasPermission(role, "suggestions:approve")) {
     redirect(`/remediation/${suggestionId}?error=forbidden`);
@@ -156,10 +191,14 @@ export async function exportSnippetAction(formData: FormData) {
   const user = await requireSession();
   const suggestionId = (formData.get("suggestionId") as string) || "";
 
-  const { suggestion, role } = await requireSuggestionAccess(
+  const { suggestion, role, entitlement } = await requireSuggestionAccess(
     suggestionId,
     user.id,
   );
+
+  if (!entitlement.hasPaidAccess) {
+    redirect("/settings/billing?status=upgrade_required&from=%2Fremediation");
+  }
 
   if (!hasPermission(role, "suggestions:export")) {
     redirect(`/remediation/${suggestionId}?error=forbidden`);

@@ -16,7 +16,9 @@ export async function updateAutoScanAfterCrawlAction(
   }
 
   try {
-    const ctx = await requireSiteAccess(siteId, 'site:manage');
+    const ctx = await requireSiteAccess(siteId, 'site:manage', {
+      requirePaid: true,
+    });
     const enabled = formData.get('autoScanAfterCrawl') === 'on';
 
     await prisma.crawlConfig.update({

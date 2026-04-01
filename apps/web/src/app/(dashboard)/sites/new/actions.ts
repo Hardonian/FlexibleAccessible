@@ -2,10 +2,12 @@
 
 import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/session";
+import { ApiError } from "@aros/shared";
 import { prisma } from "@/lib/db";
 import { getCrawlQueue, type CrawlJobData } from "@/lib/queue";
 import { resolveDashboardOrgMembership } from "@/lib/route-data-boundary";
 import { getRoutePlatformTruth } from "@/lib/platform-truth-cache";
+import { requireOrgAccess } from "@/lib/auth-guard";
 
 interface AddSiteState {
   error: string | null;
@@ -43,6 +45,17 @@ export async function addSiteAction(
 
   if (orgRes.kind !== "ok") {
     return { error: "No organization found. Please contact support." };
+  }
+
+  try {
+    await requireOrgAccess(orgRes.organizationId, "site:create", {
+      requirePaid: true,
+    });
+  } catch (error) {
+    if (error instanceof ApiError && error.code === "SUBSCRIPTION_REQUIRED") {
+      return { error: "Upgrade to a paid plan to add and scan private sites." };
+    }
+    throw error;
   }
 
   const membership = await prisma.membership.findUnique({
