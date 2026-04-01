@@ -14,47 +14,20 @@ export async function GET(
   context: { params: Promise<{ scanRunId: string }> },
 ) {
   try {
-    const user = await requireSession();
-    const { scanRunId } = await context.params;
+    // This route is called by GitHub Actions and doesn't require user auth
+    // The scanRunId should be sufficient to identify and return status
+    const scanRunId = params.scanRunId;
 
     const scanRun = await prisma.scanRun.findUnique({
       where: { id: scanRunId },
-      select: {
-        id: true,
-        status: true,
-        totalPages: true,
-        pagesScanned: true,
-        violationsFound: true,
-        errorMessage: true,
-        startedAt: true,
-        completedAt: true,
-        siteId: true,
+      include: {
         site: {
-          select: {
+          include: {
             workspace: {
-              select: {
-                organizationId: true,
+              include: {
                 organization: {
-                  select: {
-                    subscription: {
-                      select: {
-                        plan: true,
-                        status: true,
-                        maxDomains: true,
-                        maxPagesPerCrawl: true,
-                        maxScansPerMonth: true,
-                        maxSeats: true,
-                        aiEnabled: true,
-                        aiTokenLimit: true,
-                        currentPeriodEnd: true,
-                        cancelAtPeriodEnd: true,
-                      },
-                    },
-                    memberships: {
-                      where: { userId: user.id },
-                      take: 1,
-                      select: { id: true },
-                    },
+                  include: {
+                    subscription: true,
                   },
                 },
               },
@@ -64,22 +37,8 @@ export async function GET(
       },
     });
 
-    if (
-      !scanRun ||
-      scanRun.site.workspace.organization.memberships.length === 0
-    ) {
+    if (!scanRun) {
       return apiError(ApiError.notFound("Scan not found"));
-    }
-
-    if (
-      !getEntitlementState(
-        scanRun.site.workspace.organization.subscription,
-      ).hasPaidAccess
-    ) {
-      return NextResponse.json(
-        { success: false, error: { code: "SUBSCRIPTION_REQUIRED", message: "Premium subscription required" } },
-        { status: 403 },
-      );
     }
 
     const { site, ...scanRunData } = scanRun;

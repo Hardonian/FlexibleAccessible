@@ -16,10 +16,22 @@ export const metadata = { title: "Settings - AROS" };
 export default async function SettingsPage() {
   const user = await requireSession();
   const platformTruth = await getRoutePlatformTruth();
-  const canViewSystem = await prisma.membership
-    .findMany({ where: { userId: user.id }, select: { role: true } })
-    .then((rows) => rows.some((m) => hasPermission(m.role, "org:system:view")))
-    .catch(() => false);
+  let canViewSystem = false;
+  try {
+    const memberships = await prisma.membership.findMany({
+      where: { userId: user.id },
+      select: { role: true },
+    });
+    canViewSystem = memberships.some((m) =>
+      hasPermission(m.role, "org:system:view"),
+    );
+  } catch (error) {
+    // Log error but don't fail the page
+    console.warn("[settings page] Failed to check system permissions", {
+      userId: user.id,
+      error,
+    });
+  }
 
   const orgRes = await resolveDashboardOrgMembership(user.id, platformTruth);
 
@@ -233,15 +245,21 @@ export default async function SettingsPage() {
               </span>
             </div>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="p-4 rounded-xl border border-slate-100 bg-white shadow-sm">
-              <p className="text-xs font-medium text-slate-500 uppercase">Tokens Consumed</p>
+              <p className="text-xs font-medium text-slate-500 uppercase">
+                Tokens Consumed
+              </p>
               <p className="mt-1 text-2xl font-bold text-slate-900">
-                {((await prisma.aiUsageLog.aggregate({
-                  where: { organizationId: org.id },
-                  _sum: { totalTokens: true }
-                }))._sum.totalTokens ?? 0).toLocaleString()}
+                {(
+                  (
+                    await prisma.aiUsageLog.aggregate({
+                      where: { organizationId: org.id },
+                      _sum: { totalTokens: true },
+                    })
+                  )._sum.totalTokens ?? 0
+                ).toLocaleString()}
               </p>
               <div className="mt-2 text-[10px] text-slate-400">
                 Limit: {subscription.aiTokenLimit.toLocaleString()}
@@ -249,10 +267,12 @@ export default async function SettingsPage() {
             </div>
 
             <div className="p-4 rounded-xl border border-slate-100 bg-white shadow-sm">
-              <p className="text-xs font-medium text-slate-500 uppercase">AI Suggestions</p>
+              <p className="text-xs font-medium text-slate-500 uppercase">
+                AI Suggestions
+              </p>
               <p className="mt-1 text-2xl font-bold text-slate-900">
                 {await prisma.aiUsageLog.count({
-                  where: { organizationId: org.id }
+                  where: { organizationId: org.id },
                 })}
               </p>
               <div className="mt-2 text-[10px] text-slate-400">
@@ -261,12 +281,19 @@ export default async function SettingsPage() {
             </div>
 
             <div className="p-4 rounded-xl border border-brand-100 bg-brand-50/50 shadow-sm border-dashed">
-              <p className="text-xs font-medium text-brand-700 uppercase">Value Generated</p>
+              <p className="text-xs font-medium text-brand-700 uppercase">
+                Value Generated
+              </p>
               <p className="mt-1 text-2xl font-bold text-brand-900">
-                ${((await prisma.aiUsageLog.aggregate({
-                  where: { organizationId: org.id },
-                  _sum: { cost: true }
-                }))._sum.cost ?? 0).toFixed(2)}
+                $
+                {(
+                  (
+                    await prisma.aiUsageLog.aggregate({
+                      where: { organizationId: org.id },
+                      _sum: { cost: true },
+                    })
+                  )._sum.cost ?? 0
+                ).toFixed(2)}
               </p>
               <div className="mt-2 text-[10px] text-brand-600">
                 Cost reduction estimate

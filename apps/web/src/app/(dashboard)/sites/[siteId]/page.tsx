@@ -2,20 +2,18 @@ import { notFound } from "next/navigation";
 import { requireSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { hasPermission } from "@aros/config";
-import { startCrawlAction } from "./actions";
+import { getRoutePlatformTruth } from "@/lib/platform-truth-cache";
+import {
+  resolveDashboardOrgMembership,
+  runOrgScopedQuery,
+} from "@/lib/route-data-boundary";
+import { RouteReliabilityNotice } from "@/components/reliability/route-reliability-notice";
+import { StatusBadge, EmptyState } from "@aros/ui";
 import { ScanNowButton } from "./scan-now-button";
-import { scanSiteInitialState } from "./scan-action-state";
-import {
-  retryPostCrawlScanKickoffAction,
-  startSiteScanAction,
-} from "./scan-actions";
-import {
-  getPostCrawlScanEnqueueFailureHint,
-  getSiteVerificationStatus,
-  postCrawlKickoffOperatorSummary,
-  scanEnqueueFailureOperatorHint,
-} from "@/lib/sites/verification-status";
+import { ScanActionState } from "./scan-action-state";
+import { getAutomationEvidenceFreshnessDescriptor } from "@/lib/findings/evidence-freshness";
 
 export async function generateMetadata({
   params,
@@ -23,6 +21,8 @@ export async function generateMetadata({
   params: Promise<{ siteId: string }>;
 }) {
   const { siteId } = await params;
+  // Note: metadata generation cannot use user context, so we keep basic query
+  // The page component will enforce org scoping
   const site = await prisma.site.findUnique({
     where: { id: siteId },
     select: { name: true },
@@ -37,31 +37,113 @@ export default async function SiteDetailPage({
 }) {
   const { siteId } = await params;
   const user = await requireSession();
+  const platformTruth = await getRoutePlatformTruth();
 
-  const site = await prisma.site.findUnique({
-    where: { id: siteId },
-    include: {
-      workspace: {
-        include: {
-          organization: {
-            include: {
-              memberships: { where: { userId: user.id }, take: 1 },
-            },
+  const orgRes = await resolveDashboardOrgMembership(user.id, platformTruth);
+
+  if (orgRes.kind === "platform_blocked") {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-slate-900">Site Details</h1>
+        <RouteReliabilityNotice
+          variant="error"
+          title="Site details require a working database"
+        >
+          <p>
+            Site information cannot be loaded until core data services are
+            healthy.
+          </p>
+        </RouteReliabilityNotice>
+      </div>
+    );
+  }
+
+  if (orgRes.kind === "error") {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-slate-900">Site Details</h1>
+        <RouteReliabilityNotice
+          variant="error"
+          title="Could not verify organization"
+        >
+          <p>{orgRes.message}</p>
+        </RouteReliabilityNotice>
+      </div>
+    );
+  }
+
+  if (orgRes.kind === "none") {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-slate-900">Site Details</h1>
+        <RouteReliabilityNotice
+          variant="info"
+          title="No organization membership"
+        >
+          <p>You need an organization to view sites.</p>
+        </RouteReliabilityNotice>
+      </div>
+    );
+  }
+
+  const siteResult = await runOrgScopedQuery(orgRes, async (organizationId) => {
+    return prisma.site.findFirst({
+      where: { id: siteId, workspace: { organizationId } },
+      include: {
+        crawlConfig: true,
+        workspace: { select: { id: true } },
+        scans: {
+          take: 10,
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            status: true,
+            createdAt: true,
+            completedAt: true,
+            pagesFound: true,
+            violationsFound: true,
+            criticalCount: true,
+            seriousCount: true,
+            moderateCount: true,
+            minorCount: true,
+          },
+        },
+        findings: {
+          take: 20,
+          orderBy: { occurrenceCount: "desc" },
+          include: {
+            _count: { select: { occurrences: true } },
+            cluster: { select: { id: true, name: true } },
           },
         },
       },
-      crawlConfig: true,
-      _count: { select: { pages: true, crawlRuns: true, scanRuns: true } },
-    },
+    });
   });
 
-  if (!site || site.workspace.organization.memberships.length === 0) {
+  if (!siteResult.ok || !siteResult.data) {
     notFound();
   }
 
-  const membership = site.workspace.organization.memberships[0];
-  const canStartScan = hasPermission(membership.role, "scan:start");
-  const canManageSite = hasPermission(membership.role, "site:manage");
+  const site = siteResult.data;
+  if (!hasPermission(orgRes.role, "site:view")) {
+    notFound();
+  }
+
+  const subscription = await prisma.subscription.findUnique({
+    where: { organizationId: orgRes.organizationId },
+    select: {
+      plan: true,
+      status: true,
+      maxDomains: true,
+      maxPagesPerCrawl: true,
+      maxScansPerMonth: true,
+      maxSeats: true,
+      aiEnabled: true,
+      aiTokenLimit: true,
+      currentPeriodEnd: true,
+      cancelAtPeriodEnd: true,
+    },
+  });
 
   const [
     recentCrawls,

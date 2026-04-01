@@ -95,7 +95,17 @@ export async function POST(request: Request) {
         isActive: true,
         site: { domain },
       },
-      include: { site: true },
+      include: {
+        site: {
+          include: {
+            workspace: {
+              include: {
+                organization: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!deployWebhook) {
@@ -104,6 +114,21 @@ export async function POST(request: Request) {
         message: "No matching deploy webhook configured",
         domain,
       });
+    }
+
+    // Additional security: Verify organization has active subscription for webhooks
+    const subscription = deployWebhook.site.workspace.organization.subscription;
+    if (!subscription || subscription.status !== "ACTIVE") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "SUBSCRIPTION_INACTIVE",
+            message: "Deploy webhooks require active subscription",
+          },
+        },
+        { status: 403 },
+      );
     }
 
     // Check branch filter
