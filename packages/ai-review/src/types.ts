@@ -98,6 +98,16 @@ export interface ReviewFinding {
   source: "vision" | "keyboard" | "screen_reader";
 }
 
+export type ConfidenceAction =
+  | "auto_create"
+  | "review_required"
+  | "evidence_only"
+  | "discard";
+
+export interface ScoredFinding extends ReviewFinding {
+  action: ConfidenceAction;
+}
+
 export const CONFIDENCE_AUTO_CREATE = 0.85;
 export const CONFIDENCE_REVIEW_REQUIRED = 0.7;
 export const CONFIDENCE_MINIMUM = 0.5;
