@@ -13,6 +13,17 @@ import { StatusBadge, EmptyState } from "@aros/ui";
 import { ScanNowButton } from "./scan-now-button";
 import { ScanSiteActionState, scanSiteInitialState } from "./scan-action-state";
 import { getAutomationEvidenceFreshnessDescriptor } from "@/lib/findings/evidence-freshness";
+import {
+  scanEnqueueFailureOperatorHint,
+  postCrawlKickoffOperatorSummary,
+  getSiteVerificationStatus,
+  getPostCrawlScanEnqueueFailureHint,
+} from "@/lib/sites/verification-status";
+import { startCrawlAction } from "./actions";
+import {
+  startSiteScanAction,
+  retryPostCrawlScanKickoffAction,
+} from "./scan-actions";
 
 export async function generateMetadata({
   params,
@@ -116,6 +127,13 @@ export default async function SiteDetailPage({
             cluster: { select: { id: true, name: true } },
           },
         },
+        _count: {
+          select: {
+            pages: true,
+            crawlRuns: true,
+            scanRuns: true,
+          },
+        },
       },
     });
   });
@@ -128,6 +146,9 @@ export default async function SiteDetailPage({
   if (!hasPermission(orgRes.role, "site:view")) {
     notFound();
   }
+
+  const canStartScan = hasPermission(orgRes.role, "scan:start");
+  const canManageSite = hasPermission(orgRes.role, "site:manage");
 
   const subscription = await prisma.subscription.findUnique({
     where: { organizationId: orgRes.organizationId },
