@@ -36,7 +36,7 @@
 
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:pointer-events-none disabled:opacity-50;
+    @apply inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:pointer-events-none disabled:opacity-50 min-h-[44px];
   }
   .btn-primary {
     @apply btn bg-brand-600 text-white hover:bg-brand-700 focus-visible:outline-brand-600;
@@ -49,6 +49,9 @@
   }
   .btn-ghost {
     @apply btn text-slate-600 hover:bg-slate-100 hover:text-slate-900;
+  }
+  .btn-sm {
+    @apply btn px-3 py-1.5 text-xs min-h-[36px];
   }
 
   .input {
@@ -66,8 +69,16 @@
   .badge {
     @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
-  .badge-critical { @apply badge bg-red-100 text-red-800; }
-  .badge-serious { @apply badge bg-orange-100 text-orange-800; }
-  .badge-moderate { @apply badge bg-amber-100 text-amber-800; }
-  .badge-minor { @apply badge bg-green-100 text-green-800; }
+  .badge-critical {
+    @apply badge bg-red-100 text-red-800;
+  }
+  .badge-serious {
+    @apply badge bg-orange-100 text-orange-800;
+  }
+  .badge-moderate {
+    @apply badge bg-amber-100 text-amber-800;
+  }
+  .badge-minor {
+    @apply badge bg-green-100 text-green-800;
+  }
 }

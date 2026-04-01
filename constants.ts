@@ -15,6 +15,9 @@ export const AI_FAILURE_MESSAGE = "The AI model failed to generate a review.";
 export const AI_BLOCK_MESSAGE_PREFIX = "AI response was blocked. Reason: ";
 export const UNKNOWN_REASON = "Unknown";
 
+// Prompt construction
+export const A11Y_TREE_MAX_SUMMARY_LENGTH = 2000;
+
 // Retry prompt values
 export const RETRY_MODEL_VERSION = "retry";
 export const RETRY_PROMPT_MESSAGE =

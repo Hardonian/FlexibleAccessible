@@ -1,17 +1,28 @@
-'use client';
+"use client";
 
-import { useActionState } from 'react';
-import { loginAction } from './actions';
+import { useActionState } from "react";
+import { loginAction } from "./actions";
 
 export function LoginForm() {
-  const [state, formAction, pending] = useActionState(loginAction, { error: null });
+  const [state, formAction, pending] = useActionState(loginAction, {
+    error: null,
+  });
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form action={formAction} className="space-y-4" aria-busy={pending}>
       {state.error && (
-        <div role="alert" className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+        <div
+          role="alert"
+          className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700"
+        >
           {state.error}
         </div>
+      )}
+
+      {pending && (
+        <p className="sr-only" role="status" aria-live="polite">
+          Signing in, please wait...
+        </p>
       )}
 
       <div>
@@ -26,6 +37,7 @@ export function LoginForm() {
           autoComplete="email"
           className="input"
           placeholder="you@example.com"
+          disabled={pending}
         />
       </div>
 
@@ -41,11 +53,16 @@ export function LoginForm() {
           autoComplete="current-password"
           className="input"
           placeholder="Enter your password"
+          disabled={pending}
         />
       </div>
 
-      <button type="submit" disabled={pending} className="btn-primary w-full">
-        {pending ? 'Signing in...' : 'Sign in'}
+      <button
+        type="submit"
+        disabled={pending}
+        className="btn-primary w-full min-h-[44px]"
+      >
+        {pending ? "Signing in..." : "Sign in"}
       </button>
     </form>
   );

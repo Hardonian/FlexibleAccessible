@@ -1,6 +1,7 @@
 import { requireSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
+import { AlertTriangle, Inbox } from "lucide-react";
 import type { Prisma, Severity, FindingStatus, EvidenceSource } from "@aros/db";
 import { getRoutePlatformTruth } from "@/lib/platform-truth-cache";
 import {
@@ -9,7 +10,7 @@ import {
 } from "@/lib/route-data-boundary";
 import { RouteReliabilityNotice } from "@/components/reliability/route-reliability-notice";
 import { hasPermission } from "@aros/config";
-import { StatusBadge } from "@aros/ui";
+import { StatusBadge, EmptyState } from "@aros/ui";
 import { getAutomationEvidenceFreshnessDescriptor } from "@/lib/findings/evidence-freshness";
 
 type FindingListRow = Prisma.CanonicalFindingGetPayload<{
@@ -270,16 +271,29 @@ export default async function FindingsPage({
       </div>
 
       {findings.length === 0 ? (
-        <div className="card text-center py-12 space-y-2">
-          <p className="text-slate-700 font-medium">
-            No findings match your filters
-          </p>
-          <p className="text-sm text-slate-500">
-            {total === 0
-              ? "There are no findings for this organization yet, or none match the selected filters."
-              : "Try clearing filters or changing the page."}
-          </p>
-        </div>
+        <EmptyState
+          icon={total === 0 ? Inbox : AlertTriangle}
+          title={
+            total === 0 ? "No findings yet" : "No findings match your filters"
+          }
+          description={
+            total === 0
+              ? "There are no findings for this organization yet. Add a site and run a scan to get started."
+              : "Try clearing filters or changing the page."
+          }
+          action={
+            total > 0 ? (
+              <Link href="/findings" className="btn-secondary text-sm">
+                Clear filters
+              </Link>
+            ) : (
+              <Link href="/sites/new" className="btn-primary">
+                Add Your First Site
+              </Link>
+            )
+          }
+          className="card"
+        />
       ) : (
         <div className="space-y-3">
           {findings.map((finding) => (
@@ -301,20 +315,23 @@ export default async function FindingsPage({
           {page > 1 && (
             <Link
               href={`/findings?page=${page - 1}&severity=${params.severity ?? ""}&status=${params.status ?? ""}&evidenceSource=${params.evidenceSource ?? ""}`}
-              className="btn-secondary text-sm"
-              aria-label={`Previous page, page ${page - 1} of ${totalPages}`}
+              className="btn-secondary text-sm min-h-[44px]"
+              aria-label={`Go to previous page, currently on page ${page} of ${totalPages}`}
             >
               Previous
             </Link>
           )}
-          <span className="text-sm text-slate-500" aria-current="page">
+          <span
+            className="text-sm text-slate-500 px-3 py-2"
+            aria-current="page"
+          >
             Page {page} of {totalPages}
           </span>
           {page < totalPages && (
             <Link
               href={`/findings?page=${page + 1}&severity=${params.severity ?? ""}&status=${params.status ?? ""}&evidenceSource=${params.evidenceSource ?? ""}`}
-              className="btn-secondary text-sm"
-              aria-label={`Next page, page ${page + 1} of ${totalPages}`}
+              className="btn-secondary text-sm min-h-[44px]"
+              aria-label={`Go to next page, currently on page ${page} of ${totalPages}`}
             >
               Next
             </Link>
@@ -347,68 +364,72 @@ function FindingRow({
       : "bg-slate-100 text-slate-700 border border-slate-200";
 
   return (
-    <Link
-      href={`/findings/${finding.id}`}
-      className="card hover:shadow-md transition-shadow block"
-    >
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1">
-            <span
-              className={`badge ${
-                finding.impact === "CRITICAL"
-                  ? "badge-critical"
-                  : finding.impact === "SERIOUS"
-                    ? "badge-serious"
-                    : finding.impact === "MODERATE"
-                      ? "badge-moderate"
-                      : "badge-minor"
-              }`}
-            >
-              {finding.impact.toLowerCase()}
-            </span>
-            <span className="text-xs text-slate-400">{finding.ruleId}</span>
-            <span className="badge bg-white text-slate-700 border border-slate-200">
-              {finding.truthStatus.toLowerCase().replaceAll("_", " ")}
-            </span>
-            <EvidenceSourceBadge source={finding.evidenceSource} />
-            {freshness && freshness.freshness !== "current" && (
+    <article className="card hover:shadow-md transition-shadow">
+      <Link
+        href={`/findings/${finding.id}`}
+        className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 rounded-lg"
+      >
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <div className="flex flex-wrap items-center gap-2 mb-1">
               <span
-                className={`badge ${freshnessToneClass}`}
-                title={freshness.detail}
-                aria-label={`Automation evidence freshness: ${freshness.badgeLabel}. ${freshness.detail}`}
+                className={`badge ${
+                  finding.impact === "CRITICAL"
+                    ? "badge-critical"
+                    : finding.impact === "SERIOUS"
+                      ? "badge-serious"
+                      : finding.impact === "MODERATE"
+                        ? "badge-moderate"
+                        : "badge-minor"
+                }`}
               >
-                {freshness.badgeLabel}
+                {finding.impact.toLowerCase()}
               </span>
-            )}
-            {finding.cluster && (
-              <span className="badge bg-purple-100 text-purple-800">
-                {finding.cluster.name}
+              <span className="text-xs text-slate-400">{finding.ruleId}</span>
+              <span className="badge bg-white text-slate-700 border border-slate-200">
+                {finding.truthStatus.toLowerCase().replaceAll("_", " ")}
               </span>
-            )}
-          </div>
-          <p className="text-sm font-medium text-slate-900">
-            {finding.description}
-          </p>
-          <div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
-            <span>{finding._count.occurrences} occurrences</span>
-            <span>Site: {finding.site.name}</span>
-            <span>First seen: {finding.firstSeenAt.toLocaleDateString()}</span>
-            {finding.lastVerifiedAt && (
+              <EvidenceSourceBadge source={finding.evidenceSource} />
+              {freshness && freshness.freshness !== "current" && (
+                <span
+                  className={`badge ${freshnessToneClass}`}
+                  title={freshness.detail}
+                  aria-label={`Automation evidence freshness: ${freshness.badgeLabel}. ${freshness.detail}`}
+                >
+                  {freshness.badgeLabel}
+                </span>
+              )}
+              {finding.cluster && (
+                <span className="badge bg-purple-100 text-purple-800">
+                  {finding.cluster.name}
+                </span>
+              )}
+            </div>
+            <p className="text-sm font-medium text-slate-900">
+              {finding.description}
+            </p>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-slate-500">
+              <span>{finding._count.occurrences} occurrences</span>
+              <span>Site: {finding.site.name}</span>
               <span>
-                Last verified: {finding.lastVerifiedAt.toLocaleDateString()}
+                First seen: {finding.firstSeenAt.toLocaleDateString()}
               </span>
-            )}
-            {finding.wcagTags.length > 0 && (
-              <span>WCAG: {finding.wcagTags.join(", ")}</span>
-            )}
+              {finding.lastVerifiedAt && (
+                <span>
+                  Last verified: {finding.lastVerifiedAt.toLocaleDateString()}
+                </span>
+              )}
+              {finding.wcagTags.length > 0 && (
+                <span>WCAG: {finding.wcagTags.join(", ")}</span>
+              )}
+            </div>
+          </div>
+          <div className="ml-4 shrink-0">
+            <StatusBadge status={finding.status} />
           </div>
         </div>
-        <div>
-          <StatusBadge status={finding.status} />
-        </div>
-      </div>
-    </Link>
+      </Link>
+    </article>
   );
 }
 
@@ -424,6 +445,7 @@ function EvidenceSourceBadge({ source }: { source: string }) {
   return (
     <span
       className="text-xs rounded px-1.5 py-0.5 bg-slate-100 text-slate-600"
+      aria-label={`Source: ${label}`}
       title="How this finding entered the system"
     >
       {label}

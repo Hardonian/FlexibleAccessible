@@ -1,18 +1,29 @@
-'use client';
+"use client";
 
-import { useActionState } from 'react';
-import Link from 'next/link';
-import { addSiteAction } from './actions';
+import { useActionState } from "react";
+import Link from "next/link";
+import { addSiteAction } from "./actions";
 
 export function AddSiteForm() {
-  const [state, formAction, pending] = useActionState(addSiteAction, { error: null });
+  const [state, formAction, pending] = useActionState(addSiteAction, {
+    error: null,
+  });
 
   return (
-    <form action={formAction} className="space-y-5">
+    <form action={formAction} className="space-y-5" aria-busy={pending}>
       {state.error && (
-        <div role="alert" className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+        <div
+          role="alert"
+          className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700"
+        >
           {state.error}
         </div>
+      )}
+
+      {pending && (
+        <p className="sr-only" role="status" aria-live="polite">
+          Adding site and starting crawl, please wait...
+        </p>
       )}
 
       <div>
@@ -26,6 +37,7 @@ export function AddSiteForm() {
           required
           className="input"
           placeholder="My Website"
+          disabled={pending}
         />
       </div>
 
@@ -40,13 +52,17 @@ export function AddSiteForm() {
           required
           className="input"
           placeholder="https://example.com"
+          disabled={pending}
         />
-        <p className="mt-1 text-xs text-slate-400">Include the protocol (https://)</p>
+        <p className="mt-1 text-xs text-slate-400">
+          Include the protocol (https://)
+        </p>
       </div>
 
       <div>
         <label htmlFor="sitemapUrl" className="label">
-          Sitemap URL <span className="text-slate-400 font-normal">(optional)</span>
+          Sitemap URL{" "}
+          <span className="text-slate-400 font-normal">(optional)</span>
         </label>
         <input
           id="sitemapUrl"
@@ -54,6 +70,7 @@ export function AddSiteForm() {
           type="url"
           className="input"
           placeholder="https://example.com/sitemap.xml"
+          disabled={pending}
         />
       </div>
 
@@ -61,7 +78,12 @@ export function AddSiteForm() {
         <label htmlFor="environment" className="label">
           Environment
         </label>
-        <select id="environment" name="environment" className="input">
+        <select
+          id="environment"
+          name="environment"
+          className="input"
+          disabled={pending}
+        >
           <option value="PRODUCTION">Production</option>
           <option value="STAGING">Staging</option>
           <option value="DEVELOPMENT">Development</option>
@@ -81,6 +103,7 @@ export function AddSiteForm() {
             max={20}
             defaultValue={5}
             className="input"
+            disabled={pending}
           />
         </div>
         <div>
@@ -95,11 +118,12 @@ export function AddSiteForm() {
             max={10000}
             defaultValue={100}
             className="input"
+            disabled={pending}
           />
         </div>
       </div>
 
-      <fieldset className="space-y-3">
+      <fieldset className="space-y-3" disabled={pending}>
         <legend className="label">Options</legend>
         <label className="flex items-center gap-2 text-sm text-slate-700">
           <input
@@ -107,6 +131,7 @@ export function AddSiteForm() {
             name="respectRobots"
             defaultChecked
             className="rounded border-slate-300"
+            disabled={pending}
           />
           Respect robots.txt
         </label>
@@ -116,17 +141,22 @@ export function AddSiteForm() {
             name="renderJavaScript"
             defaultChecked
             className="rounded border-slate-300"
+            disabled={pending}
           />
           Render JavaScript (recommended for SPAs)
         </label>
       </fieldset>
 
       <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
-        <Link href="/sites" className="btn-secondary">
+        <Link href="/sites" className="btn-secondary min-h-[44px]">
           Cancel
         </Link>
-        <button type="submit" disabled={pending} className="btn-primary">
-          {pending ? 'Adding site...' : 'Add Site & Start Crawl'}
+        <button
+          type="submit"
+          disabled={pending}
+          className="btn-primary min-h-[44px]"
+        >
+          {pending ? "Adding site..." : "Add Site & Start Crawl"}
         </button>
       </div>
     </form>

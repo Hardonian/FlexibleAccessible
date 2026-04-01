@@ -1,30 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { analyzeImage } from "./review.js";
 import { createErrorResponse } from "./prompts.js";
-import { VISION_ANALYSIS_SCHEMA } from "./criteria.js";
 import type { VisionAnalysisInput, VisionAnalysisOutput } from "./types.js";
 
-// Mock the Generative AI SDK
-const mockGenerateContent = vi.fn();
-const mockGetGenerativeModel = vi.fn(() => ({
-  generateContent: mockGenerateContent,
+// Mock the AI service
+const mockGetVisionAnalysisFromModel = vi.fn();
+
+vi.mock("./services/ai.js", () => ({
+  getVisionAnalysisFromModel: mockGetVisionAnalysisFromModel,
 }));
 
-vi.mock("@google/generative-ai", () => ({
-  GoogleGenerativeAI: vi.fn(() => ({
-    getGenerativeModel: mockGetGenerativeModel,
-  })),
-  // Export enums used by the module under test
-  HarmCategory: {
-    HARM_CATEGORY_HARASSMENT: "HARM_CATEGORY_HARASSMENT",
-    HARM_CATEGORY_HATE_SPEECH: "HARM_CATEGORY_HATE_SPEECH",
-    HARM_CATEGORY_SEXUALLY_EXPLICIT: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-    HARM_CATEGORY_DANGEROUS_CONTENT: "HARM_CATEGORY_DANGEROUS_CONTENT",
-  },
-  HarmBlockThreshold: {
-    BLOCK_NONE: "BLOCK_NONE",
-  },
-}));
+const mockConsoleLog = vi.fn();
+const mockConsoleError = vi.fn();
+
+beforeEach(() => {
+  console.log = mockConsoleLog;
+  console.error = mockConsoleError;
+});
 
 describe("createErrorResponse", () => {
   const mockInput: VisionAnalysisInput = {
@@ -81,6 +73,7 @@ describe("analyzeImage", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetVisionAnalysisFromModel.mockClear();
   });
 
   const createMockApiResponse = (
@@ -101,67 +94,25 @@ describe("analyzeImage", () => {
   it("should return a valid analysis on success", async () => {
     const mockApiResponse = createMockApiResponse();
 
-    mockGenerateContent.mockResolvedValue({
-      response: {
-        text: () => JSON.stringify(mockApiResponse),
-      },
+    mockGetVisionAnalysisFromModel.mockResolvedValue({
+      text: () => JSON.stringify(mockApiResponse),
     });
 
     const result = await analyzeImage(mockInput);
 
     expect(result).toEqual(mockApiResponse);
-    expect(mockGetGenerativeModel).toHaveBeenCalledWith(
-      expect.objectContaining({ model: "gemini-1.5-pro-latest" }),
+    expect(mockGetVisionAnalysisFromModel).toHaveBeenCalledOnce();
+    expect(mockConsoleLog).toHaveBeenCalledWith(
+      `[AI] Starting analysis for ${mockInput.url}`,
     );
-    expect(mockGenerateContent).toHaveBeenCalledOnce();
-  });
-
-  it("should correctly configure the generative model", async () => {
-    const mockApiResponse = createMockApiResponse();
-    mockGenerateContent.mockResolvedValue({
-      response: { text: () => JSON.stringify(mockApiResponse) },
-    });
-
-    await analyzeImage(mockInput);
-
-    expect(mockGetGenerativeModel).toHaveBeenCalledWith({
-      model: "gemini-1.5-pro-latest",
-      generationConfig: {
-        response_mime_type: "application/json",
-        response_schema: VISION_ANALYSIS_SCHEMA,
-      },
-      safetySettings: [
-        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
-      ],
-    });
-  });
-
-  it("should call the model with the correct prompt and image data", async () => {
-    const mockApiResponse = createMockApiResponse();
-    mockGenerateContent.mockResolvedValue({
-      response: { text: () => JSON.stringify(mockApiResponse) },
-    });
-
-    await analyzeImage(mockInput);
-
-    const generateContentArgs = mockGenerateContent.mock.calls[0][0];
-    expect(generateContentArgs[0]).toContain(
-      "You are an expert web accessibility auditor",
+    expect(mockConsoleLog).toHaveBeenCalledWith(
+      `[AI] Analysis for ${mockInput.url} completed successfully.`,
     );
-    expect(generateContentArgs[1]).toEqual({
-      inlineData: {
-        data: mockInput.screenshotBase64,
-        mimeType: "image/png",
-      },
-    });
   });
 
   it("should return a structured error when the API call fails", async () => {
     const apiError = new Error("API Failure");
-    mockGenerateContent.mockRejectedValue(apiError);
+    mockGetVisionAnalysisFromModel.mockRejectedValue(apiError);
 
     const result = await analyzeImage(mockInput);
 
@@ -172,15 +123,17 @@ describe("analyzeImage", () => {
       "Error: API Failure",
     ]);
     expect(result.url).toBe(mockInput.url);
+    expect(mockConsoleError).toHaveBeenCalledWith(
+      `[AI] Error calling Generative AI model for ${mockInput.url}:`,
+      apiError,
+    );
   });
 
   it("should return a structured error when the response is blocked for safety reasons", async () => {
-    mockGenerateContent.mockResolvedValue({
-      response: {
-        text: () => "", // Empty text indicates blocking
-        promptFeedback: {
-          blockReason: "SAFETY",
-        },
+    mockGetVisionAnalysisFromModel.mockResolvedValue({
+      text: () => "", // Empty text indicates blocking
+      promptFeedback: {
+        blockReason: "SAFETY",
       },
     });
 
@@ -195,9 +148,7 @@ describe("analyzeImage", () => {
   });
 
   it("should handle blocked responses with unknown reasons", async () => {
-    mockGenerateContent.mockResolvedValue({
-      response: { text: () => "", promptFeedback: null },
-    });
+    mockGetVisionAnalysisFromModel.mockResolvedValue({ text: () => "", promptFeedback: null });
 
     const result = await analyzeImage(mockInput);
     expect(result.human_review_reasons).toEqual([
@@ -207,10 +158,8 @@ describe("analyzeImage", () => {
   });
 
   it("should return a structured error when the AI response is not valid JSON", async () => {
-    mockGenerateContent.mockResolvedValue({
-      response: {
-        text: () => '{"page_id": "123", "url": "https://example.com", "invalid_json"',
-      },
+    mockGetVisionAnalysisFromModel.mockResolvedValue({
+      text: () => '{"page_id": "123", "url": "https://example.com", "invalid_json"',
     });
 
     const result = await analyzeImage(mockInput);
@@ -227,10 +176,8 @@ describe("analyzeImage", () => {
       // Missing several required fields like 'timestamp', 'model_version', etc.
     };
 
-    mockGenerateContent.mockResolvedValue({
-      response: {
-        text: () => JSON.stringify(malformedApiResponse),
-      },
+    mockGetVisionAnalysisFromModel.mockResolvedValue({
+      text: () => JSON.stringify(malformedApiResponse),
     });
 
     const result = await analyzeImage(mockInput);

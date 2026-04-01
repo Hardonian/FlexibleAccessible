@@ -1,6 +1,7 @@
 import { requireSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
+import { Globe } from "lucide-react";
 import { getRoutePlatformTruth } from "@/lib/platform-truth-cache";
 import {
   resolveDashboardOrgMembership,
@@ -8,6 +9,7 @@ import {
 } from "@/lib/route-data-boundary";
 import { RouteReliabilityNotice } from "@/components/reliability/route-reliability-notice";
 import { hasPermission } from "@aros/config";
+import { EmptyState } from "@aros/ui";
 
 export const metadata = { title: "Dashboard - AROS" };
 
@@ -203,7 +205,10 @@ export default async function DashboardPage() {
         />
       </div>
 
-      <div className="card h-48 flex items-center justify-center bg-slate-50 border-dashed border-2 border-slate-200" data-test-id="dynamic-chart">
+      <div
+        className="card h-48 flex items-center justify-center bg-slate-50 border-dashed border-2 border-slate-200"
+        data-test-id="dynamic-chart"
+      >
         <p className="text-slate-400 italic">Trend analytics pending...</p>
       </div>
 
@@ -229,18 +234,18 @@ export default async function DashboardPage() {
           Recent Crawls
         </h2>
         {recentCrawls.length === 0 ? (
-          <p className="text-slate-500 text-sm">
-            No crawls yet.{" "}
-            <Link
-              href="/sites/new"
-              className="text-brand-600 hover:text-brand-700"
-            >
-              Add a site
-            </Link>{" "}
-            to get started.
-          </p>
+          <EmptyState
+            icon={Globe}
+            title="No crawls yet"
+            description="Add a site to get started with accessibility scanning."
+            action={
+              <Link href="/sites/new" className="btn-primary">
+                Add a Site
+              </Link>
+            }
+          />
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto -mx-6 px-6">
             <table className="w-full text-sm">
               <caption className="sr-only">Recent crawl runs</caption>
               <thead>
@@ -273,17 +278,20 @@ export default async function DashboardPage() {
               </thead>
               <tbody>
                 {recentCrawls.map((crawl) => (
-                  <tr key={crawl.id} className="border-b border-slate-100">
-                    <td className="py-2 font-medium text-slate-900">
+                  <tr
+                    key={crawl.id}
+                    className="border-b border-slate-100 hover:bg-slate-50"
+                  >
+                    <td className="py-3 font-medium text-slate-900">
                       {crawl.site.name}
                     </td>
-                    <td className="py-2">
+                    <td className="py-3">
                       <CrawlStatusBadge status={crawl.status} />
                     </td>
-                    <td className="py-2 text-right text-slate-600">
+                    <td className="py-3 text-right text-slate-600">
                       {crawl.pagesCrawled}/{crawl.pagesFound}
                     </td>
-                    <td className="py-2 text-right text-slate-500">
+                    <td className="py-3 text-right text-slate-500">
                       <time dateTime={crawl.createdAt.toISOString()}>
                         {crawl.createdAt.toLocaleDateString()}
                       </time>
@@ -309,10 +317,16 @@ function StatCard({
   href: string;
 }) {
   return (
-    <Link href={href as any} className="card hover:shadow-md transition-shadow group">
+    <Link
+      href={href as any}
+      className="card hover:shadow-md transition-shadow group block focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 rounded-xl"
+    >
       <p className="text-sm text-slate-500">{label}</p>
       <p className="mt-1 text-3xl font-bold text-slate-900 group-hover:text-brand-600 transition-colors">
         {value.toLocaleString()}
+      </p>
+      <p className="mt-2 text-xs text-brand-600 opacity-0 group-hover:opacity-100 transition-opacity">
+        View details
       </p>
     </Link>
   );

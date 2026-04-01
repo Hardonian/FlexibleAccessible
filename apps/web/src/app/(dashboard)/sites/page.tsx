@@ -1,6 +1,7 @@
 import { requireSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
+import { Globe } from "lucide-react";
 import { getRoutePlatformTruth } from "@/lib/platform-truth-cache";
 import {
   resolveDashboardOrgMembership,
@@ -8,6 +9,7 @@ import {
 } from "@/lib/route-data-boundary";
 import { RouteReliabilityNotice } from "@/components/reliability/route-reliability-notice";
 import { hasPermission } from "@aros/config";
+import { EmptyState } from "@aros/ui";
 
 export const metadata = { title: "Sites - AROS" };
 
@@ -113,15 +115,17 @@ export default async function SitesPage() {
       </div>
 
       {sites.length === 0 ? (
-        <div className="card text-center py-12">
-          <h3 className="text-lg font-medium text-slate-900">No sites yet</h3>
-          <p className="text-slate-500 mt-2">
-            Add your first website to start scanning for accessibility issues.
-          </p>
-          <Link href="/sites/new" className="btn-primary mt-4 inline-flex">
-            Add Your First Site
-          </Link>
-        </div>
+        <EmptyState
+          icon={Globe}
+          title="No sites yet"
+          description="Add your first website to start scanning for accessibility issues."
+          action={
+            <Link href="/sites/new" className="btn-primary">
+              Add Your First Site
+            </Link>
+          }
+          className="card"
+        />
       ) : (
         <div className="grid gap-4">
           {sites.map((site) => (

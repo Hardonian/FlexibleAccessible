@@ -1,17 +1,28 @@
-'use client';
+"use client";
 
-import { useActionState } from 'react';
-import { signupAction } from './actions';
+import { useActionState } from "react";
+import { signupAction } from "./actions";
 
 export function SignupForm() {
-  const [state, formAction, pending] = useActionState(signupAction, { error: null });
+  const [state, formAction, pending] = useActionState(signupAction, {
+    error: null,
+  });
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form action={formAction} className="space-y-4" aria-busy={pending}>
       {state.error && (
-        <div role="alert" className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+        <div
+          role="alert"
+          className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700"
+        >
           {state.error}
         </div>
+      )}
+
+      {pending && (
+        <p className="sr-only" role="status" aria-live="polite">
+          Creating your account, please wait...
+        </p>
       )}
 
       <div>
@@ -26,6 +37,7 @@ export function SignupForm() {
           autoComplete="name"
           className="input"
           placeholder="Jane Smith"
+          disabled={pending}
         />
       </div>
 
@@ -41,6 +53,7 @@ export function SignupForm() {
           autoComplete="email"
           className="input"
           placeholder="you@example.com"
+          disabled={pending}
         />
       </div>
 
@@ -57,6 +70,7 @@ export function SignupForm() {
           autoComplete="new-password"
           className="input"
           placeholder="At least 8 characters"
+          disabled={pending}
         />
       </div>
 
@@ -71,11 +85,16 @@ export function SignupForm() {
           required
           className="input"
           placeholder="Acme Inc."
+          disabled={pending}
         />
       </div>
 
-      <button type="submit" disabled={pending} className="btn-primary w-full">
-        {pending ? 'Creating account...' : 'Create account'}
+      <button
+        type="submit"
+        disabled={pending}
+        className="btn-primary w-full min-h-[44px]"
+      >
+        {pending ? "Creating account..." : "Create account"}
       </button>
 
       <p className="text-xs text-slate-400 text-center">
