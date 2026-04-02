@@ -28,6 +28,7 @@ export async function startSiteScanAction(
       {
         siteId: ctx.siteId,
         organizationId: ctx.organizationId,
+        monthlyScanLimit: ctx.subscription?.maxScansPerMonth,
         crawlRunId: null,
         trigger: 'operator',
         userId: ctx.user.id,
@@ -75,6 +76,14 @@ export async function startSiteScanAction(
         status: 'queue_unavailable',
         message:
           'Verification queue is unavailable; nothing was queued. Check Redis and workers, then try again.',
+        variant: 'error',
+      };
+    }
+
+    if (result.kind === 'plan_limit_reached') {
+      return {
+        status: 'error',
+        message: `Monthly scan limit reached (${result.usedThisMonth}/${result.monthlyScanLimit}). Upgrade to continue running private verification scans this month.`,
         variant: 'error',
       };
     }
@@ -139,6 +148,7 @@ export async function retryPostCrawlScanKickoffAction(formData: FormData) {
       {
         siteId: ctx.siteId,
         organizationId: ctx.organizationId,
+        monthlyScanLimit: ctx.subscription?.maxScansPerMonth,
         crawlRunId,
         trigger: 'operator',
         userId: ctx.user.id,

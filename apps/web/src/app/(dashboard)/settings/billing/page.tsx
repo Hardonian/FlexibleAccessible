@@ -132,7 +132,21 @@ export default async function BillingPage({ searchParams }: PageProps) {
   const billingResult = await runOrgScopedQuery(
     orgRes,
     async (organizationId) => {
-      const [membership, customer] = await Promise.all([
+      const periodStart = new Date();
+      periodStart.setUTCDate(1);
+      periodStart.setUTCHours(0, 0, 0, 0);
+      const periodEnd = new Date(
+        Date.UTC(
+          periodStart.getUTCFullYear(),
+          periodStart.getUTCMonth() + 1,
+          1,
+          0,
+          0,
+          0,
+          0,
+        ),
+      );
+      const [membership, customer, scansUsedThisMonth] = await Promise.all([
         prisma.membership.findUnique({
           where: {
             userId_organizationId: {
@@ -151,11 +165,23 @@ export default async function BillingPage({ searchParams }: PageProps) {
         prisma.billingCustomer.findUnique({
           where: { organizationId },
         }),
+        prisma.scanRun.count({
+          where: {
+            site: {
+              workspace: { organizationId },
+            },
+            createdAt: {
+              gte: periodStart,
+              lt: periodEnd,
+            },
+          },
+        }),
       ]);
 
       return {
         membership,
         customer,
+        scansUsedThisMonth,
       };
     },
   );
@@ -185,6 +211,13 @@ export default async function BillingPage({ searchParams }: PageProps) {
   const stripeReady = isStripeBillingConfigured();
   const canManageBilling = hasPermission(membership.role, "org:billing");
   const plans = getBillingPlanCards();
+  const scansUsedThisMonth = billingResult.data.scansUsedThisMonth;
+  const scanLimit = subscription?.maxScansPerMonth ?? 3;
+  const scansRemaining = Math.max(scanLimit - scansUsedThisMonth, 0);
+  const usagePercent = Math.min(
+    100,
+    Math.round((scansUsedThisMonth / Math.max(scanLimit, 1)) * 100),
+  );
 
   return (
     <div className="space-y-8 max-w-6xl">
@@ -303,6 +336,35 @@ export default async function BillingPage({ searchParams }: PageProps) {
                 This subscription is set to cancel at period end.
               </p>
             )}
+          </div>
+
+          <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-medium text-slate-900">
+                Verification scan usage
+              </p>
+              <p className="text-xs text-slate-600">
+                {scansUsedThisMonth}/{scanLimit} this month
+              </p>
+            </div>
+            <div
+              className="mt-2 h-2 rounded-full bg-slate-200"
+              role="progressbar"
+              aria-label="Monthly verification scan usage"
+              aria-valuemin={0}
+              aria-valuemax={scanLimit}
+              aria-valuenow={Math.min(scansUsedThisMonth, scanLimit)}
+            >
+              <div
+                className="h-2 rounded-full bg-brand-600"
+                style={{ width: `${usagePercent}%` }}
+              />
+            </div>
+            <p className="mt-2 text-xs text-slate-600">
+              {scansRemaining > 0
+                ? `${scansRemaining} scans remaining in this billing month.`
+                : "You have reached this month’s scan limit. Upgrade to keep running private verification scans."}
+            </p>
           </div>
         </div>
 

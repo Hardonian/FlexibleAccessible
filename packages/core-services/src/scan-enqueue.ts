@@ -10,6 +10,7 @@ export type ScanEnqueueTrigger = 'crawl.completed' | 'operator' | 'api';
 export interface EnqueueSiteScanParams {
   siteId: string;
   organizationId: string;
+  monthlyScanLimit?: number | null;
   /** When set, used for idempotency against repeated crawl-completion signals. */
   crawlRunId?: string | null;
   trigger: ScanEnqueueTrigger;
@@ -48,6 +49,14 @@ export type EnqueueSiteScanResult =
     }
   | {
       ok: false;
+      kind: 'plan_limit_reached';
+      usedThisMonth: number;
+      monthlyScanLimit: number;
+      periodStart: Date;
+      periodEnd: Date;
+    }
+  | {
+      ok: false;
       kind: 'internal_error';
       message: string;
     };
@@ -71,7 +80,7 @@ export async function enqueueSiteScan(
   params: EnqueueSiteScanParams
 ): Promise<EnqueueSiteScanResult> {
   const { prisma } = deps;
-  const { siteId, organizationId, crawlRunId, trigger, userId } = params;
+  const { siteId, organizationId, crawlRunId, trigger, userId, monthlyScanLimit } = params;
 
   try {
     const site = await prisma.site.findFirst({
@@ -88,6 +97,29 @@ export async function enqueueSiteScan(
     const pageCount = await prisma.page.count({ where: { siteId } });
     if (pageCount === 0) {
       return { ok: false, kind: 'invalid_target', reason: 'no_pages' };
+    }
+
+    if (monthlyScanLimit && monthlyScanLimit > 0) {
+      const now = new Date();
+      const periodStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+      const periodEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+      const usedThisMonth = await prisma.scanRun.count({
+        where: {
+          site: { workspace: { organizationId } },
+          createdAt: { gte: periodStart, lt: periodEnd },
+        },
+      });
+
+      if (usedThisMonth >= monthlyScanLimit) {
+        return {
+          ok: false,
+          kind: 'plan_limit_reached',
+          usedThisMonth,
+          monthlyScanLimit,
+          periodStart,
+          periodEnd,
+        };
+      }
     }
 
     if (crawlRunId) {

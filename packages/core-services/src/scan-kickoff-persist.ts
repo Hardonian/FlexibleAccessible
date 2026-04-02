@@ -61,6 +61,19 @@ export async function persistPostCrawlScanKickoffAfterEnqueue(
     return;
   }
 
+  if (result.kind === 'plan_limit_reached') {
+    await prisma.crawlRun.update({
+      where: { id: crawlRunId },
+      data: {
+        postCrawlScanKickoffStatus: 'NOT_REQUESTED',
+        postCrawlScanKickoffDetail: `Monthly scan limit reached (${result.usedThisMonth}/${result.monthlyScanLimit}) for current billing period.`,
+        postCrawlScanKickoffReasonCode: null,
+        postCrawlScanKickoffScanRunId: null,
+      },
+    });
+    return;
+  }
+
   await prisma.crawlRun.update({
     where: { id: crawlRunId },
     data: {

@@ -6,7 +6,7 @@ function mockPrisma(overrides: Record<string, unknown> = {}) {
   return {
     site: { findFirst: vi.fn() },
     page: { count: vi.fn() },
-    scanRun: { findFirst: vi.fn(), create: vi.fn(), update: vi.fn() },
+    scanRun: { findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), count: vi.fn() },
     auditLog: { create: vi.fn() },
     ...overrides,
   } as unknown as PrismaClient;
@@ -23,6 +23,7 @@ describe('enqueueSiteScan', () => {
     const prisma = mockPrisma();
     vi.mocked(prisma.site.findFirst).mockResolvedValue({ id: 's1' } as never);
     vi.mocked(prisma.page.count).mockResolvedValue(2 as never);
+    vi.mocked(prisma.scanRun.count).mockResolvedValue(0 as never);
     vi.mocked(prisma.scanRun.findFirst).mockResolvedValue(null);
     vi.mocked(prisma.scanRun.create).mockResolvedValue({ id: 'sr1' } as never);
     vi.mocked(prisma.auditLog.create).mockResolvedValue({} as never);
@@ -75,6 +76,7 @@ describe('enqueueSiteScan', () => {
     const prisma = mockPrisma();
     vi.mocked(prisma.site.findFirst).mockResolvedValue({ id: 's1' } as never);
     vi.mocked(prisma.page.count).mockResolvedValue(1 as never);
+    vi.mocked(prisma.scanRun.count).mockResolvedValue(0 as never);
     vi.mocked(prisma.scanRun.findFirst).mockResolvedValue({ id: 'prev' } as never);
 
     const result = await enqueueSiteScan(
@@ -94,6 +96,7 @@ describe('enqueueSiteScan', () => {
     const prisma = mockPrisma();
     vi.mocked(prisma.site.findFirst).mockResolvedValue({ id: 's1' } as never);
     vi.mocked(prisma.page.count).mockResolvedValue(1 as never);
+    vi.mocked(prisma.scanRun.count).mockResolvedValue(0 as never);
     vi.mocked(prisma.scanRun.findFirst).mockResolvedValue({ id: 'active', status: 'PENDING' } as never);
 
     const result = await enqueueSiteScan(
@@ -115,6 +118,7 @@ describe('enqueueSiteScan', () => {
     const prisma = mockPrisma();
     vi.mocked(prisma.site.findFirst).mockResolvedValue({ id: 's1' } as never);
     vi.mocked(prisma.page.count).mockResolvedValue(1 as never);
+    vi.mocked(prisma.scanRun.count).mockResolvedValue(0 as never);
     vi.mocked(prisma.scanRun.findFirst).mockResolvedValue(null);
     vi.mocked(prisma.scanRun.create).mockResolvedValue({ id: 'sr-fail' } as never);
     const update = vi.fn().mockResolvedValue({} as never);
@@ -146,6 +150,7 @@ describe('enqueueSiteScan', () => {
     const prisma = mockPrisma();
     vi.mocked(prisma.site.findFirst).mockResolvedValue({ id: 's1' } as never);
     vi.mocked(prisma.page.count).mockResolvedValue(1 as never);
+    vi.mocked(prisma.scanRun.count).mockResolvedValue(0 as never);
     vi.mocked(prisma.scanRun.findFirst)
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(null);
@@ -159,5 +164,24 @@ describe('enqueueSiteScan', () => {
 
     expect(result).toMatchObject({ ok: true, kind: 'queued', scanRunId: 'sr-new' });
     expect(add).toHaveBeenCalled();
+  });
+
+  it('returns plan_limit_reached when monthly scan limit is exhausted', async () => {
+    const prisma = mockPrisma();
+    vi.mocked(prisma.site.findFirst).mockResolvedValue({ id: 's1' } as never);
+    vi.mocked(prisma.page.count).mockResolvedValue(1 as never);
+    vi.mocked(prisma.scanRun.count).mockResolvedValue(3 as never);
+
+    const result = await enqueueSiteScan(
+      { prisma, queue: { add: vi.fn(), close: vi.fn() } },
+      { siteId: 's1', organizationId: 'o1', trigger: 'operator', monthlyScanLimit: 3 }
+    );
+
+    expect(result.ok).toBe(false);
+    expect(result).toMatchObject({
+      kind: 'plan_limit_reached',
+      usedThisMonth: 3,
+      monthlyScanLimit: 3,
+    });
   });
 });
