@@ -37,7 +37,20 @@ export async function handleCrawlJob(job: Job<CrawlJobData>) {
   const site = await prisma.site.findUnique({
     where: { id: siteId },
     include: {
-      workspace: { select: { organizationId: true } },
+      workspace: {
+        select: {
+          organizationId: true,
+          organization: {
+            select: {
+              subscription: {
+                select: {
+                  maxScansPerMonth: true,
+                },
+              },
+            },
+          },
+        },
+      },
       crawlConfig: { select: { autoScanAfterCrawl: true } },
     },
   });
@@ -266,6 +279,7 @@ export async function handleCrawlJob(job: Job<CrawlJobData>) {
         {
           siteId,
           organizationId: site.workspace.organizationId,
+          monthlyScanLimit: site.workspace.organization.subscription?.maxScansPerMonth ?? null,
           crawlRunId,
           trigger: 'crawl.completed',
           userId: null,
