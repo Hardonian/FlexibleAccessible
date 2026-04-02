@@ -421,7 +421,9 @@ export default async function SiteDetailPage({
           Recent Crawls
         </h2>
         {recentCrawls.length === 0 ? (
-          <p className="text-sm text-slate-500">No crawls yet.</p>
+          <p className="text-sm text-slate-500" role="status">
+            No crawls yet.
+          </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -516,7 +518,9 @@ export default async function SiteDetailPage({
           Recent Scans
         </h2>
         {recentScans.length === 0 ? (
-          <p className="text-sm text-slate-500">No scans yet.</p>
+          <p className="text-sm text-slate-500" role="status">
+            No scans yet.
+          </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
