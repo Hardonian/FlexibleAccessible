@@ -1,9 +1,7 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
-async function signInAsDemo(
-  page: Parameters<Parameters<typeof test>[number]>[0],
-) {
+async function signInAsDemo(page: Page) {
   await page.goto("/login");
   await page.getByLabel(/email/i).fill("demo@aros.dev");
   await page.getByLabel(/password/i).fill("demo1234");

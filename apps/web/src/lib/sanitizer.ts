@@ -1,5 +1,3 @@
-import sanitizeHtml from 'sanitize-html';
-
 /**
  * Robust Security Sanitizer for AI-generated code snippets.
  * Perfection means Zero-XSS risk in the dashboard.
@@ -8,27 +6,10 @@ import sanitizeHtml from 'sanitize-html';
 export function sanitizeAiCode(codeSnippet: string): string {
   if (!codeSnippet) return "";
 
-  return sanitizeHtml(codeSnippet, {
-    // Allow basic safe HTML elements and common UI/accessibility elements
-    allowedTags: sanitizeHtml.defaults.allowedTags.concat([
-      'img', 'button', 'input', 'label', 'form', 'header', 'nav', 'main', 'footer', 'section', 'article', 'aside', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'svg', 'path'
-    ]),
-    // Allow global ARIA/data attributes, plus specific semantic attributes
-    allowedAttributes: {
-      '*': ['class', 'id', 'aria-*', 'data-*', 'role', 'tabindex', 'title', 'lang', 'dir', 'hidden'],
-      'a': ['href', 'name', 'target'],
-      'img': ['src', 'alt', 'width', 'height'],
-      'button': ['type', 'disabled', 'name', 'value'],
-      'input': ['type', 'name', 'value', 'placeholder', 'disabled', 'checked', 'readonly', 'required', 'aria-describedby', 'aria-labelledby'],
-      'label': ['for'],
-      'svg': ['xmlns', 'viewBox', 'width', 'height', 'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin'],
-      'path': ['d', 'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin']
-    },
-    // Explicitly deny dangerous schemes
-    allowedSchemes: ['http', 'https', 'mailto', 'tel'],
-    allowProtocolRelative: false,
-    enforceHtmlBoundary: true,
-  });
+  // Conservative default: treat user/generated code as text by escaping it.
+  // This avoids runtime dependency on external sanitizers while preserving
+  // deterministic zero-script execution behavior.
+  return escapeHtml(codeSnippet);
 }
 
 /**
