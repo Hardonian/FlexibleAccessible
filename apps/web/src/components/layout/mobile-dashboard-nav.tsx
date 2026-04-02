@@ -45,17 +45,21 @@ export function MobileDashboardNav({
     closeMobileNav();
   }, [pathname, closeMobileNav]);
 
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
   useEffect(() => {
     if (!mobileNavOpen) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") closeMobileNav();
     };
+    const trigger = closeButtonRef.current;
     document.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
     queueMicrotask(() => firstLinkRef.current?.focus());
     return () => {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = "";
+      trigger?.focus();
     };
   }, [mobileNavOpen, closeMobileNav]);
 
@@ -72,7 +76,10 @@ export function MobileDashboardNav({
         type="button"
         className="absolute inset-0 bg-slate-900/50"
         aria-label="Close menu"
-        onClick={closeMobileNav}
+        onClick={() => {
+          closeMobileNav();
+          closeButtonRef.current?.focus();
+        }}
       />
       <aside
         ref={panelRef}
@@ -88,6 +95,7 @@ export function MobileDashboardNav({
           </Link>
           <button
             type="button"
+            ref={closeButtonRef}
             className="btn-ghost min-h-[44px] min-w-[44px] px-3"
             onClick={closeMobileNav}
             aria-label="Close navigation"
@@ -116,7 +124,9 @@ export function MobileDashboardNav({
               className="input text-sm"
               defaultValue={currentOrgId}
               disabled={isPending || orgs.length === 0}
-              {...(isPending ? { 'aria-busy': 'true' } : { 'aria-busy': 'false' })}
+              {...(isPending
+                ? { "aria-busy": "true" }
+                : { "aria-busy": "false" })}
             >
               {orgs.map((org) => (
                 <option key={org.id} value={org.id}>
@@ -129,7 +139,9 @@ export function MobileDashboardNav({
 
         <nav className="flex-1 overflow-y-auto p-3" aria-label="Main">
           <ul className="space-y-1" role="list">
-            {DASHBOARD_NAV_ITEMS.filter((item) => hasPaidAccess || !item.premium).map((item, i) => {
+            {DASHBOARD_NAV_ITEMS.filter(
+              (item) => hasPaidAccess || !item.premium,
+            ).map((item, i) => {
               const isActive =
                 pathname === item.href || pathname.startsWith(item.href + "/");
               const Icon = NAV_ICON_MAP[item.icon];

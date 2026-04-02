@@ -278,7 +278,11 @@ export default async function BillingPage({ searchParams }: PageProps) {
             />
           </div>
 
-          <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+          <div
+            className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600"
+            role="status"
+            aria-label="Billing customer status"
+          >
             <p>
               Current billing customer:{" "}
               <span className="font-medium text-slate-900">
@@ -339,6 +343,7 @@ export default async function BillingPage({ searchParams }: PageProps) {
 
             return (
               <article
+                aria-label={`${plan.name} plan, ${plan.priceMonthly === 0 ? "free" : `$${plan.priceMonthly} per month`}${isCurrent ? ", current plan" : ""}`}
                 key={plan.tier}
                 className={`rounded-3xl border bg-white p-5 shadow-sm ${
                   plan.tier === "PROFESSIONAL"
@@ -413,7 +418,12 @@ function Stat({ label, value }: { label: string; value: string }) {
       <p className="text-xs font-medium uppercase tracking-[0.12em] text-slate-500">
         {label}
       </p>
-      <p className="mt-2 text-lg font-semibold text-slate-950">{value}</p>
+      <p
+        className="mt-2 text-lg font-semibold text-slate-950"
+        aria-label={`${label}: ${value}`}
+      >
+        {value}
+      </p>
     </div>
   );
 }

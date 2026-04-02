@@ -4,11 +4,13 @@ import { z } from "zod";
 import { prisma } from "@aros/db";
 import { generateFix, validateFix } from "@aros/remediation";
 import { logToolCall, checkMcpQuota } from "./billing";
+import { validateApiKey } from "./auth";
 
 export class ArosMcpServer {
   private server: McpServer;
   private orgId: string = "";
   private apiKeyId: string = "";
+  private boundOrgId: string | null = null;
 
   constructor() {
     this.server = new McpServer({
@@ -16,6 +18,22 @@ export class ArosMcpServer {
       version: "0.1.0",
     });
     this.registerTools();
+  }
+
+  async authenticate(apiKey: string): Promise<boolean> {
+    const record = await validateApiKey(apiKey);
+    if (!record) return false;
+    this.boundOrgId = record.organizationId;
+    this.orgId = record.organizationId;
+    this.apiKeyId = record.id;
+    return true;
+  }
+
+  private validateOrgAccess(organizationId: string): string | null {
+    if (this.boundOrgId && organizationId !== this.boundOrgId) {
+      return `Access denied: API key is bound to organization ${this.boundOrgId}`;
+    }
+    return null;
   }
 
   private async preflight(
@@ -57,6 +75,9 @@ export class ArosMcpServer {
         const start = Date.now();
         const organizationId = args.organizationId as string;
         this.orgId = organizationId;
+        const orgError = this.validateOrgAccess(organizationId);
+        if (orgError)
+          return { content: [{ type: "text" as const, text: orgError }] };
         const pre = await this.preflight("sites:read");
         if (!pre.allowed)
           return { content: [{ type: "text" as const, text: pre.error! }] };
@@ -91,6 +112,9 @@ export class ArosMcpServer {
         const organizationId = args.organizationId as string;
         const siteId = args.siteId as string;
         this.orgId = organizationId;
+        const orgError = this.validateOrgAccess(organizationId);
+        if (orgError)
+          return { content: [{ type: "text" as const, text: orgError }] };
 
         const site = await prisma.site.findFirst({
           where: { id: siteId, workspace: { organizationId } },
@@ -124,6 +148,9 @@ export class ArosMcpServer {
         const organizationId = args.organizationId as string;
         const siteId = args.siteId as string;
         this.orgId = organizationId;
+        const orgError = this.validateOrgAccess(organizationId);
+        if (orgError)
+          return { content: [{ type: "text" as const, text: orgError }] };
         const pre = await this.preflight("scan:write");
         if (!pre.allowed)
           return { content: [{ type: "text" as const, text: pre.error! }] };
@@ -167,9 +194,15 @@ export class ArosMcpServer {
         const organizationId = args.organizationId as string;
         const scanRunId = args.scanRunId as string;
         this.orgId = organizationId;
+        const orgError = this.validateOrgAccess(organizationId);
+        if (orgError)
+          return { content: [{ type: "text" as const, text: orgError }] };
 
-        const scanRun = await prisma.scanRun.findUnique({
-          where: { id: scanRunId },
+        const scanRun = await prisma.scanRun.findFirst({
+          where: {
+            id: scanRunId,
+            site: { workspace: { organizationId } },
+          },
           select: {
             id: true,
             status: true,
@@ -204,6 +237,9 @@ export class ArosMcpServer {
         const organizationId = args.organizationId as string;
         const siteId = args.siteId as string;
         this.orgId = organizationId;
+        const orgError = this.validateOrgAccess(organizationId);
+        if (orgError)
+          return { content: [{ type: "text" as const, text: orgError }] };
         const pre = await this.preflight("crawl:write");
         if (!pre.allowed)
           return { content: [{ type: "text" as const, text: pre.error! }] };
@@ -513,9 +549,15 @@ export class ArosMcpServer {
           suggestionId: string;
         };
         this.orgId = organizationId;
+        const orgError = this.validateOrgAccess(organizationId);
+        if (orgError)
+          return { content: [{ type: "text" as const, text: orgError }] };
 
         const suggestion = await prisma.remediationSuggestion.findFirst({
-          where: { id: suggestionId, canonicalFindingId: { not: undefined } },
+          where: {
+            id: suggestionId,
+            finding: { site: { workspace: { organizationId } } },
+          },
         });
         if (!suggestion)
           return {
@@ -555,9 +597,15 @@ export class ArosMcpServer {
           reason?: string;
         };
         this.orgId = organizationId;
+        const orgError = this.validateOrgAccess(organizationId);
+        if (orgError)
+          return { content: [{ type: "text" as const, text: orgError }] };
 
-        const suggestion = await prisma.remediationSuggestion.findUnique({
-          where: { id: suggestionId },
+        const suggestion = await prisma.remediationSuggestion.findFirst({
+          where: {
+            id: suggestionId,
+            finding: { site: { workspace: { organizationId } } },
+          },
         });
         if (!suggestion)
           return {
@@ -693,11 +741,19 @@ export class ArosMcpServer {
           limit: number;
         };
         this.orgId = organizationId;
+        const orgError = this.validateOrgAccess(organizationId);
+        if (orgError)
+          return { content: [{ type: "text" as const, text: orgError }] };
 
         const suggestions = await prisma.remediationSuggestion.findMany({
           where: {
             ...(status ? { status: status as any } : {}),
-            ...(siteId ? { finding: { siteId } } : {}),
+            finding: {
+              site: {
+                workspace: { organizationId },
+                ...(siteId ? { id: siteId } : {}),
+              },
+            },
           },
           select: {
             id: true,
@@ -823,6 +879,9 @@ export class ArosMcpServer {
           siteId: string;
         };
         this.orgId = organizationId;
+        const orgError = this.validateOrgAccess(organizationId);
+        if (orgError)
+          return { content: [{ type: "text" as const, text: orgError }] };
         const pre = await this.preflight("reports:read");
         if (!pre.allowed)
           return { content: [{ type: "text" as const, text: pre.error! }] };
@@ -855,7 +914,7 @@ export class ArosMcpServer {
         };
 
         const scanRuns = await prisma.scanRun.findMany({
-          where: { siteId },
+          where: { siteId, site: { workspace: { organizationId } } },
           orderBy: { createdAt: "desc" as const },
           take: 5,
           select: {
@@ -933,7 +992,7 @@ export class ArosMcpServer {
         };
         this.orgId = organizationId;
 
-        const { getUsageStats } = await import("./billing");
+        const { getUsageStats } = await import("./billing.js");
         const stats = await getUsageStats(organizationId, days);
 
         await this.trackCall("aros.get_usage", 200, start, true);

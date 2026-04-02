@@ -1,8 +1,19 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { requireOrgAccess } from "@/lib/auth-guard";
 import { PowerInterestMatrix } from "@aros/stakeholders";
 
 const matrix = new PowerInterestMatrix();
+
+const powerInterestSchema = z.object({
+  organizationId: z.string().min(1),
+  stakeholderId: z.string().min(1),
+  stakeholderName: z.string().min(1).max(500),
+  segment: z.string().min(1).max(200),
+  power: z.enum(["HIGH", "MEDIUM", "LOW"]),
+  interest: z.enum(["HIGH", "MEDIUM", "LOW"]),
+  notes: z.string().max(5000).optional(),
+});
 
 export async function GET(request: Request) {
   try {
@@ -43,26 +54,39 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const organizationId = body.organizationId;
+    const parsed = powerInterestSchema.safeParse(body);
 
-    if (!organizationId) {
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "organizationId is required" },
+        {
+          error: "Validation failed",
+          details: parsed.error.flatten().fieldErrors,
+        },
         { status: 400 },
       );
     }
+
+    const {
+      organizationId,
+      stakeholderId,
+      stakeholderName,
+      segment,
+      power,
+      interest,
+      notes,
+    } = parsed.data;
 
     const ctx = await requireOrgAccess(organizationId, "stakeholders:manage", {
       requirePaid: true,
     });
 
     const entry = await matrix.createAssessment({
-      stakeholderId: body.stakeholderId,
-      stakeholderName: body.stakeholderName,
-      segment: body.segment,
-      power: body.power,
-      interest: body.interest,
-      notes: body.notes,
+      stakeholderId,
+      stakeholderName,
+      segment,
+      power,
+      interest,
+      notes,
       assessedBy: ctx.user.id,
     });
 

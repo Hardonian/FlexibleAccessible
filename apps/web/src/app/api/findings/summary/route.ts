@@ -40,6 +40,9 @@ export async function GET(request: Request) {
     if (e instanceof Error && e.message === "UNAUTHORIZED") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    if (e instanceof Error && e.message.includes("do not have access")) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
     console.error("[api/findings/summary]", e);
     return NextResponse.json(
       { error: "Failed to build summary" },

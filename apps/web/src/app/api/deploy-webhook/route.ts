@@ -34,21 +34,21 @@ export async function POST(request: Request) {
       const githubSig = headers["x-hub-signature-256"];
       if (githubSig) {
         isValid = verifyGitHubSignature(body, githubSig);
-      } else {
-        // No signature header – only allow if no GitHub webhook secret is configured
-        // (development fallback; in production GITHUB_WEBHOOK_SECRET should always be set)
-        isValid = !process.env.GITHUB_WEBHOOK_SECRET;
       }
+      // No signature header and no secret configured → reject (fail-closed)
     } else if (headers["x-webhook-secret"]) {
       // Generic custom webhook validated via a shared secret header
       source = "CUSTOM";
       const customSecret = process.env.CUSTOM_WEBHOOK_SECRET;
-      isValid =
-        !!customSecret &&
-        timingSafeEqual(
+      if (
+        customSecret &&
+        headers["x-webhook-secret"].length === customSecret.length
+      ) {
+        isValid = timingSafeEqual(
           Buffer.from(headers["x-webhook-secret"]),
           Buffer.from(customSecret),
         );
+      }
     } else {
       // Unknown source with no recognisable auth header – reject
       source = "UNKNOWN";
@@ -85,29 +85,52 @@ export async function POST(request: Request) {
     }
 
     // Extract domain/URL from payload
-    let deployUrl: string;
-    let branch: string;
+    let deployUrl = "";
+    let branch = "main";
+
+    const get = (
+      obj: Record<string, unknown>,
+      key: string,
+    ): string | undefined => {
+      const val = obj[key];
+      return typeof val === "string" ? val : undefined;
+    };
+    const getNested = (
+      obj: Record<string, unknown>,
+      key: string,
+    ): Record<string, unknown> | undefined => {
+      const val = obj[key];
+      return typeof val === "object" && val !== null
+        ? (val as Record<string, unknown>)
+        : undefined;
+    };
 
     switch (source) {
-      case "VERCEL":
-        deployUrl = payload.deployment?.url ?? payload.url ?? "";
-        branch = payload.deployment?.meta?.githubCommitRef ?? "main";
+      case "VERCEL": {
+        const dep = getNested(payload, "deployment");
+        deployUrl = get(dep ?? {}, "url") ?? get(payload, "url") ?? "";
+        const meta = dep ? getNested(dep, "meta") : undefined;
+        branch = meta ? (get(meta, "githubCommitRef") ?? "main") : "main";
         deployUrl = `https://${deployUrl}`;
         break;
+      }
       case "NETLIFY":
-        deployUrl = payload.ssl_url ?? payload.url ?? "";
-        branch = payload.branch ?? "main";
+        deployUrl = get(payload, "ssl_url") ?? get(payload, "url") ?? "";
+        branch = get(payload, "branch") ?? "main";
         break;
-      case "GITHUB_DEPLOY":
+      case "GITHUB_DEPLOY": {
+        const ghDep = getNested(payload, "deployment");
+        const ghPayload = ghDep ? getNested(ghDep, "payload") : undefined;
         deployUrl =
-          payload.deployment?.payload?.web_url ??
-          payload.deployment?.target_url ??
+          (ghPayload ? get(ghPayload, "web_url") : undefined) ??
+          (ghDep ? get(ghDep, "target_url") : undefined) ??
           "";
-        branch = payload.deployment?.ref ?? "main";
+        branch = ghDep ? (get(ghDep, "ref") ?? "main") : "main";
         break;
+      }
       default:
-        deployUrl = payload.url ?? payload.deploy_url ?? "";
-        branch = payload.branch ?? "main";
+        deployUrl = get(payload, "url") ?? get(payload, "deploy_url") ?? "";
+        branch = get(payload, "branch") ?? "main";
     }
 
     if (!deployUrl) {

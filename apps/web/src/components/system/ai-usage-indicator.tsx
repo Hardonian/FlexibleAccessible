@@ -45,9 +45,10 @@ export function AiUsageIndicator(props: AiUsageIndicatorProps) {
           {Math.round(usedTokens / 1000)}k / {Math.round(aiTokenLimit / 1000)}k
         </span>
       </div>
-      
+
       <div className="mt-2">
         <progress
+          aria-label={`AI token usage: ${Math.round(usedTokens / 1000)}k of ${Math.round(aiTokenLimit / 1000)}k tokens used`}
           className="h-1.5 w-full overflow-hidden rounded-full accent-brand-600 transition-all [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-bar]:bg-slate-100 [&::-webkit-progress-value]:bg-brand-600"
           value={Math.min(100, percentage)}
           max={100}
@@ -56,12 +57,18 @@ export function AiUsageIndicator(props: AiUsageIndicatorProps) {
 
       {isOverLimit && (
         <p className="mt-2 text-[10px] font-medium text-red-600">
-          Quota reached. <a href="/settings" className="underline">Upgrade now</a>
+          Quota reached.{" "}
+          <a href="/settings" className="underline">
+            Upgrade now
+          </a>
         </p>
       )}
       {!isOverLimit && isNearLimit && (
         <p className="mt-2 text-[10px] font-medium text-amber-600">
-          Almost out of tokens. <a href="/settings" className="underline">Add more</a>
+          Almost out of tokens.{" "}
+          <a href="/settings" className="underline">
+            Add more
+          </a>
         </p>
       )}
       {!isNearLimit && (
