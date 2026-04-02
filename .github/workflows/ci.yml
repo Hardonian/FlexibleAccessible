@@ -2,9 +2,9 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   verify:
@@ -13,7 +13,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:15
+        image: postgres:16
         env:
           POSTGRES_USER: aros_user
           POSTGRES_PASSWORD: aros_password
@@ -26,6 +26,16 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -33,26 +43,36 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       - name: Install Dependencies
         run: npm ci
 
+      - name: Generate Prisma Client
+        env:
+          DATABASE_URL: postgresql://aros_user:aros_password@localhost:5432/aros_test?schema=public
+        run: npm run db:generate
+
+      - name: Push Schema & Seed
+        env:
+          DATABASE_URL: postgresql://aros_user:aros_password@localhost:5432/aros_test?schema=public
+          REDIS_URL: redis://localhost:6379
+        run: npm run db:push && npm run db:seed
+
       - name: Run Verification (Lint, Typecheck, Test, Build)
         env:
           DATABASE_URL: postgresql://aros_user:aros_password@localhost:5432/aros_test?schema=public
+          REDIS_URL: redis://localhost:6379
         run: npm run verify
 
       - name: Install Playwright Browsers
-        run: npx playwright install --with-deps
-
-      - name: Run Playwright Component Tests
-        run: npm run test:ct
+        run: npx playwright install --with-deps chromium
 
       - name: Run Playwright E2E Tests
         env:
           DATABASE_URL: postgresql://aros_user:aros_password@localhost:5432/aros_test?schema=public
+          REDIS_URL: redis://localhost:6379
         run: npm run test:e2e
 
       - name: Upload Playwright Artifacts

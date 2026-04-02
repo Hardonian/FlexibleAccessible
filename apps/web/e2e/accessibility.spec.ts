@@ -33,7 +33,8 @@ test.describe("Accessibility - Public Pages", () => {
     await page.goto("/");
 
     // Check page has title
-    await expect(page).toHaveTitle(/.*/);
+    const title = await page.title();
+    expect(title.length).toBeGreaterThan(0);
 
     // Check for skip link or main content
     const main = page.locator("main, [role='main']");
@@ -224,9 +225,7 @@ test.describe("Accessibility - Screen Reader Support", () => {
         role === "none";
 
       // Allow decorative images (alt="") but not missing alt
-      expect(
-        alt !== undefined || ariaLabel !== null || role !== null,
-      ).toBeTruthy();
+      expect(hasAccessibleName).toBeTruthy();
     }
   });
 
