@@ -324,6 +324,10 @@ export async function handleCrawlJob(job: Job<CrawlJobData>) {
       } else {
         if (scanResult.kind === 'invalid_target') {
           console.warn(`[Crawl] Post-crawl scan skipped: ${scanResult.reason}`);
+        } else if (scanResult.kind === 'plan_limit_reached') {
+          console.warn(
+            `[Crawl] Post-crawl scan blocked by monthly limit: used=${scanResult.usedThisMonth} limit=${scanResult.monthlyScanLimit}`
+          );
         } else {
           console.error(`[Crawl] Post-crawl scan failed: ${scanResult.message}`);
         }

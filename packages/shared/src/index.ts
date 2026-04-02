@@ -1,17 +1,17 @@
-export { hashPassword, verifyPassword, generateToken } from "./auth";
+export { hashPassword, verifyPassword, generateToken } from "./auth.js";
 export {
   createFingerprint,
   normalizeSelector,
   createDomFingerprint,
   selectorSimilarity,
-} from "./fingerprint";
-export { slugify, truncate, pluralize } from "./strings";
-export { ApiError, AppError } from "./errors";
-export type { PaginatedResult, PaginationParams } from "./pagination";
-export { paginationSchema, buildPaginationMeta } from "./pagination";
-export { wcagCriteriaMap, getWcagLevel } from "./wcag";
-export { bullmqConnectionOptions, getRedisClient } from "./redis-connection";
-export { SCAN_QUEUE_NAME, getSharedScanQueue } from "./scan-queue";
+} from "./fingerprint.js";
+export { slugify, truncate, pluralize } from "./strings.js";
+export { ApiError, AppError } from "./errors.js";
+export type { PaginatedResult, PaginationParams } from "./pagination.js";
+export { paginationSchema, buildPaginationMeta } from "./pagination.js";
+export { wcagCriteriaMap, getWcagLevel } from "./wcag.js";
+export { bullmqConnectionOptions, getRedisClient } from "./redis-connection.js";
+export { SCAN_QUEUE_NAME, getSharedScanQueue } from "./scan-queue.js";
 export const VISUAL_REVIEW_QUEUE_NAME = "visual-review" as const;
 export {
   FINDING_STATUSES,
@@ -21,7 +21,7 @@ export {
   deriveAutomationEvidenceFreshness,
   type FindingStatusValue,
   type AutomationEvidenceFreshness,
-} from "./finding-lifecycle";
+} from "./finding-lifecycle.js";
 
-export * from "./ai-usage";
-export * from "./logger";
+export * from "./ai-usage.js";
+export * from "./logger.js";

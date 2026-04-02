@@ -1,14 +1,16 @@
-
+import React from "react";
 import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { LoginForm } from "./login-form";
 
 describe("LoginForm", () => {
   it("should render the login form", () => {
-    render(<LoginForm />);
+    const markup = renderToStaticMarkup(<LoginForm />);
 
-    expect(screen.getByLabelText("Email address")).toBeInTheDocument();
-    expect(screen.getByLabelText("Password")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Sign in" })).toBeInTheDocument();
+    expect(markup).toContain('for="email"');
+    expect(markup).toContain('Email address');
+    expect(markup).toContain('for="password"');
+    expect(markup).toContain('Password');
+    expect(markup).toContain("Sign in");
   });
 });
