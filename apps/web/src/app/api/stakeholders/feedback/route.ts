@@ -44,13 +44,17 @@ export async function GET(request: Request) {
 
     let items;
     if (stakeholderId) {
-      items = await feedbackManager.listByStakeholder(stakeholderId);
+      items = await feedbackManager.listByStakeholder(
+        stakeholderId,
+        organizationId,
+      );
     } else if (
       statusParam &&
       (FEEDBACK_STATUSES as readonly string[]).includes(statusParam)
     ) {
       items = await feedbackManager.listByStatus(
         statusParam as (typeof FEEDBACK_STATUSES)[number],
+        organizationId,
       );
     } else if (
       categoryParam &&
@@ -58,12 +62,13 @@ export async function GET(request: Request) {
     ) {
       items = await feedbackManager.listByCategory(
         categoryParam as (typeof FEEDBACK_CATEGORIES)[number],
+        organizationId,
       );
     } else {
-      items = await feedbackManager.exportAll();
+      items = await feedbackManager.exportAll(organizationId);
     }
 
-    const summary = await feedbackManager.getSummary();
+    const summary = await feedbackManager.getSummary(organizationId);
 
     return NextResponse.json({ items, summary });
   } catch (error) {

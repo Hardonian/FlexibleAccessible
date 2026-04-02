@@ -52,7 +52,7 @@ export async function POST(request: Request) {
       );
     }
 
-    await requireOrgAccess(organizationId, "stakeholders:manage", {
+    const ctx = await requireOrgAccess(organizationId, "stakeholders:manage", {
       requirePaid: true,
     });
 
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
       power: body.power,
       interest: body.interest,
       notes: body.notes,
-      assessedBy: body.userId,
+      assessedBy: ctx.user.id,
     });
 
     return NextResponse.json(entry, { status: 201 });

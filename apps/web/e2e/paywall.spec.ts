@@ -191,8 +191,7 @@ test.describe("Paywall – authenticated billing flow (demo user)", () => {
 
     // At minimum, the page should render without errors
     await expect(page.locator("main, [role='main']").first()).toBeVisible();
-    // One of upgrade link or plan information should be present
-    expect(upgradeVisible || planCardsPresent || true).toBeTruthy(); // page loads without error
+    expect(upgradeVisible || planCardsPresent).toBeTruthy();
   });
 
   test("settings page is accessible after login", async ({ page }) => {

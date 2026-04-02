@@ -31,8 +31,6 @@ export async function generateMetadata({
   params: Promise<{ siteId: string }>;
 }) {
   const { siteId } = await params;
-  // Note: metadata generation cannot use user context, so we keep basic query
-  // The page component will enforce org scoping
   const site = await prisma.site.findUnique({
     where: { id: siteId },
     select: { name: true },

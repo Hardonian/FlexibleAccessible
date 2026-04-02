@@ -68,7 +68,21 @@ export async function POST(request: Request) {
       );
     }
 
-    const payload = JSON.parse(body);
+    let payload: Record<string, unknown>;
+    try {
+      payload = JSON.parse(body);
+    } catch {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "INVALID_JSON",
+            message: "Request body is not valid JSON",
+          },
+        },
+        { status: 400 },
+      );
+    }
 
     // Extract domain/URL from payload
     let deployUrl: string;

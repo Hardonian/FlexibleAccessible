@@ -2,6 +2,12 @@ import { notFound } from "next/navigation";
 import { requireSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
+import { getRoutePlatformTruth } from "@/lib/platform-truth-cache";
+import {
+  resolveDashboardOrgMembership,
+  runOrgScopedQuery,
+} from "@/lib/route-data-boundary";
+import { RouteReliabilityNotice } from "@/components/reliability/route-reliability-notice";
 
 export default async function ClusterDetailPage({
   params,
@@ -10,35 +16,84 @@ export default async function ClusterDetailPage({
 }) {
   const { clusterId } = await params;
   const user = await requireSession();
+  const platformTruth = await getRoutePlatformTruth();
 
-  const cluster = await prisma.issueCluster.findFirst({
-    where: {
-      id: clusterId,
-      site: {
-        workspace: {
-          organization: {
-            memberships: { some: { userId: user.id } },
+  const orgRes = await resolveDashboardOrgMembership(user.id, platformTruth);
+
+  if (orgRes.kind === "platform_blocked") {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-slate-900">Cluster Details</h1>
+        <RouteReliabilityNotice
+          variant="error"
+          title="Cluster details require a working database"
+        >
+          <p>
+            Cluster information cannot be loaded until core data services are
+            healthy.
+          </p>
+        </RouteReliabilityNotice>
+      </div>
+    );
+  }
+
+  if (orgRes.kind === "error") {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-slate-900">Cluster Details</h1>
+        <RouteReliabilityNotice
+          variant="error"
+          title="Could not verify organization"
+        >
+          <p>{orgRes.message}</p>
+        </RouteReliabilityNotice>
+      </div>
+    );
+  }
+
+  if (orgRes.kind === "none") {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-slate-900">Cluster Details</h1>
+        <RouteReliabilityNotice
+          variant="info"
+          title="No organization membership"
+        >
+          <p>You need an organization to view clusters.</p>
+        </RouteReliabilityNotice>
+      </div>
+    );
+  }
+
+  const clusterResult = await runOrgScopedQuery(
+    orgRes,
+    async (organizationId) => {
+      return prisma.issueCluster.findFirst({
+        where: {
+          id: clusterId,
+          site: { workspace: { organizationId } },
+        },
+        include: {
+          site: { select: { name: true, domain: true } },
+          findings: {
+            include: {
+              _count: { select: { occurrences: true } },
+            },
+            orderBy: { occurrenceCount: "desc" },
+            take: 50,
+          },
+          suggestions: {
+            orderBy: { confidence: "desc" },
+            take: 10,
           },
         },
-      },
+      });
     },
-    include: {
-      site: { select: { name: true, domain: true } },
-      findings: {
-        include: {
-          _count: { select: { occurrences: true } },
-        },
-        orderBy: { occurrenceCount: "desc" },
-        take: 50,
-      },
-      suggestions: {
-        orderBy: { confidence: "desc" },
-        take: 10,
-      },
-    },
-  });
+  );
 
-  if (!cluster) notFound();
+  if (!clusterResult.ok || !clusterResult.data) notFound();
+
+  const cluster = clusterResult.data;
 
   return (
     <div className="space-y-6">

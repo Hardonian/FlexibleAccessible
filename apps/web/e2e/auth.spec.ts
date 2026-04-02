@@ -70,7 +70,7 @@ test.describe("Authentication Flow", () => {
     await page.getByRole("button", { name: /sign out|log out/i }).click();
 
     // 3. Verify session termination and redirect
-    await expect(page).toHaveURL(/.*\/login|^\/$/);
+    await expect(page).toHaveURL(/.*\/login|^\//);
   });
 
   test("should not access protected routes after logout", async ({ page }) => {
