@@ -16,7 +16,6 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "types": ["node", "vitest/globals"],
-    "composite": true,
     "declaration": true,
     "declarationMap": true
   },

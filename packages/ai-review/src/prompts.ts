@@ -48,7 +48,7 @@ export function buildVisionPrompt(input: {
   pageTitle: string;
   axeViolations: Array<{
     ruleId: string;
-    impact: string;
+    impact: string | null;
     selector: string;
     description: string;
   }>;
