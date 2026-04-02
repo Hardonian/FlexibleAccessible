@@ -23,15 +23,27 @@ export function getBillingPlanCards() {
 }
 
 export function getAppBaseUrl(): string {
-  if (process.env.NEXTAUTH_URL) {
-    return process.env.NEXTAUTH_URL;
-  }
+  const normalizedNextAuthUrl = normalizeConfiguredBaseUrl(process.env.NEXTAUTH_URL);
+  if (normalizedNextAuthUrl) return normalizedNextAuthUrl;
 
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
-  }
+  const normalizedVercelUrl = normalizeConfiguredBaseUrl(
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
+  );
+  if (normalizedVercelUrl) return normalizedVercelUrl;
 
   return 'http://localhost:3000';
+}
+
+function normalizeConfiguredBaseUrl(input: string | undefined): string | null {
+  if (!input) return null;
+
+  try {
+    const parsed = new URL(input);
+    if (!['http:', 'https:'].includes(parsed.protocol)) return null;
+    return parsed.origin;
+  } catch {
+    return null;
+  }
 }
 
 export function isStripeBillingConfigured(): boolean {

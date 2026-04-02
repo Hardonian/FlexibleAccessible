@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { requireSession } from "@/lib/session";
 import { requireOrgAccess } from "@/lib/auth-guard";
 import { apiSuccess, apiError } from "@/lib/api-utils";
+import { getAppBaseUrl } from "@/lib/billing";
 import { ApiError } from "@aros/shared";
 
 const purchaseSchema = z.object({
@@ -26,7 +27,7 @@ const CREDIT_PACKS: Record<
  */
 export async function GET(request: Request) {
   try {
-    const user = await requireSession();
+    await requireSession();
     const { searchParams } = new URL(request.url);
     const organizationId = searchParams.get("organizationId");
 
@@ -80,7 +81,7 @@ export async function GET(request: Request) {
  */
 export async function POST(request: Request) {
   try {
-    const user = await requireSession();
+    await requireSession();
     const body = await request.json();
     const parsed = purchaseSchema.parse(body);
 
@@ -120,6 +121,7 @@ export async function POST(request: Request) {
 
       if (Stripe) {
         const client = new Stripe(stripeSecret);
+        const appBaseUrl = getAppBaseUrl();
 
         const session = await client.checkout.sessions.create({
           customer: billingCustomer.stripeCustomerId,
@@ -142,8 +144,8 @@ export async function POST(request: Request) {
             creditPack: parsed.pack,
             creditAmount: String(pack.credits),
           },
-          success_url: `${process.env.NEXTAUTH_URL}/settings/billing?credits=success`,
-          cancel_url: `${process.env.NEXTAUTH_URL}/settings/billing?credits=cancelled`,
+          success_url: `${appBaseUrl}/settings/billing?credits=success`,
+          cancel_url: `${appBaseUrl}/settings/billing?credits=cancelled`,
         });
 
         return apiSuccess({ checkoutUrl: session.url });
