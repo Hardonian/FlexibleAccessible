@@ -1,12 +1,16 @@
 #!/usr/bin/env node
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 
 const CRITICAL_ENTRYPOINTS = [
+  "src/app/(dashboard)/settings/billing/actions.ts",
   "src/app/api/comments/route.ts",
   "src/app/api/credits/route.ts",
   "src/app/api/impact/route.ts",
   "src/app/api/reports/route.ts",
   "src/app/api/reports/vpat/route.ts",
+  "src/app/api/ai-copilot/route.ts",
+  "src/app/api/findings/summary/route.ts",
+  "src/app/api/webhooks/stripe/route.ts",
   "src/app/api/github-action/route.ts",
   "src/app/api/deploy-webhook/route.ts",
   "src/app/api/public-scan/route.ts",
@@ -14,22 +18,27 @@ const CRITICAL_ENTRYPOINTS = [
   "src/app/api/badge/route.ts",
 ];
 
-const joined = CRITICAL_ENTRYPOINTS.join(" ");
-
 let stdout = "[]";
 try {
-  stdout = execSync(`npx eslint --format json ${joined}`, {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-    cwd: "apps/web",
-  });
+  stdout = execFileSync(
+    "npx",
+    ["eslint", "--format", "json", ...CRITICAL_ENTRYPOINTS],
+    {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      cwd: "apps/web",
+    },
+  );
 } catch (error) {
   stdout = error.stdout?.toString() ?? "[]";
 }
 
+const jsonStart = stdout.indexOf("[");
+const normalizedJson = jsonStart >= 0 ? stdout.slice(jsonStart) : stdout;
+
 let report;
 try {
-  report = JSON.parse(stdout);
+  report = JSON.parse(normalizedJson);
 } catch {
   console.error("[verify:tenant-boundary] Failed to parse eslint JSON output.");
   process.exit(1);

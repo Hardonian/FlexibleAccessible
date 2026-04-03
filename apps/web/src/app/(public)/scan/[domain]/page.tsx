@@ -14,10 +14,15 @@ export async function generateMetadata({
 
   const scan = await getLatestValidPublicScanForDomain(decoded, { requireCompleted: true });
 
+  const hasCurrentEvidence = Boolean(scan);
   const score = scan?.score ?? 0;
-  const total = scan?.totalViolations ?? 0;
-  const title = `Accessibility Report: ${decoded} (Score: ${score})`;
-  const description = `Found ${total} accessibility issues on ${decoded}. Scan powered by AROS - source-level accessibility remediation.`;
+  const totalViolations = scan?.totalViolations ?? 0;
+  const title = hasCurrentEvidence
+    ? `Accessibility Report: ${decoded} (Score: ${score})`
+    : `Accessibility Report: ${decoded} (No current evidence)`;
+  const description = hasCurrentEvidence
+    ? `Found ${totalViolations} accessibility issues on ${decoded}. Scan powered by AROS - source-level accessibility remediation.`
+    : `No current scan evidence is available for ${decoded}. Run a new public scan to generate fresh accessibility evidence.`;
   const ogUrl = `/api/og?domain=${encodeURIComponent(decoded)}&score=${score}&critical=${scan?.criticalCount ?? 0}&serious=${scan?.seriousCount ?? 0}&moderate=${scan?.moderateCount ?? 0}&minor=${scan?.minorCount ?? 0}`;
 
   return {

@@ -56,6 +56,7 @@ describe("GET /api/public-scan?id=...", () => {
 
     expect(response.status).toBe(410);
     expect(payload.error?.code).toBe("SCAN_EXPIRED");
+    expect(payload.error?.details?.evidenceState).toBe("expired");
   });
 
   it("rejects URLs with embedded credentials", async () => {
@@ -84,5 +85,33 @@ describe("GET /api/public-scan?id=...", () => {
 
     expect(response.status).toBe(400);
     expect(payload.error?.message).toMatch(/default http/i);
+  });
+
+  it("rejects URLs with query strings", async () => {
+    const request = new Request("http://localhost/api/public-scan", {
+      method: "POST",
+      body: JSON.stringify({ domain: "https://example.com/?foo=bar" }),
+      headers: { "content-type": "application/json" },
+    });
+
+    const response = await POST(request);
+    const payload = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(payload.error?.message).toMatch(/query strings/i);
+  });
+
+  it("rejects URLs with fragments", async () => {
+    const request = new Request("http://localhost/api/public-scan", {
+      method: "POST",
+      body: JSON.stringify({ domain: "https://example.com/#section" }),
+      headers: { "content-type": "application/json" },
+    });
+
+    const response = await POST(request);
+    const payload = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(payload.error?.message).toMatch(/fragments/i);
   });
 });

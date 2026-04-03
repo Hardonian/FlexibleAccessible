@@ -13,10 +13,14 @@ const PUBLIC_SCAN_MAX_PAGES = 5;
 const RATE_LIMIT_SECONDS = 300; // 5 minutes between scans per IP+domain
 
 const scanSchema = z.object({
-  domain: z.string().min(1, "Domain is required").max(253),
+  domain: z.string().min(1, "Domain is required").max(2048),
 });
 
 async function normalizePublicScanDomain(rawDomain: string): Promise<{ domain: string; url: string }> {
+  if (rawDomain.length > 2048) {
+    throw ApiError.badRequest("URL is too long");
+  }
+
   const candidate = rawDomain.startsWith("http://") || rawDomain.startsWith("https://")
     ? rawDomain
     : `https://${rawDomain}`;
@@ -30,6 +34,9 @@ async function normalizePublicScanDomain(rawDomain: string): Promise<{ domain: s
   }
   if (parsed.port && parsed.port !== "80" && parsed.port !== "443") {
     throw ApiError.badRequest("Only default HTTP(S) ports are allowed");
+  }
+  if (parsed.search || parsed.hash) {
+    throw ApiError.badRequest("Query strings and URL fragments are not allowed");
   }
   if (!parsed.hostname || !parsed.hostname.includes(".")) {
     throw ApiError.badRequest("Invalid domain format");
@@ -163,7 +170,21 @@ export async function GET(request: Request) {
       return apiError(ApiError.notFound("Scan not found"));
     }
     if (getPublicScanEvidenceState(scan) === "expired") {
-      return apiError(new ApiError("Scan result has expired. Start a new scan to generate fresh evidence.", "SCAN_EXPIRED", 410));
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "SCAN_EXPIRED",
+            message:
+              "Scan result has expired. Start a new scan to generate fresh evidence.",
+            details: {
+              evidenceState: "expired",
+              expired: true,
+            },
+          },
+        },
+        { status: 410 },
+      );
     }
 
     return apiSuccess(toPublicScanApiPayload(scan));
