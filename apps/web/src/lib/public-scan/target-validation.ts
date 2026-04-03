@@ -1,5 +1,7 @@
 import { ApiError } from "@aros/shared";
 import { lookup } from "node:dns/promises";
+import { isIP } from "node:net";
+import { toASCII } from "node:punycode";
 
 const BLOCKED_HOSTNAMES = new Set([
   "localhost",
@@ -20,6 +22,7 @@ function isPrivateIpv4(address: string): boolean {
     (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) ||
     (octets[0] === 192 && octets[1] === 168) ||
     octets[0] === 127 ||
+    octets[0] === 0 ||
     (octets[0] === 169 && octets[1] === 254)
   );
 }
@@ -34,9 +37,17 @@ export function isPrivateOrLoopbackAddress(address: string): boolean {
 }
 
 export async function validatePublicScanTarget(hostname: string): Promise<void> {
-  const normalizedHostname = hostname.toLowerCase();
+  const normalizedHostname = toASCII(hostname.toLowerCase().replace(/\.$/, ""));
 
-  if (BLOCKED_HOSTNAMES.has(normalizedHostname) || normalizedHostname.endsWith(".local")) {
+  if (!normalizedHostname) {
+    throw ApiError.badRequest("Invalid domain format");
+  }
+
+  if (
+    BLOCKED_HOSTNAMES.has(normalizedHostname) ||
+    normalizedHostname.endsWith(".local") ||
+    isIP(normalizedHostname) !== 0
+  ) {
     throw new ApiError(
       "Private, loopback, and local network hosts are not allowed for public scans.",
       "PUBLIC_SCAN_HOST_BLOCKED",
@@ -44,15 +55,19 @@ export async function validatePublicScanTarget(hostname: string): Promise<void> 
     );
   }
 
-  let resolvedAddress: string;
+  let resolvedAddresses: string[];
   try {
-    const { address } = await lookup(normalizedHostname);
-    resolvedAddress = address;
+    const lookupResults = await lookup(normalizedHostname, { all: true, verbatim: true });
+    resolvedAddresses = lookupResults.map((result) => result.address);
   } catch {
     throw ApiError.badRequest("Domain could not be resolved. Please enter a public hostname.");
   }
 
-  if (isPrivateOrLoopbackAddress(resolvedAddress)) {
+  if (resolvedAddresses.length === 0) {
+    throw ApiError.badRequest("Domain could not be resolved. Please enter a public hostname.");
+  }
+
+  if (resolvedAddresses.some((address) => isPrivateOrLoopbackAddress(address))) {
     throw new ApiError(
       "Resolved host points to a private or loopback address and cannot be scanned publicly.",
       "PUBLIC_SCAN_HOST_BLOCKED",

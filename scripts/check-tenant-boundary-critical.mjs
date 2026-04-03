@@ -12,6 +12,7 @@ const CRITICAL_ENTRYPOINTS = [
   "src/app/api/findings/summary/route.ts",
   "src/app/api/webhooks/stripe/route.ts",
   "src/app/api/github-action/route.ts",
+  "src/app/api/github-action/status/[scanRunId]/route.ts",
   "src/app/api/deploy-webhook/route.ts",
   "src/app/api/public-scan/route.ts",
   "src/app/api/public-scan/[id]/route.ts",

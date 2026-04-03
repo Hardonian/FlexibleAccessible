@@ -60,3 +60,41 @@ export async function findActiveDeployWebhookByDomain(domain: string) {
     },
   });
 }
+
+export async function findGithubActionScanRun(ctx: OrgMembershipCore, scanRunId: string) {
+  return runCanonicalOrgQuery(ctx, async (organizationId) =>
+    prisma.scanRun.findFirst({
+      where: {
+        id: scanRunId,
+        site: {
+          workspace: { organizationId },
+        },
+      },
+      select: {
+        id: true,
+        status: true,
+        startedAt: true,
+        completedAt: true,
+        pagesScanned: true,
+        siteId: true,
+      },
+    }),
+  );
+}
+
+export async function getScanRunSeverityCounts(ctx: OrgMembershipCore, scanRunId: string) {
+  return runCanonicalOrgQuery(ctx, async (organizationId) =>
+    prisma.rawViolation.groupBy({
+      by: ["impact"],
+      where: {
+        scanRunId,
+        scanRun: {
+          site: {
+            workspace: { organizationId },
+          },
+        },
+      },
+      _count: { _all: true },
+    }),
+  );
+}

@@ -29,8 +29,9 @@
     "test:integration": "npm run test:integration --workspace=apps/web",
     "test:release": "npm run test && npm run test:integration",
     "verify:core": "npm run prisma:check && npm run prisma:imports && npm run lint && npm run typecheck && npm run test && npm run build",
-    "verify:release": "npm run verify:core && npm run verify:tenant-boundary && npm run test:integration",
-    "verify:tenant-boundary": "node scripts/check-tenant-boundary-critical.mjs"
+    "verify:release": "npm run verify:core && npm run verify:tenant-boundary && npm run test:launch-critical && npm run test:integration",
+    "verify:tenant-boundary": "node scripts/check-tenant-boundary-critical.mjs",
+    "test:launch-critical": "npm run test:launch-critical --workspace=apps/web"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.1",

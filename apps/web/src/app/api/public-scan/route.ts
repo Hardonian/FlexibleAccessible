@@ -6,6 +6,7 @@ import { getPublicScanById, getPublicScanEvidenceState, toPublicScanApiPayload }
 import { createPublicScanResult, findRecentPublicScanForRateLimit } from "@/lib/public-scan/queries";
 import { validatePublicScanTarget } from "@/lib/public-scan/target-validation";
 import { createHash } from "crypto";
+import { toASCII } from "node:punycode";
 
 export const runtime = "nodejs";
 
@@ -42,7 +43,10 @@ async function normalizePublicScanDomain(rawDomain: string): Promise<{ domain: s
     throw ApiError.badRequest("Invalid domain format");
   }
 
-  const normalizedDomain = parsed.hostname.toLowerCase().replace(/\.$/, "");
+  const normalizedDomain = toASCII(parsed.hostname.toLowerCase().replace(/\.$/, ""));
+  if (!normalizedDomain) {
+    throw ApiError.badRequest("Invalid domain format");
+  }
   await validatePublicScanTarget(normalizedDomain);
   return {
     domain: normalizedDomain,
