@@ -17,13 +17,31 @@ describe("public scan validity contract", () => {
 
   it("classifies expired records as expired", () => {
     expect(
-      getPublicScanEvidenceState({ expiresAt: new Date("2020-01-01T00:00:00Z") }, new Date("2020-01-02T00:00:00Z")),
+      getPublicScanEvidenceState(
+        { status: "COMPLETED", completedAt: new Date("2020-01-01T00:00:00Z"), expiresAt: new Date("2020-01-01T00:00:00Z") },
+        new Date("2020-01-02T00:00:00Z"),
+      ),
     ).toBe("expired");
   });
 
-  it("classifies unexpired records as valid", () => {
+  it("classifies failed records as failed", () => {
     expect(
-      getPublicScanEvidenceState({ expiresAt: new Date("2020-01-03T00:00:00Z") }, new Date("2020-01-02T00:00:00Z")),
+      getPublicScanEvidenceState({ status: "FAILED", completedAt: null, expiresAt: null }),
+    ).toBe("failed");
+  });
+
+  it("classifies non-complete records as incomplete", () => {
+    expect(
+      getPublicScanEvidenceState({ status: "RUNNING", completedAt: null, expiresAt: null }),
+    ).toBe("incomplete");
+  });
+
+  it("classifies completed unexpired records as valid", () => {
+    expect(
+      getPublicScanEvidenceState(
+        { status: "COMPLETED", completedAt: new Date("2020-01-01T00:00:00Z"), expiresAt: new Date("2020-01-03T00:00:00Z") },
+        new Date("2020-01-02T00:00:00Z"),
+      ),
     ).toBe("valid");
   });
 
@@ -50,6 +68,7 @@ describe("public scan validity contract", () => {
       id: "scan_123",
       domain: "example.com",
       status: "COMPLETED",
+      evidenceState: "expired",
       score: 90,
       totalViolations: 2,
     });

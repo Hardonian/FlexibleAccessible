@@ -68,7 +68,7 @@ export async function POST(request: Request) {
       siteId: site.id,
       siteName: site.name,
       status: "PENDING",
-      pollUrl: `/api/github-action/status/${scanRun.id}`,
+      pollUrl: `/api/github-action/status/${scanRun.id}?organizationId=${encodeURIComponent(parsed.organizationId)}`,
       failThreshold: parsed.failThreshold,
       failOn: parsed.failOn,
       pullRequestNumber: parsed.pullRequestNumber,

@@ -1,66 +1,48 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
 import { requireSession } from "@/lib/session";
 import { apiSuccess, apiError } from "@/lib/api-utils";
 import { ApiError } from "@aros/shared";
+import { requireCanonicalOrgAccess } from "@/lib/server-org-boundary";
+import {
+  findGithubActionScanRun,
+  getScanRunSeverityCounts,
+} from "@/lib/integrations/org-scoped-queries";
 
 /**
- * GET /api/github-action/status/[scanRunId]
+ * GET /api/github-action/status/[scanRunId]?organizationId=...
  * Poll scan status for GitHub Action. Returns findings summary when complete.
- * Requires authentication and tenant isolation via session + organization membership.
+ * Requires authentication and canonical organization membership context.
  */
 export async function GET(
-  _request: Request,
+  request: Request,
   context: { params: Promise<{ scanRunId: string }> },
 ) {
   try {
-    const user = await requireSession();
+    await requireSession();
     const { scanRunId } = await context.params;
+    const { searchParams } = new URL(request.url);
+    const organizationId = searchParams.get("organizationId");
 
-    const scanRun = await prisma.scanRun.findUnique({
-      where: { id: scanRunId },
-      include: {
-        site: {
-          include: {
-            workspace: {
-              include: {
-                organization: {
-                  include: {
-                    memberships: {
-                      where: { userId: user.id },
-                      take: 1,
-                    },
-                    subscription: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
+    if (!organizationId) {
+      return NextResponse.json({ error: "organizationId is required" }, { status: 400 });
+    }
+
+    const ctx = await requireCanonicalOrgAccess(organizationId, "scan:view", {
+      requirePaid: true,
     });
+
+    const scanRun = await findGithubActionScanRun(ctx, scanRunId);
 
     if (!scanRun) {
       return apiError(ApiError.notFound("Scan not found"));
     }
 
-    const membership = scanRun.site.workspace.organization.memberships;
-    if (membership.length === 0) {
-      return apiError(ApiError.forbidden("Access denied to this organization"));
-    }
-
-    const { site, ...scanRunData } = scanRun;
-
     if (scanRun.status === "COMPLETED") {
-      const findings = await prisma.rawViolation.groupBy({
-        by: ["impact"],
-        where: { scanRunId },
-        _count: { _all: true },
-      });
+      const findings = await getScanRunSeverityCounts(ctx, scanRunId);
 
       const severityCounts: Record<string, number> = {};
-      for (const f of findings) {
-        severityCounts[f.impact] = f._count._all;
+      for (const finding of findings) {
+        severityCounts[finding.impact] = finding._count._all;
       }
 
       const critical = severityCounts.CRITICAL ?? 0;
@@ -74,13 +56,13 @@ export async function GET(
       );
 
       return apiSuccess({
-        ...scanRunData,
+        ...scanRun,
         score,
         severityCounts,
       });
     }
 
-    return apiSuccess(scanRunData);
+    return apiSuccess(scanRun);
   } catch (error) {
     return apiError(error);
   }

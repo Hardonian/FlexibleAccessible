@@ -42,3 +42,45 @@ export async function listFindingsForReport(ctx: OrgMembershipCore, siteId?: str
     }),
   );
 }
+
+export async function findVpatSite(ctx: OrgMembershipCore, siteId: string) {
+  return runCanonicalOrgQuery(ctx, async (organizationId) =>
+    prisma.site.findFirst({
+      where: {
+        id: siteId,
+        workspace: { organizationId },
+      },
+      select: {
+        id: true,
+        name: true,
+        domain: true,
+      },
+    }),
+  );
+}
+
+export async function getOrganizationName(ctx: OrgMembershipCore) {
+  return runCanonicalOrgQuery(ctx, async (organizationId) =>
+    prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { name: true },
+    }),
+  );
+}
+
+export async function createVpatReportRecord(
+  ctx: OrgMembershipCore,
+  input: { siteId: string; siteName: string; summaryText: string; report: object },
+) {
+  return runCanonicalOrgQuery(ctx, async () =>
+    prisma.report.create({
+      data: {
+        siteId: input.siteId,
+        type: "VPAT",
+        title: `VPAT Report - ${input.siteName}`,
+        content: input.report,
+        summary: input.summaryText,
+      },
+    }),
+  );
+}

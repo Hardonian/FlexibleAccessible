@@ -1,6 +1,11 @@
 import { prisma } from "@/lib/db";
 
-export type PublicEvidenceState = "valid" | "expired" | "missing";
+export type PublicEvidenceState =
+  | "valid"
+  | "expired"
+  | "missing"
+  | "incomplete"
+  | "failed";
 
 type PublicScanCore = {
   id: string;
@@ -21,11 +26,13 @@ type PublicScanCore = {
 };
 
 export function getPublicScanEvidenceState(
-  scan: Pick<PublicScanCore, "expiresAt"> | null,
+  scan: Pick<PublicScanCore, "expiresAt" | "status" | "completedAt"> | null,
   now = new Date(),
 ): PublicEvidenceState {
   if (!scan) return "missing";
   if (scan.expiresAt && scan.expiresAt <= now) return "expired";
+  if (scan.status === "FAILED") return "failed";
+  if (scan.status !== "COMPLETED" || !scan.completedAt) return "incomplete";
   return "valid";
 }
 
@@ -34,6 +41,7 @@ export function toPublicScanApiPayload(scan: PublicScanCore) {
     id: scan.id,
     domain: scan.domain,
     status: scan.status,
+    evidenceState: getPublicScanEvidenceState(scan),
     score: scan.score,
     totalViolations: scan.totalViolations,
     criticalCount: scan.criticalCount,
@@ -79,7 +87,12 @@ export async function getLatestValidPublicScanForDomain(
     where: {
       domain,
       expiresAt: { gt: new Date() },
-      ...(options.requireCompleted ? { status: "COMPLETED" } : {}),
+      ...(options.requireCompleted
+        ? {
+            status: "COMPLETED",
+            completedAt: { not: null },
+          }
+        : {}),
     },
     orderBy: { createdAt: "desc" },
     select: {
