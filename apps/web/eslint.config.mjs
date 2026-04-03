@@ -11,7 +11,7 @@ const compat = new FlatCompat({
   baseDirectory: __dirname,
 });
 
-export default [
+const config = [
   {
     ignores: [".next/**"],
   },
@@ -36,8 +36,10 @@ export default [
     },
   },
   {
-    // Enforce the Data Boundary specifically in Next.js App Router endpoints, pages, and actions
-    files: ["src/app/**/*.ts", "src/app/**/*.tsx"],
+    // Enforce the Data Boundary specifically in server mutation/read boundaries
+    // (API route handlers + server actions). Server-rendered pages are excluded to
+    // reduce false positives where data access is already delegated to scoped modules.
+    files: ["src/app/**/route.ts", "src/app/**/actions.ts", "src/app/**/scan-actions.ts"],
     rules: {
       "no-restricted-syntax": [
         "warn",
@@ -66,3 +68,5 @@ export default [
     }
   }
 ];
+
+export default config;

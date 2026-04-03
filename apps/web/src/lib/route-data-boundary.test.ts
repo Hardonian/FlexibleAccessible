@@ -1,52 +1,104 @@
-import { describe, it, expect, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { resolveDashboardOrgMembership, runOrgScopedQuery } from "./route-data-boundary";
+import { prisma } from "./db";
+import { cookies } from "next/headers";
 
-// Mock representations of the boundary functions described in ROUTE_SAFE_BOUNDARY.md
-const resolveDashboardOrgMembership = async (userId: string, truth: any) => {
-  if (!truth.allowOrgScopedDbReads) return { kind: 'platform_blocked' };
-  if (userId === 'valid-user') return { kind: 'ok', organizationId: 'org-1' };
-  return { kind: 'none' };
-};
+vi.mock("./db", () => ({
+  prisma: {
+    membership: {
+      findUnique: vi.fn(),
+      findFirst: vi.fn(),
+    },
+  },
+}));
 
-const runOrgScopedQuery = async (ctx: any, fn: any) => {
-  if (ctx.kind !== 'ok') return { ok: false, message: 'Unauthorized or degraded platform state' };
-  try {
-    const data = await fn(ctx.organizationId);
-    return { ok: true, data };
-  } catch (err) {
-    return { ok: false, message: 'Query failed' };
-  }
-};
+vi.mock("next/headers", () => ({
+  cookies: vi.fn(),
+}));
 
-describe('Route Data Boundary', () => {
-  it('should return platform_blocked without querying DB if allowOrgScopedDbReads is false', async () => {
-    const truth = { allowOrgScopedDbReads: false };
-    const result = await resolveDashboardOrgMembership('any-user', truth);
-    
-    expect(result.kind).toBe('platform_blocked');
+describe("route-data-boundary", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
   });
 
-  it('should execute the scoped query safely if membership is confirmed', async () => {
-    const ctx = { kind: 'ok', organizationId: 'org-1' };
-    const mockPrismaQuery = vi.fn().mockResolvedValue([{ id: 'finding-1' }]);
-    
-    const result = await runOrgScopedQuery(ctx, mockPrismaQuery);
-    
-    expect(result.ok).toBe(true);
-    expect(result.data).toEqual([{ id: 'finding-1' }]);
-    // Enforce that the organization ID is forcibly injected into the query
-    expect(mockPrismaQuery).toHaveBeenCalledWith('org-1');
+  it("returns platform_blocked and never queries membership when platform truth blocks DB reads", async () => {
+    const result = await resolveDashboardOrgMembership("user-1", {
+      allowOrgScopedDbReads: false,
+    } as any);
+
+    expect(result).toEqual({
+      kind: "platform_blocked",
+      truth: { allowOrgScopedDbReads: false },
+    });
+    expect(prisma.membership.findUnique).not.toHaveBeenCalled();
+    expect(prisma.membership.findFirst).not.toHaveBeenCalled();
   });
 
-  it('should short-circuit and block the query if context is not ok (e.g. platform blocked)', async () => {
-    const ctx = { kind: 'platform_blocked' };
-    const mockPrismaQuery = vi.fn();
-    
-    const result = await runOrgScopedQuery(ctx, mockPrismaQuery);
-    
-    expect(result.ok).toBe(false);
-    expect(result.message).toContain('degraded');
-    
-    // Crucial security check: The DB query must NEVER execute if the boundary fails
-    expect(mockPrismaQuery).not.toHaveBeenCalled();
+  it("prefers cookie-selected org membership when it exists", async () => {
+    vi.mocked(cookies).mockResolvedValue({
+      get: vi.fn().mockReturnValue({ value: "org-cookie" }),
+    } as any);
+    vi.mocked(prisma.membership.findUnique).mockResolvedValue({
+      organizationId: "org-cookie",
+      role: "ADMIN",
+    } as any);
+
+    const result = await resolveDashboardOrgMembership("user-1", {
+      allowOrgScopedDbReads: true,
+    } as any);
+
+    expect(result).toEqual({
+      kind: "ok",
+      organizationId: "org-cookie",
+      role: "ADMIN",
+    });
+    expect(prisma.membership.findFirst).not.toHaveBeenCalled();
+  });
+
+  it("falls back to oldest membership when cookie org is absent or invalid", async () => {
+    vi.mocked(cookies).mockResolvedValue({
+      get: vi.fn().mockReturnValue(undefined),
+    } as any);
+    vi.mocked(prisma.membership.findFirst).mockResolvedValue({
+      organizationId: "org-fallback",
+      role: "DEVELOPER",
+    } as any);
+
+    const result = await resolveDashboardOrgMembership("user-1", {
+      allowOrgScopedDbReads: true,
+    } as any);
+
+    expect(result).toEqual({
+      kind: "ok",
+      organizationId: "org-fallback",
+      role: "DEVELOPER",
+    });
+    expect(prisma.membership.findFirst).toHaveBeenCalledWith({
+      where: { userId: "user-1" },
+      select: { organizationId: true, role: true },
+      orderBy: { createdAt: "asc" },
+    });
+  });
+
+  it("blocks query execution when organization context is missing", async () => {
+    const query = vi.fn();
+    const result = await runOrgScopedQuery({ role: "ADMIN" } as any, query);
+
+    expect(result).toEqual({
+      ok: false,
+      message: "Tenant isolation violation: Missing organization context",
+    });
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it("injects canonical organizationId into callback for safe tenant-scoped execution", async () => {
+    const query = vi.fn().mockResolvedValue({ id: "result" });
+    const result = await runOrgScopedQuery(
+      { organizationId: "org-safe", role: "ADMIN" },
+      query,
+    );
+
+    expect(result).toEqual({ ok: true, data: { id: "result" } });
+    expect(query).toHaveBeenCalledWith("org-safe");
   });
 });
