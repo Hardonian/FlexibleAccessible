@@ -31,10 +31,15 @@ function getScoreCategory(score: number | null): string {
  */
 /** Basic domain format validation – rejects obvious injection attempts. */
 function isValidDomain(domain: string): boolean {
-  // Max 253 chars per RFC 1035; allow subdomains and ports
   if (domain.length > 253) return false;
-  // Must look like a hostname (optionally with port), no path separators or shell chars
-  return /^[a-zA-Z0-9]([a-zA-Z0-9\-_.]*[a-zA-Z0-9])?(:\d{1,5})?$/.test(domain);
+  if (domain.includes("/") || domain.includes("\\") || domain.includes(" ")) return false;
+
+  try {
+    const parsed = new URL(`https://${domain}`);
+    return Boolean(parsed.hostname && parsed.hostname.includes("."));
+  } catch {
+    return false;
+  }
 }
 
 export async function GET(request: Request) {

@@ -9,7 +9,8 @@ export const runtime = "edge";
  * Used as the og:image meta tag on public scan results pages.
  */
 export async function GET(request: NextRequest) {
-  const { searchParams } = request.nextUrl;
+  try {
+    const { searchParams } = request.nextUrl;
   const domain = searchParams.get("domain") ?? "unknown";
   const score = parseInt(searchParams.get("score") ?? "0", 10);
   const critical = parseInt(searchParams.get("critical") ?? "0", 10);
@@ -27,7 +28,7 @@ export async function GET(request: NextRequest) {
           ? "#f97316"
           : "#ef4444";
 
-  return new ImageResponse(
+    return new ImageResponse(
     <div
       style={{
         display: "flex",
@@ -176,5 +177,8 @@ export async function GET(request: NextRequest) {
       width: 1200,
       height: 630,
     },
-  );
+    );
+  } catch {
+    return new Response("Failed to generate OG image", { status: 500 });
+  }
 }

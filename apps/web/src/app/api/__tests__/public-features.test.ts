@@ -16,15 +16,24 @@ describe("Public Scan API", () => {
       "localhost",
     ];
 
-    const domainRegex =
-      /^(?:https?:\/\/)?(?:www\.)?([a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,})(?:\/.*)?$/;
+    const isValidDomain = (input: string) => {
+      try {
+        const candidate = input.startsWith("http://") || input.startsWith("https://")
+          ? input
+          : `https://${input}`;
+        const parsed = new URL(candidate);
+        return Boolean(parsed.hostname && parsed.hostname.includes("."));
+      } catch {
+        return false;
+      }
+    };
 
     for (const domain of validDomains) {
-      expect(domainRegex.test(domain)).toBe(true);
+      expect(isValidDomain(domain)).toBe(true);
     }
 
     for (const domain of invalidDomains) {
-      expect(domainRegex.test(domain)).toBe(false);
+      expect(isValidDomain(domain)).toBe(false);
     }
   });
 

@@ -7,7 +7,6 @@
   ],
   "scripts": {
     "postinstall": "node scripts/workspace-symlinks.js",
-    "pretypecheck": "npm run db:generate",
     "dev": "npm run dev --workspace=apps/web",
     "dev:worker": "npm run dev --workspace=apps/worker",
     "build": "npm run build --workspace=apps/web",
@@ -23,8 +22,14 @@
     "test": "npm run test --workspaces --if-present",
     "test:e2e": "npm run test:e2e --workspace=apps/web",
     "test:ct": "npm run test:ct --workspace=apps/web",
-    "verify": "npm run lint && npm run typecheck && npm run test && npm run build",
-    "clean": "rm -rf node_modules apps/*/node_modules packages/*/node_modules"
+    "verify": "npm run verify:core",
+    "clean": "rm -rf node_modules apps/*/node_modules packages/*/node_modules",
+    "prisma:check": "node scripts/check-prisma-client-drift.mjs",
+    "prisma:imports": "node scripts/check-prisma-import-boundaries.mjs",
+    "test:integration": "npm run test:integration --workspace=apps/web",
+    "test:release": "npm run test && npm run test:integration",
+    "verify:core": "npm run prisma:check && npm run prisma:imports && npm run lint && npm run typecheck && npm run test && npm run build",
+    "verify:release": "npm run verify:core && npm run test:integration"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.1",

@@ -11,15 +11,25 @@ const PUBLIC_SCAN_MAX_PAGES = 5;
 const RATE_LIMIT_SECONDS = 300; // 5 minutes between scans per IP+domain
 
 const scanSchema = z.object({
-  domain: z
-    .string()
-    .min(1, "Domain is required")
-    .max(253)
-    .regex(
-      /^(?:https?:\/\/)?(?:www\.)?([a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,})(?:\/.*)?$/,
-      "Invalid domain format",
-    ),
+  domain: z.string().min(1, "Domain is required").max(253),
 });
+
+function normalizePublicScanDomain(rawDomain: string): { domain: string; url: string } {
+  const candidate = rawDomain.startsWith("http://") || rawDomain.startsWith("https://")
+    ? rawDomain
+    : `https://${rawDomain}`;
+
+  const parsed = new URL(candidate);
+  if (!parsed.hostname || !parsed.hostname.includes(".")) {
+    throw ApiError.badRequest("Invalid domain format");
+  }
+
+  const normalizedDomain = parsed.hostname.toLowerCase();
+  return {
+    domain: normalizedDomain,
+    url: `${parsed.protocol}//${normalizedDomain}${parsed.pathname === "/" ? "" : parsed.pathname}`
+  };
+}
 
 /**
  * POST /api/public-scan
@@ -32,9 +42,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const parsed = scanSchema.parse(body);
 
-    // Normalize domain: strip protocol and trailing slashes
-    let domain = parsed.domain.replace(/^https?:\/\//, "").replace(/\/+$/, "");
-    const url = domain.startsWith("http") ? domain : `https://${domain}`;
+    const { domain, url } = normalizePublicScanDomain(parsed.domain.trim());
 
     // Rate limit check: hash IP + domain for privacy
     const forwarded = request.headers.get("x-forwarded-for");

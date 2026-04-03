@@ -14,19 +14,23 @@ function getStripeEnv(): StripeWebhookEnv | null {
 }
 
 export async function POST(request: Request) {
-  const env = getStripeEnv();
-  if (!env) {
-    return NextResponse.json({ error: 'Webhook not configured' }, { status: 503 });
+  try {
+    const env = getStripeEnv();
+    if (!env) {
+      return NextResponse.json({ error: 'Webhook not configured' }, { status: 503 });
+    }
+
+    const body = await request.text();
+    const signature = request.headers.get('stripe-signature');
+
+    const result = await handleStripeWebhookRequest(body, signature, env, prisma);
+
+    if (!result.ok) {
+      return NextResponse.json({ error: result.message }, { status: result.status });
+    }
+
+    return NextResponse.json({ received: true, duplicate: result.duplicate });
+  } catch {
+    return NextResponse.json({ error: 'Unhandled webhook error' }, { status: 500 });
   }
-
-  const body = await request.text();
-  const signature = request.headers.get('stripe-signature');
-
-  const result = await handleStripeWebhookRequest(body, signature, env, prisma);
-
-  if (!result.ok) {
-    return NextResponse.json({ error: result.message }, { status: result.status });
-  }
-
-  return NextResponse.json({ received: true, duplicate: result.duplicate });
 }
