@@ -69,11 +69,18 @@ Open http://localhost:3000
 
 ```bash
 npm run verify        # lint + typecheck + unit tests + production build
+npm run verify:release # verify:core + integration tests (strict release gate before E2E)
 npm run test          # Run all unit tests (Vitest)
-npm run test:e2e      # Playwright (requires DATABASE_URL; global setup runs db:push + db:seed)
+npm run test:e2e      # Playwright (requires DATABASE_URL; preflight validates env before db:push + db:seed)
 npm run typecheck     # TypeScript type checking
 npm run lint          # ESLint
 ```
+
+E2E bootstrap is now explicit and fails fast with actionable errors:
+1. `docker compose -f docker/docker-compose.yml up -d`
+2. `cp .env.example .env`
+3. set `DATABASE_URL` (and `REDIS_URL` / `NEXTAUTH_SECRET` when auth-heavy flows are exercised)
+4. run `npm run test:e2e`
 
 With Postgres available, `npm run test --workspace=apps/web` also runs **Stripe webhook integration tests** (subscription upsert, delete, idempotency, HMAC verification). CI sets `STRIPE_WEBHOOK_SECRET` for those tests. The webhook handler stores each Stripe `event.id` in `stripe_webhook_events` so retries are idempotent.
 

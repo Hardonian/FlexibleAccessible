@@ -1,6 +1,7 @@
 import { execSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { formatE2EPreflightError, runE2EPreflight } from './preflight.mjs';
 
 // apps/web/e2e -> repo root
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
@@ -10,10 +11,14 @@ const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..')
  * Requires DATABASE_URL (CI provides it; local dev should run docker compose + .env).
  */
 export default async function globalSetup() {
-  if (!process.env.DATABASE_URL) {
-    throw new Error('E2E global setup requires DATABASE_URL (run docker compose and copy .env.example)');
+  const preflight = runE2EPreflight(process.env);
+  if (!preflight.ok) {
+    throw new Error(formatE2EPreflightError(preflight));
   }
 
+  console.log('[e2e:setup] Preflight passed. Syncing schema...');
   execSync('npm run db:push', { cwd: repoRoot, stdio: 'inherit', env: process.env });
+  console.log('[e2e:setup] Schema synced. Seeding deterministic demo data...');
   execSync('npm run db:seed', { cwd: repoRoot, stdio: 'inherit', env: process.env });
+  console.log('[e2e:setup] Database bootstrap complete.');
 }
