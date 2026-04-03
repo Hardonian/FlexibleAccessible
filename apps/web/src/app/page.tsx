@@ -3,8 +3,10 @@
 import { useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { getPublicPlanCards } from "@/lib/public-packaging";
 
 export default function HomePage() {
+  const plans = getPublicPlanCards();
   const [scanDomain, setScanDomain] = useState("");
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState("");
@@ -252,12 +254,12 @@ export default function HomePage() {
               </h3>
               <p className="mt-2">
                 <span className="text-3xl font-bold text-slate-900">
-                  ${plan.price}
+                  ${plan.priceMonthly}
                 </span>
-                {plan.price > 0 && <span className="text-slate-500">/mo</span>}
+                {plan.priceMonthly > 0 && <span className="text-slate-500">/mo</span>}
               </p>
               <ul className="mt-4 space-y-2" role="list">
-                {plan.features.map((f) => (
+                {plan.bullets.map((f) => (
                   <li
                     key={f}
                     className="text-sm text-slate-600 flex items-start gap-2"
@@ -339,64 +341,5 @@ const features = [
     title: "Evidence Reporting",
     description:
       "Generate evidence-grade reports with before/after snapshots, reviewer sign-offs, timestamps, and audit trails.",
-  },
-];
-
-const plans = [
-  {
-    name: "Free",
-    price: 0,
-    highlighted: false,
-    features: [
-      "1 site",
-      "50 pages/crawl",
-      "3 scans/month",
-      "1 seat",
-      "Basic scanning",
-    ],
-  },
-  {
-    name: "Starter",
-    price: 49,
-    highlighted: false,
-    features: [
-      "3 sites",
-      "200 pages/crawl",
-      "10 scans/month",
-      "3 seats",
-      "Component clustering",
-      "AI suggestions",
-      "Pay-per-fix credits",
-    ],
-  },
-  {
-    name: "Professional",
-    price: 149,
-    highlighted: true,
-    features: [
-      "10 sites",
-      "1,000 pages/crawl",
-      "50 scans/month",
-      "10 seats",
-      "Review workflows",
-      "Evidence reports",
-      "Jira integration",
-      "AI copilot chat",
-    ],
-  },
-  {
-    name: "Enterprise",
-    price: 499,
-    highlighted: false,
-    features: [
-      "100 sites",
-      "10,000 pages/crawl",
-      "Unlimited scans",
-      "100 seats",
-      "SSO",
-      "Custom integrations",
-      "SLA",
-      "VPAT export",
-    ],
   },
 ];

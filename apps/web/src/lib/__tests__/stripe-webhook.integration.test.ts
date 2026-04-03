@@ -149,6 +149,43 @@ describeDb('Stripe webhook integration', () => {
     expect(rows).toHaveLength(1);
   });
 
+
+  it('does not silently grant paid entitlements for unknown price ids', async () => {
+    const eventId = `evt_test_${Date.now()}_unknown_price`;
+    const subId = `sub_test_unknown_${Date.now()}`;
+
+    await prisma.subscription.update({
+      where: { organizationId: orgId },
+      data: {
+        plan: 'FREE',
+        maxDomains: 1,
+        maxPagesPerCrawl: 50,
+        maxScansPerMonth: 3,
+        maxSeats: 1,
+        aiEnabled: false,
+        aiTokenLimit: 0,
+      },
+    });
+
+    const payload = subscriptionPayload({
+      id: subId,
+      eventId,
+      customerId: stripeCustomerId,
+      priceId: 'price_unknown_tier',
+      status: 'active',
+    });
+    const raw = JSON.stringify(payload);
+    const sig = signStripePayload(raw, env.webhookSecret);
+
+    const r = await handleStripeWebhookRequest(raw, sig, env, prisma);
+    expect(r).toEqual({ ok: true, duplicate: false });
+
+    const sub = await prisma.subscription.findUnique({ where: { organizationId: orgId } });
+    expect(sub?.plan).toBe('FREE');
+    expect(sub?.maxDomains).toBe(1);
+    expect(sub?.aiEnabled).toBe(false);
+  });
+
   it('downgrades on customer.subscription.deleted', async () => {
     const eventId = `evt_test_${Date.now()}_del`;
     const payload = {
