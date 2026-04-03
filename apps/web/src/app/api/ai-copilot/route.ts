@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/db";
 import { requireSession } from "@/lib/session";
-import { requireOrgAccess } from "@/lib/auth-guard";
+import { requireCanonicalOrgAccess } from "@/lib/server-org-boundary";
+import {
+  getCopilotFindingContext,
+  logAiCopilotUsage,
+  requireAiEnabled,
+} from "@/lib/ai/org-scoped-queries";
 import { apiError } from "@/lib/api-utils";
-import { ApiError } from "@aros/shared";
 
 export const runtime = "nodejs";
 
@@ -26,54 +29,14 @@ export async function POST(request: Request) {
     const body = await request.json();
     const parsed = chatSchema.parse(body);
 
-    const ctx = await requireOrgAccess(
+    const ctx = await requireCanonicalOrgAccess(
       parsed.organizationId,
       "finding:manage",
       { requirePaid: true },
     );
 
     // Load finding context for RAG
-    const finding = await prisma.canonicalFinding.findFirst({
-      where: {
-        id: parsed.findingId,
-        site: { workspace: { organizationId: ctx.organizationId } },
-      },
-      include: {
-        occurrences: {
-          take: 3,
-          include: { page: { select: { url: true, title: true } } },
-        },
-        suggestions: {
-          take: 3,
-          orderBy: { createdAt: "desc" },
-          select: {
-            type: true,
-            suggestedCode: true,
-            rationale: true,
-            confidence: true,
-            status: true,
-          },
-        },
-        cluster: {
-          select: {
-            name: true,
-            description: true,
-            pageCount: true,
-            findingCount: true,
-          },
-        },
-      },
-    });
-
-    if (!finding) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: { code: "NOT_FOUND", message: "Finding not found" },
-        },
-        { status: 404 },
-      );
-    }
+    const finding = await getCopilotFindingContext(ctx, parsed.findingId);
 
     // Build context prompt
     const systemPrompt =
@@ -98,11 +61,8 @@ ${finding.occurrences.map((o) => `- Page: ${o.page.url}\n  Selector: ${o.selecto
 ${parsed.message}`;
 
     // Check AI entitlement
-    const subscription = await prisma.subscription.findUnique({
-      where: { organizationId: ctx.organizationId },
-    });
-
-    if (!subscription?.aiEnabled) {
+    const aiEnabled = await requireAiEnabled(ctx);
+    if (!aiEnabled) {
       return NextResponse.json(
         {
           success: false,
@@ -168,16 +128,9 @@ ${parsed.message}`;
     });
 
     // Log AI usage
-    await prisma.aiUsageLog.create({
-      data: {
-        organizationId: ctx.organizationId,
-        userId: user.id,
-        model: anthropicKey ? "claude-sonnet-4-20250514" : "gpt-4o",
-        promptTokens: 0,
-        completionTokens: 0,
-        totalTokens: 0,
-        purpose: "copilot-chat",
-      },
+    await logAiCopilotUsage(ctx, {
+      userId: user.id,
+      model: anthropicKey ? "claude-sonnet-4-20250514" : "gpt-4o",
     });
 
     return new NextResponse(stream, {

@@ -1,9 +1,13 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { requireOrgAccess } from "@/lib/auth-guard";
-import { prisma } from "@/lib/db";
+import { requireSession } from "@/lib/session";
 import { getAppBaseUrl, getStripePriceIdForPlan } from "@/lib/billing";
+import { requireOrgAccess } from "@/lib/auth-guard";
+import {
+  getBillingCustomer,
+  getOrCreateBillingCustomer,
+} from "@/lib/billing/org-scoped-queries";
 import type { PlanTier } from "@aros/db";
 
 function redirectWithError(message: string) {
@@ -11,6 +15,7 @@ function redirectWithError(message: string) {
 }
 
 export async function startSubscriptionCheckoutAction(formData: FormData) {
+  const user = await requireSession();
   const organizationId =
     (formData.get("organizationId") as string | null) ?? "";
   const requestedPlanRaw = (formData.get("plan") as string | null) ?? "";
@@ -48,27 +53,19 @@ export async function startSubscriptionCheckoutAction(formData: FormData) {
   const stripe = new StripeCtor(process.env.STRIPE_SECRET_KEY);
   const baseUrl = getAppBaseUrl();
 
-  let billingCustomer = await prisma.billingCustomer.findUnique({
-    where: { organizationId: ctx.organizationId },
+  const billingCustomer = await getOrCreateBillingCustomer(ctx, {
+    createStripeCustomerId: async () => {
+      const customer = await stripe.customers.create({
+        email: user.email,
+        name: user.name ?? undefined,
+        metadata: {
+          organizationId: ctx.organizationId,
+          userId: user.id,
+        },
+      });
+      return customer.id;
+    },
   });
-
-  if (!billingCustomer) {
-    const customer = await stripe.customers.create({
-      email: ctx.user.email,
-      name: ctx.user.name ?? undefined,
-      metadata: {
-        organizationId: ctx.organizationId,
-        userId: ctx.user.id,
-      },
-    });
-
-    billingCustomer = await prisma.billingCustomer.create({
-      data: {
-        organizationId: ctx.organizationId,
-        stripeCustomerId: customer.id,
-      },
-    });
-  }
 
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
@@ -84,7 +81,7 @@ export async function startSubscriptionCheckoutAction(formData: FormData) {
     metadata: {
       organizationId: ctx.organizationId,
       requestedPlan,
-      userId: ctx.user.id,
+      userId: user.id,
     },
     success_url: `${baseUrl}/settings/billing?checkout=success`,
     cancel_url: `${baseUrl}/settings/billing?checkout=cancelled`,
@@ -106,9 +103,7 @@ export async function openBillingPortalAction(formData: FormData) {
     redirectWithError("Billing is not configured for this deployment.");
   }
 
-  const billingCustomer = await prisma.billingCustomer.findUnique({
-    where: { organizationId: ctx.organizationId },
-  });
+  const billingCustomer = await getBillingCustomer(ctx);
 
   if (!billingCustomer) {
     redirect("/settings/billing?status=no_customer");

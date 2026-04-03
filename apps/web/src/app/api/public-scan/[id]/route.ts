@@ -21,12 +21,20 @@ export async function GET(
       return apiError(ApiError.notFound("Scan not found"));
     }
     if (getPublicScanEvidenceState(scan) === "expired") {
-      return apiError(
-        new ApiError(
-          "Scan result has expired. Start a new scan to generate fresh evidence.",
-          "SCAN_EXPIRED",
-          410,
-        ),
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "SCAN_EXPIRED",
+            message:
+              "Scan result has expired. Start a new scan to generate fresh evidence.",
+            details: {
+              evidenceState: "expired",
+              expired: true,
+            },
+          },
+        },
+        { status: 410 },
       );
     }
 
