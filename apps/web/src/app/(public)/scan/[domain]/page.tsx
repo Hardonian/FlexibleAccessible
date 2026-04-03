@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/db";
+import { getLatestValidPublicScanForDomain } from "@/lib/public-scan/validity";
 import { Metadata } from "next";
 import { PublicScanResults } from "./public-scan-results";
 
@@ -12,10 +12,7 @@ export async function generateMetadata({
   const { domain } = await params;
   const decoded = decodeURIComponent(domain);
 
-  const scan = await prisma.publicScanResult.findFirst({
-    where: { domain: decoded, status: "COMPLETED", expiresAt: { gt: new Date() } },
-    orderBy: { createdAt: "desc" },
-  });
+  const scan = await getLatestValidPublicScanForDomain(decoded, { requireCompleted: true });
 
   const score = scan?.score ?? 0;
   const total = scan?.totalViolations ?? 0;
@@ -45,10 +42,7 @@ export default async function PublicScanPage({ params }: PageProps) {
   const { domain } = await params;
   const decoded = decodeURIComponent(domain);
 
-  const scan = await prisma.publicScanResult.findFirst({
-    where: { domain: decoded, expiresAt: { gt: new Date() } },
-    orderBy: { createdAt: "desc" },
-  });
+  const scan = await getLatestValidPublicScanForDomain(decoded, { requireCompleted: false });
 
   return (
     <PublicScanResults

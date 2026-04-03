@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { requireOrgAccess } from "@/lib/auth-guard";
+import { requireCanonicalOrgAccess } from "@/lib/server-org-boundary";
 import { apiSuccess, apiError } from "@/lib/api-utils";
 import { ApiError } from "@aros/shared";
 import { createHmac, timingSafeEqual } from "crypto";
+import { createPendingScanRun, findActiveDeployWebhookByDomain, listDeployWebhooks } from "@/lib/integrations/org-scoped-queries";
 
 export const runtime = "nodejs";
 
@@ -146,27 +146,7 @@ export async function POST(request: Request) {
     const domain = new URL(deployUrl).hostname;
 
     // Find matching deploy webhook configuration
-    const deployWebhook = await prisma.deployWebhook.findFirst({
-      where: {
-        isActive: true,
-        site: { domain },
-      },
-      include: {
-        site: {
-          include: {
-            workspace: {
-              include: {
-                organization: {
-                  include: {
-                    subscription: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    });
+    const deployWebhook = await findActiveDeployWebhookByDomain(domain);
 
     if (!deployWebhook) {
       // No matching config - acknowledge but don't scan
@@ -203,12 +183,7 @@ export async function POST(request: Request) {
     }
 
     // Create scan run
-    const scanRun = await prisma.scanRun.create({
-      data: {
-        siteId: deployWebhook.siteId,
-        status: "PENDING",
-      },
-    });
+    const scanRun = await createPendingScanRun(deployWebhook.siteId);
 
     // Enqueue scan
     const { Queue } = await import("bullmq");
@@ -249,15 +224,11 @@ export async function GET(request: Request) {
       });
     }
 
-    await requireOrgAccess(organizationId, "integrations:view", {
+    const ctx = await requireCanonicalOrgAccess(organizationId, "integrations:view", {
       requirePaid: true,
     });
 
-    const webhooks = await prisma.deployWebhook.findMany({
-      where: { organizationId },
-      include: { site: { select: { id: true, name: true, domain: true } } },
-      orderBy: { createdAt: "desc" },
-    });
+    const webhooks = await listDeployWebhooks(ctx);
 
     return apiSuccess(webhooks);
   } catch (error) {
