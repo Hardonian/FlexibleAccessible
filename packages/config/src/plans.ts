@@ -1,15 +1,19 @@
+export type PlanTier = 'FREE' | 'STARTER' | 'PROFESSIONAL' | 'ENTERPRISE';
+
 export interface PlanConfig {
   name: string;
-  tier: 'FREE' | 'STARTER' | 'PROFESSIONAL' | 'ENTERPRISE';
+  tier: PlanTier;
   maxDomains: number;
   maxPagesPerCrawl: number;
   maxScansPerMonth: number;
   maxSeats: number;
   features: string[];
   priceMonthly: number;
+  aiEnabled: boolean;
+  aiTokenLimit: number;
 }
 
-export const PLANS: Record<string, PlanConfig> = {
+export const PLANS: Record<PlanTier, PlanConfig> = {
   FREE: {
     name: 'Free',
     tier: 'FREE',
@@ -19,6 +23,8 @@ export const PLANS: Record<string, PlanConfig> = {
     maxSeats: 1,
     features: ['Basic scanning', 'Findings dashboard', 'CSV export'],
     priceMonthly: 0,
+    aiEnabled: false,
+    aiTokenLimit: 0,
   },
   STARTER: {
     name: 'Starter',
@@ -30,10 +36,11 @@ export const PLANS: Record<string, PlanConfig> = {
     features: [
       'Everything in Free',
       'Component clustering',
-      'AI remediation suggestions',
       'GitHub integration',
     ],
     priceMonthly: 49,
+    aiEnabled: false,
+    aiTokenLimit: 0,
   },
   PROFESSIONAL: {
     name: 'Professional',
@@ -51,6 +58,8 @@ export const PLANS: Record<string, PlanConfig> = {
       'Priority support',
     ],
     priceMonthly: 149,
+    aiEnabled: true,
+    aiTokenLimit: 100000,
   },
   ENTERPRISE: {
     name: 'Enterprise',
@@ -61,12 +70,13 @@ export const PLANS: Record<string, PlanConfig> = {
     maxSeats: 100,
     features: [
       'Everything in Professional',
-      'Unlimited scans',
       'Custom integrations',
       'SSO',
       'Dedicated support',
       'SLA',
     ],
     priceMonthly: 499,
+    aiEnabled: true,
+    aiTokenLimit: 1000000,
   },
 };

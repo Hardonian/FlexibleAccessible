@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from 'crypto';
+import { PLANS, type PlanTier } from '@aros/config';
 import type { Prisma, PrismaClient } from '@prisma/client';
 
 export interface StripeWebhookEnv {
@@ -114,6 +115,26 @@ export async function handleStripeWebhookRequest(
   return { ok: true, duplicate: false };
 }
 
+
+function resolvePlanTierFromPriceId(priceId: string | undefined, env: StripeWebhookEnv): Exclude<PlanTier, 'FREE'> | null {
+  if (!priceId) return null;
+  if (priceId === env.priceStarter) return 'STARTER';
+  if (priceId === env.priceProfessional) return 'PROFESSIONAL';
+  if (priceId === env.priceEnterprise) return 'ENTERPRISE';
+  return null;
+}
+
+const statusMap: Record<string, 'ACTIVE' | 'PAST_DUE' | 'CANCELLED' | 'TRIALING'> = {
+  active: 'ACTIVE',
+  past_due: 'PAST_DUE',
+  canceled: 'CANCELLED',
+  trialing: 'TRIALING',
+};
+
+function subscriptionStatusFromStripe(status: string | undefined): 'ACTIVE' | 'PAST_DUE' | 'CANCELLED' | 'TRIALING' {
+  return statusMap[status ?? ''] ?? 'ACTIVE';
+}
+
 async function applySubscriptionUpsert(
   tx: Prisma.TransactionClient,
   subscription: StripeSubscriptionObject,
@@ -127,49 +148,41 @@ async function applySubscriptionUpsert(
   });
   if (!billingCustomer) return;
 
-  const planMap: Record<
-    string,
-    { plan: 'FREE' | 'STARTER' | 'PROFESSIONAL' | 'ENTERPRISE'; maxDomains: number; maxPages: number; maxScans: number; maxSeats: number; aiEnabled: boolean; aiTokenLimit: number }
-  > = {
-    [env.priceStarter]: { plan: 'STARTER', maxDomains: 3, maxPages: 200, maxScans: 10, maxSeats: 3, aiEnabled: false, aiTokenLimit: 0 },
-    [env.priceProfessional]: { plan: 'PROFESSIONAL', maxDomains: 10, maxPages: 1000, maxScans: 50, maxSeats: 10, aiEnabled: true, aiTokenLimit: 100000 },
-    [env.priceEnterprise]: { plan: 'ENTERPRISE', maxDomains: 100, maxPages: 10000, maxScans: 500, maxSeats: 100, aiEnabled: true, aiTokenLimit: 1000000 },
-  };
-
   const priceId = subscription.items?.data?.[0]?.price?.id;
-  const planConfig = priceId ? planMap[priceId] : null;
+  const resolvedPlanTier = resolvePlanTierFromPriceId(priceId, env);
+  const planConfig = resolvedPlanTier ? PLANS[resolvedPlanTier] : null;
 
-  const statusMap: Record<string, 'ACTIVE' | 'PAST_DUE' | 'CANCELLED' | 'TRIALING'> = {
-    active: 'ACTIVE',
-    past_due: 'PAST_DUE',
-    canceled: 'CANCELLED',
-    trialing: 'TRIALING',
-  };
+  if (!resolvedPlanTier && priceId) {
+    console.warn('[stripe-webhook] unknown price id received; preserving existing entitlement where possible', {
+      stripeSubscriptionId: subscription.id,
+      priceId,
+    });
+  }
 
   await tx.subscription.upsert({
     where: { organizationId: billingCustomer.organizationId },
     create: {
       organizationId: billingCustomer.organizationId,
       stripeSubscriptionId: subscription.id,
-      plan: planConfig?.plan ?? 'STARTER',
-      status: statusMap[subscription.status] ?? 'ACTIVE',
-      maxDomains: planConfig?.maxDomains ?? 3,
-      maxPagesPerCrawl: planConfig?.maxPages ?? 200,
-      maxScansPerMonth: planConfig?.maxScans ?? 10,
-      maxSeats: planConfig?.maxSeats ?? 3,
-      aiEnabled: planConfig?.aiEnabled ?? false,
-      aiTokenLimit: planConfig?.aiTokenLimit ?? 0,
+      plan: planConfig?.tier ?? 'FREE',
+      status: subscriptionStatusFromStripe(subscription.status),
+      maxDomains: planConfig?.maxDomains ?? PLANS.FREE.maxDomains,
+      maxPagesPerCrawl: planConfig?.maxPagesPerCrawl ?? PLANS.FREE.maxPagesPerCrawl,
+      maxScansPerMonth: planConfig?.maxScansPerMonth ?? PLANS.FREE.maxScansPerMonth,
+      maxSeats: planConfig?.maxSeats ?? PLANS.FREE.maxSeats,
+      aiEnabled: planConfig?.aiEnabled ?? PLANS.FREE.aiEnabled,
+      aiTokenLimit: planConfig?.aiTokenLimit ?? PLANS.FREE.aiTokenLimit,
       currentPeriodStart: new Date(subscription.current_period_start * 1000),
       currentPeriodEnd: new Date(subscription.current_period_end * 1000),
       cancelAtPeriodEnd: subscription.cancel_at_period_end ?? false,
     },
     update: {
       stripeSubscriptionId: subscription.id,
-      plan: planConfig?.plan ?? undefined,
-      status: statusMap[subscription.status] ?? 'ACTIVE',
+      plan: planConfig?.tier ?? undefined,
+      status: subscriptionStatusFromStripe(subscription.status),
       maxDomains: planConfig?.maxDomains,
-      maxPagesPerCrawl: planConfig?.maxPages,
-      maxScansPerMonth: planConfig?.maxScans,
+      maxPagesPerCrawl: planConfig?.maxPagesPerCrawl,
+      maxScansPerMonth: planConfig?.maxScansPerMonth,
       maxSeats: planConfig?.maxSeats,
       aiEnabled: planConfig?.aiEnabled,
       aiTokenLimit: planConfig?.aiTokenLimit,
@@ -192,12 +205,12 @@ async function applySubscriptionDeleted(tx: Prisma.TransactionClient, subscripti
     data: {
       status: 'CANCELLED',
       plan: 'FREE',
-      maxDomains: 1,
-      maxPagesPerCrawl: 50,
-      maxScansPerMonth: 3,
-      maxSeats: 1,
-      aiEnabled: false,
-      aiTokenLimit: 0,
+      maxDomains: PLANS.FREE.maxDomains,
+      maxPagesPerCrawl: PLANS.FREE.maxPagesPerCrawl,
+      maxScansPerMonth: PLANS.FREE.maxScansPerMonth,
+      maxSeats: PLANS.FREE.maxSeats,
+      aiEnabled: PLANS.FREE.aiEnabled,
+      aiTokenLimit: PLANS.FREE.aiTokenLimit,
     },
   });
 }
