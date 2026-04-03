@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 import { PLANS, type PlanTier } from '@aros/config';
-import type { Prisma, PrismaClient } from '@prisma/client';
+import type { Prisma, PrismaClient } from '@aros/db';
 
 export interface StripeWebhookEnv {
   webhookSecret: string;

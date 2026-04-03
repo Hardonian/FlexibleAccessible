@@ -10,10 +10,11 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --exclude \"src/**/*.integration.test.ts\"",
     "test:e2e": "playwright test",
     "test:ct": "playwright test -c playwright-ct.config.ts",
-    "test:e2e:update": "playwright test --update-snapshots"
+    "test:e2e:update": "playwright test --update-snapshots",
+    "test:integration": "vitest run src/lib/__tests__/stripe-webhook.integration.test.ts"
   },
   "dependencies": {
     "@aros/config": "*",
