@@ -1,9 +1,7 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
 import { requireSession } from "@/lib/session";
-import { requireOrgAccess } from "@/lib/auth-guard";
 import { apiSuccess, apiError } from "@/lib/api-utils";
-import { ApiError } from "@aros/shared";
+import { requireCanonicalOrgAccess } from "@/lib/server-org-boundary";
+import { isImpactStale, verifyOrgSiteAccess } from "@/lib/impact/org-scoped-queries";
 import {
   computeClusterImpacts,
   getParetoAnalysis,
@@ -15,7 +13,7 @@ import {
  */
 export async function GET(request: Request) {
   try {
-    const user = await requireSession();
+    await requireSession();
     const { searchParams } = new URL(request.url);
     const organizationId = searchParams.get("organizationId");
     const siteId = searchParams.get("siteId");
@@ -27,33 +25,15 @@ export async function GET(request: Request) {
       });
     }
 
-    const ctx = await requireOrgAccess(organizationId, "finding:view", {
+    const ctx = await requireCanonicalOrgAccess(organizationId, "finding:view", {
       requirePaid: true,
     });
 
-    // Verify site access
-    const site = await prisma.site.findFirst({
-      where: {
-        id: siteId,
-        workspace: { organizationId: ctx.organizationId },
-      },
-    });
+    await verifyOrgSiteAccess(ctx, siteId);
 
-    if (!site) {
-      return apiError(ApiError.notFound("Site not found"));
-    }
+    const stale = await isImpactStale(ctx, siteId);
 
-    // Check if impacts are stale (> 1 hour old)
-    const latestImpact = await prisma.clusterImpact.findFirst({
-      where: { cluster: { siteId } },
-      orderBy: { computedAt: "desc" },
-    });
-
-    const isStale =
-      !latestImpact ||
-      Date.now() - latestImpact.computedAt.getTime() > 60 * 60 * 1000;
-
-    if (isStale) {
+    if (stale) {
       await computeClusterImpacts(siteId);
     }
 
@@ -71,7 +51,7 @@ export async function GET(request: Request) {
  */
 export async function POST(request: Request) {
   try {
-    const user = await requireSession();
+    await requireSession();
     const body = await request.json();
     const { organizationId, siteId } = body;
 
@@ -82,20 +62,11 @@ export async function POST(request: Request) {
       });
     }
 
-    const ctx = await requireOrgAccess(organizationId, "finding:manage", {
+    const ctx = await requireCanonicalOrgAccess(organizationId, "finding:manage", {
       requirePaid: true,
     });
 
-    const site = await prisma.site.findFirst({
-      where: {
-        id: siteId,
-        workspace: { organizationId: ctx.organizationId },
-      },
-    });
-
-    if (!site) {
-      return apiError(ApiError.notFound("Site not found"));
-    }
+    await verifyOrgSiteAccess(ctx, siteId);
 
     const results = await computeClusterImpacts(siteId);
 
