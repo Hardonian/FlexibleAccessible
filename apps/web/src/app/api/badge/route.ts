@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { getLatestValidPublicScanForDomain } from "@/lib/public-scan/validity";
 
 export const runtime = "nodejs";
 
@@ -58,11 +58,7 @@ export async function GET(request: Request) {
   let totalViolations = 0;
 
   try {
-    const scan = await prisma.publicScanResult.findFirst({
-      where: { domain, status: "COMPLETED" },
-      orderBy: { createdAt: "desc" },
-      select: { score: true, totalViolations: true },
-    });
+    const scan = await getLatestValidPublicScanForDomain(domain, { requireCompleted: true });
 
     if (scan) {
       score = scan.score;

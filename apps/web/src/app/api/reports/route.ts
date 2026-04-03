@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
-import { hasPermission } from "@aros/config";
-import { getEntitlementState, requireOrgAccess } from "@/lib/auth-guard";
+import { requireCanonicalOrgAccess } from "@/lib/server-org-boundary";
 import {
   collectPlatformHealth,
   buildRoutePlatformTruth,
 } from "@aros/core-services";
 import { buildFindingProofSummary } from "@/lib/findings/proof-summary";
 import { summarizeFindingFamilies } from "@/lib/findings/family-summary";
+import { listFindingsForReport } from "@/lib/reports/org-scoped-queries";
 
 export async function GET(request: Request) {
   try {
@@ -27,54 +27,18 @@ export async function GET(request: Request) {
     }
 
     // Use centralized auth guard
-    const ctx = await requireOrgAccess(requestedOrgId, "reports:export", {
+    const ctx = await requireCanonicalOrgAccess(requestedOrgId, "reports:export", {
       requirePaid: true,
     });
-
-    const where: Record<string, unknown> = {
-      site: {
-        workspace: { organizationId: ctx.organizationId },
-        ...(siteId ? { id: siteId } : {}),
-      },
-    };
 
     const health = await collectPlatformHealth(prisma);
     const truth = buildRoutePlatformTruth(health);
 
-    const findings = await prisma.canonicalFinding.findMany({
-      where,
-      include: {
-        occurrences: {
-          include: { page: { select: { url: true, title: true } } },
-          take: 100,
-        },
-        evidenceRecords: {
-          take: 20,
-          orderBy: [{ capturedAt: "desc" }, { createdAt: "desc" }],
-        },
-        verificationRuns: {
-          take: 10,
-          orderBy: [{ completedAt: "desc" }, { createdAt: "desc" }],
-        },
-        governanceDecisions: {
-          take: 10,
-          orderBy: [{ createdAt: "desc" }],
-          select: {
-            id: true,
-            kind: true,
-            status: true,
-            rationale: true,
-            justification: true,
-            expiresAt: true,
-            createdAt: true,
-          },
-        },
-      },
-      orderBy: [{ impact: "asc" }, { occurrenceCount: "desc" }],
-    });
+    const findings = await listFindingsForReport(ctx, siteId);
+    type ReportFinding = (typeof findings)[number];
 
     const familySummaryByRuleId = summarizeFindingFamilies(
-      findings.map((finding) => ({
+      findings.map((finding: ReportFinding) => ({
         ruleId: finding.ruleId,
         firstSeenAt: finding.firstSeenAt,
         lastSeenAt: finding.lastSeenAt,
@@ -96,23 +60,23 @@ export async function GET(request: Request) {
       summary: {
         totalFindings: findings.length,
         bySeverity: {
-          critical: findings.filter((f) => f.impact === "CRITICAL").length,
-          serious: findings.filter((f) => f.impact === "SERIOUS").length,
-          moderate: findings.filter((f) => f.impact === "MODERATE").length,
-          minor: findings.filter((f) => f.impact === "MINOR").length,
+          critical: findings.filter((f: ReportFinding) => f.impact === "CRITICAL").length,
+          serious: findings.filter((f: ReportFinding) => f.impact === "SERIOUS").length,
+          moderate: findings.filter((f: ReportFinding) => f.impact === "MODERATE").length,
+          minor: findings.filter((f: ReportFinding) => f.impact === "MINOR").length,
         },
         byEvidenceSource: {
           automatedAxe: findings.filter(
-            (f) => f.evidenceSource === "AUTOMATED_AXE",
+            (f: ReportFinding) => f.evidenceSource === "AUTOMATED_AXE",
           ).length,
           manualReview: findings.filter(
-            (f) => f.evidenceSource === "MANUAL_REVIEW",
+            (f: ReportFinding) => f.evidenceSource === "MANUAL_REVIEW",
           ).length,
-          imported: findings.filter((f) => f.evidenceSource === "IMPORTED")
+          imported: findings.filter((f: ReportFinding) => f.evidenceSource === "IMPORTED")
             .length,
         },
         proofCompleteness: {
-          complete: findings.filter((f) => {
+          complete: findings.filter((f: ReportFinding) => {
             const summary = buildFindingProofSummary({
               evidenceSummary: f.evidenceSummary,
               provenance: f.provenance,
@@ -122,7 +86,7 @@ export async function GET(request: Request) {
             });
             return Object.values(summary.completeness).filter(Boolean).length >= 4;
           }).length,
-          partial: findings.filter((f) => {
+          partial: findings.filter((f: ReportFinding) => {
             const summary = buildFindingProofSummary({
               evidenceSummary: f.evidenceSummary,
               provenance: f.provenance,
@@ -134,7 +98,7 @@ export async function GET(request: Request) {
           }).length,
         },
       },
-      findings: findings.map((f) => ({
+      findings: findings.map((f: ReportFinding) => ({
         id: f.id,
         ruleId: f.ruleId,
         impact: f.impact,
@@ -174,7 +138,7 @@ export async function GET(request: Request) {
               outcomeSummary: f.verificationRuns[0].outcomeSummary,
             }
           : null,
-        governance: f.governanceDecisions.map((decision) => ({
+        governance: f.governanceDecisions.map((decision: ReportFinding["governanceDecisions"][number]) => ({
           id: decision.id,
           kind: decision.kind,
           status: decision.status,
@@ -183,7 +147,7 @@ export async function GET(request: Request) {
           expiresAt: decision.expiresAt,
           createdAt: decision.createdAt,
         })),
-        affectedPages: f.occurrences.map((o) => ({
+        affectedPages: f.occurrences.map((o: ReportFinding["occurrences"][number]) => ({
           url: o.page.url,
           title: o.page.title,
           selector: o.selector,

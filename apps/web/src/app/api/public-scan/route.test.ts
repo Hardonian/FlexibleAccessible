@@ -12,7 +12,8 @@ vi.mock("@/lib/db", () => ({
   },
 }));
 
-import { GET, isPrivateOrLoopbackAddress, validatePublicScanTarget } from "./route";
+import { GET, POST } from "./route";
+import { isPrivateOrLoopbackAddress, validatePublicScanTarget } from "@/lib/public-scan/target-validation";
 
 describe("public scan target validation", () => {
   beforeEach(() => {
@@ -55,5 +56,33 @@ describe("GET /api/public-scan?id=...", () => {
 
     expect(response.status).toBe(410);
     expect(payload.error?.code).toBe("SCAN_EXPIRED");
+  });
+
+  it("rejects URLs with embedded credentials", async () => {
+    const request = new Request("http://localhost/api/public-scan", {
+      method: "POST",
+      body: JSON.stringify({ domain: "https://user:pass@example.com" }),
+      headers: { "content-type": "application/json" },
+    });
+
+    const response = await POST(request);
+    const payload = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(payload.error?.message).toMatch(/embedded credentials/i);
+  });
+
+  it("rejects URLs that target non-default ports", async () => {
+    const request = new Request("http://localhost/api/public-scan", {
+      method: "POST",
+      body: JSON.stringify({ domain: "https://example.com:8443" }),
+      headers: { "content-type": "application/json" },
+    });
+
+    const response = await POST(request);
+    const payload = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(payload.error?.message).toMatch(/default http/i);
   });
 });

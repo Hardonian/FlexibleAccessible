@@ -5,6 +5,13 @@ const CRITICAL_ENTRYPOINTS = [
   "src/app/api/comments/route.ts",
   "src/app/api/credits/route.ts",
   "src/app/api/impact/route.ts",
+  "src/app/api/reports/route.ts",
+  "src/app/api/reports/vpat/route.ts",
+  "src/app/api/github-action/route.ts",
+  "src/app/api/deploy-webhook/route.ts",
+  "src/app/api/public-scan/route.ts",
+  "src/app/api/public-scan/[id]/route.ts",
+  "src/app/api/badge/route.ts",
 ];
 
 const joined = CRITICAL_ENTRYPOINTS.join(" ");

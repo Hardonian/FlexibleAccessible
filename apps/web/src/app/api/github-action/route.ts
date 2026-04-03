@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/db";
-import { requireOrgAccess } from "@/lib/auth-guard";
+import { requireCanonicalOrgAccess } from "@/lib/server-org-boundary";
 import { apiSuccess, apiError } from "@/lib/api-utils";
 import { ApiError } from "@aros/shared";
 import { Queue } from "bullmq";
 import { bullmqConnectionOptions } from "@aros/shared";
+import { createPendingScanRun, findGithubActionSite } from "@/lib/integrations/org-scoped-queries";
 
 export const runtime = "nodejs";
 
@@ -33,34 +33,19 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const parsed = scanActionSchema.parse(body);
-    const ctx = await requireOrgAccess(parsed.organizationId, "scan:start", {
+    const ctx = await requireCanonicalOrgAccess(parsed.organizationId, "scan:start", {
       requirePaid: true,
     });
 
     // Verify site exists and user has access
-    const site = await prisma.site.findFirst({
-      where: {
-        id: parsed.siteId,
-        workspace: { organizationId: ctx.organizationId },
-      },
-      include: {
-        workspace: {
-          include: { organization: true },
-        },
-      },
-    });
+    const site = await findGithubActionSite(ctx, parsed.siteId);
 
     if (!site) {
       return apiError(ApiError.notFound("Site not found"));
     }
 
     // Create scan run
-    const scanRun = await prisma.scanRun.create({
-      data: {
-        siteId: site.id,
-        status: "PENDING",
-      },
-    });
+    const scanRun = await createPendingScanRun(site.id);
 
     // Enqueue scan
     const scanQueue = new Queue("scan", {
