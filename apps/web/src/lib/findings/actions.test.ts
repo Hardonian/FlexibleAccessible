@@ -6,6 +6,14 @@ vi.mock('@/lib/session');
 vi.mock('@/lib/platform-truth-cache');
 vi.mock('@/lib/route-data-boundary');
 vi.mock('@/lib/findings/org-scoped-queries');
+vi.mock('@/lib/db', () => ({
+  prisma: {
+    membership: {
+      findUnique: vi.fn(),
+      delete: vi.fn(),
+    },
+  },
+}));
 
 vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
@@ -17,6 +25,7 @@ import { requireSession } from '@/lib/session';
 import { getRoutePlatformTruth } from '@/lib/platform-truth-cache';
 import { resolveDashboardOrgMembership } from '@/lib/route-data-boundary';
 import { getScopedMembers } from '@/lib/findings/org-scoped-queries';
+import { prisma } from '@/lib/db';
 import { revalidatePath, revalidateTag } from 'next/cache';
 
 describe('Server Action: getOrganizationMembers', () => {
@@ -111,13 +120,18 @@ describe('Server Action: removeOrganizationMember', () => {
     vi.mocked(getRoutePlatformTruth).mockResolvedValue({ allowOrgScopedDbReads: true } as any);
   });
 
-  it('should revalidate the path and tag upon successful mutation', async () => {
+  it('revalidates members cache after successful deletion', async () => {
     // Arrange
     vi.mocked(resolveDashboardOrgMembership).mockResolvedValue({
       kind: 'ok',
       organizationId: 'org-abc',
       role: 'ADMIN',
     });
+    vi.mocked(prisma.membership.findUnique).mockResolvedValue({
+      id: 'member-456',
+      organizationId: 'org-abc',
+    } as any);
+    vi.mocked(prisma.membership.delete).mockResolvedValue({ id: 'member-456' } as any);
 
     // Act
     const result = await removeOrganizationMember('member-456');

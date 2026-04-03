@@ -15,15 +15,22 @@ vi.mock("@/lib/db", () => ({
     canonicalFinding: {
       findFirst: vi.fn(),
     },
+    subscription: {
+      findUnique: vi.fn(),
+    },
     aiUsageLog: {
       create: vi.fn(),
     },
   },
 }));
 
-vi.mock("@aros/shared", () => ({
-  generateToken: vi.fn(() => "mock-token"),
-}));
+vi.mock("@aros/shared", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@aros/shared")>();
+  return {
+    ...actual,
+    generateToken: vi.fn(() => "mock-token"),
+  };
+});
 
 vi.mock("fetch", () => ({
   default: vi.fn(),
@@ -117,6 +124,9 @@ describe("AI Copilot API", () => {
       wcagCriteria: [],
       occurrences: [],
       suggestions: [],
+    } as any);
+    vi.mocked(prisma.subscription.findUnique).mockResolvedValueOnce({
+      aiEnabled: false,
     } as any);
 
     const request = new Request("http://localhost/api/ai-copilot", {
