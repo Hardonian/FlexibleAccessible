@@ -8,6 +8,7 @@ import {
   buildRoutePlatformTruth,
 } from "@aros/core-services";
 import { buildFindingProofSummary } from "@/lib/findings/proof-summary";
+import { summarizeFindingFamilies } from "@/lib/findings/family-summary";
 
 export async function GET(request: Request) {
   try {
@@ -71,6 +72,16 @@ export async function GET(request: Request) {
       },
       orderBy: [{ impact: "asc" }, { occurrenceCount: "desc" }],
     });
+
+    const familySummaryByRuleId = summarizeFindingFamilies(
+      findings.map((finding) => ({
+        ruleId: finding.ruleId,
+        firstSeenAt: finding.firstSeenAt,
+        lastSeenAt: finding.lastSeenAt,
+        reopenedCount: finding.reopenedCount,
+        status: finding.status,
+      })),
+    );
 
     const report = {
       generatedAt: new Date().toISOString(),
@@ -154,6 +165,7 @@ export async function GET(request: Request) {
           reopenedCount: f.reopenedCount,
         }),
         evidenceCount: f.evidenceRecords.length,
+        familySummary: familySummaryByRuleId[f.ruleId] ?? null,
         latestVerification: f.verificationRuns[0]
           ? {
               status: f.verificationRuns[0].status,
@@ -180,10 +192,13 @@ export async function GET(request: Request) {
     };
 
     if (format === "csv") {
-      const lines = ["Rule ID,Impact,Status,Description,Occurrences,WCAG Tags"];
+      const lines = [
+        "Rule ID,Impact,Status,Truth Status,Changed Since Last Run,Proof Completeness,Family Active,Family Regressed,Description,Occurrences,WCAG Tags",
+      ];
       for (const f of report.findings) {
+        const proofCompletenessScore = Object.values(f.proofSummary.completeness).filter(Boolean).length;
         lines.push(
-          `"${f.ruleId}","${f.impact}","${f.status}","${f.description.replace(/"/g, '""')}",${f.occurrenceCount},"${f.wcagTags.join("; ")}"`,
+          `"${f.ruleId}","${f.impact}","${f.status}","${f.truthStatus}","${f.proofSummary.changedSinceLastRun}",${proofCompletenessScore},${f.familySummary?.activeFindings ?? 0},${f.familySummary?.regressedFindings ?? 0},"${f.description.replace(/"/g, '""')}",${f.occurrenceCount},"${f.wcagTags.join("; ")}"`,
         );
       }
       return new NextResponse(lines.join("\n"), {

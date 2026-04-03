@@ -13,6 +13,7 @@ import { hasPermission } from "@aros/config";
 import { StatusBadge, EmptyState } from "@aros/ui";
 import { getAutomationEvidenceFreshnessDescriptor } from "@/lib/findings/evidence-freshness";
 import { buildFindingProofSummary } from "@/lib/findings/proof-summary";
+import { summarizeFindingFamilies } from "@/lib/findings/family-summary";
 
 type FindingListRow = Prisma.CanonicalFindingGetPayload<{
   include: {
@@ -23,11 +24,6 @@ type FindingListRow = Prisma.CanonicalFindingGetPayload<{
 }>;
 
 export const metadata = { title: "Findings - AROS" };
-const ACTIVE_FINDING_STATUSES: FindingStatus[] = [
-  "OPEN",
-  "ACKNOWLEDGED",
-  "IN_PROGRESS",
-];
 
 interface SearchParams {
   page?: string;
@@ -160,50 +156,14 @@ export default async function FindingsPage({
         select: { completedAt: true },
       }),
     ]);
-    const ruleIds = Array.from(new Set(findings.map((finding) => finding.ruleId)));
-    const familyAggregates =
-      ruleIds.length === 0
-        ? []
-        : await prisma.canonicalFinding.groupBy({
-            by: ["ruleId"],
-            where: {
-              site: {
-                workspace: { organizationId },
-                ...(params.siteId ? { id: params.siteId } : {}),
-              },
-              ruleId: { in: ruleIds },
-            },
-            _count: { _all: true },
-            _max: { lastSeenAt: true },
-          });
-    const activeFamilyAggregates =
-      ruleIds.length === 0
-        ? []
-        : await prisma.canonicalFinding.groupBy({
-            by: ["ruleId"],
-            where: {
-              site: {
-                workspace: { organizationId },
-                ...(params.siteId ? { id: params.siteId } : {}),
-              },
-              ruleId: { in: ruleIds },
-              status: { in: ACTIVE_FINDING_STATUSES },
-            },
-            _count: { _all: true },
-          });
-
-    const familySummaryByRuleId = Object.fromEntries(
-      familyAggregates.map((agg) => [
-        agg.ruleId,
-        {
-          totalFindings: agg._count._all,
-          activeFindings:
-            activeFamilyAggregates.find((active) => active.ruleId === agg.ruleId)
-              ?._count._all ?? 0,
-          lastSeenAt: agg._max.lastSeenAt ?? null,
-        },
-      ]),
-    );
+    const familyInputs = findings.map((finding) => ({
+      ruleId: finding.ruleId,
+      firstSeenAt: finding.firstSeenAt,
+      lastSeenAt: finding.lastSeenAt,
+      reopenedCount: finding.reopenedCount,
+      status: finding.status,
+    }));
+    const familySummaryByRuleId = summarizeFindingFamilies(familyInputs);
     return {
       findings,
       total,
@@ -407,6 +367,10 @@ function FindingRow({
   familySummary?: {
     totalFindings: number;
     activeFindings: number;
+    regressedFindings: number;
+    newlyDetectedFindings: number;
+    persistentFindings: number;
+    firstSeenAt: Date | null;
     lastSeenAt: Date | null;
   };
 }) {
@@ -497,10 +461,24 @@ function FindingRow({
                   {familySummary.activeFindings} active
                 </span>
               )}
+              {familySummary && familySummary.regressedFindings > 0 && (
+                <span>Family regressed: {familySummary.regressedFindings}</span>
+              )}
+              {familySummary && (
+                <span>
+                  Family trend: {familySummary.newlyDetectedFindings} new /{" "}
+                  {familySummary.persistentFindings} persistent
+                </span>
+              )}
               <span>Site: {finding.site.name}</span>
               <span>
                 First seen: {finding.firstSeenAt.toLocaleDateString()}
               </span>
+              {familySummary?.firstSeenAt && (
+                <span>
+                  Family first seen: {familySummary.firstSeenAt.toLocaleDateString()}
+                </span>
+              )}
               {finding.lastVerifiedAt && (
                 <span>
                   Last verified: {finding.lastVerifiedAt.toLocaleDateString()}
