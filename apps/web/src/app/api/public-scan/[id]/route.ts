@@ -32,14 +32,39 @@ export async function GET(
         screenshotKeys: true,
         createdAt: true,
         completedAt: true,
+        expiresAt: true,
       },
     });
 
     if (!scan) {
       return apiError(ApiError.notFound("Scan not found"));
     }
+    if (scan.expiresAt && scan.expiresAt <= new Date()) {
+      return apiError(
+        new ApiError(
+          "Scan result has expired. Start a new scan to generate fresh evidence.",
+          "SCAN_EXPIRED",
+          410,
+        ),
+      );
+    }
 
-    return apiSuccess(scan);
+    return apiSuccess({
+      id: scan.id,
+      domain: scan.domain,
+      status: scan.status,
+      score: scan.score,
+      totalViolations: scan.totalViolations,
+      criticalCount: scan.criticalCount,
+      seriousCount: scan.seriousCount,
+      moderateCount: scan.moderateCount,
+      minorCount: scan.minorCount,
+      pagesScanned: scan.pagesScanned,
+      violations: scan.violations,
+      screenshotKeys: scan.screenshotKeys,
+      createdAt: scan.createdAt,
+      completedAt: scan.completedAt,
+    });
   } catch (error) {
     return apiError(error);
   }

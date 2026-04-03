@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { apiSuccess, apiError } from "@/lib/api-utils";
 import { ApiError } from "@aros/shared";
 import { createHash } from "crypto";
+import { lookup } from "node:dns/promises";
 
 export const runtime = "nodejs";
 
@@ -14,17 +15,81 @@ const scanSchema = z.object({
   domain: z.string().min(1, "Domain is required").max(253),
 });
 
-function normalizePublicScanDomain(rawDomain: string): { domain: string; url: string } {
+const BLOCKED_HOSTNAMES = new Set([
+  "localhost",
+  "127.0.0.1",
+  "::1",
+  "0.0.0.0",
+  "169.254.169.254", // cloud metadata endpoint
+]);
+
+function isPrivateIpv4(address: string): boolean {
+  const octets = address.split(".").map(Number);
+  if (octets.length !== 4 || octets.some((octet) => Number.isNaN(octet) || octet < 0 || octet > 255)) {
+    return false;
+  }
+
+  return (
+    octets[0] === 10 ||
+    (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) ||
+    (octets[0] === 192 && octets[1] === 168) ||
+    octets[0] === 127 ||
+    (octets[0] === 169 && octets[1] === 254)
+  );
+}
+
+function isPrivateIpv6(address: string): boolean {
+  const normalized = address.toLowerCase();
+  return normalized === "::1" || normalized.startsWith("fc") || normalized.startsWith("fd") || normalized.startsWith("fe80:");
+}
+
+export function isPrivateOrLoopbackAddress(address: string): boolean {
+  return address.includes(":") ? isPrivateIpv6(address) : isPrivateIpv4(address);
+}
+
+export async function validatePublicScanTarget(hostname: string): Promise<void> {
+  const normalizedHostname = hostname.toLowerCase();
+
+  if (BLOCKED_HOSTNAMES.has(normalizedHostname) || normalizedHostname.endsWith(".local")) {
+    throw new ApiError(
+      "Private, loopback, and local network hosts are not allowed for public scans.",
+      "PUBLIC_SCAN_HOST_BLOCKED",
+      400,
+    );
+  }
+
+  let resolvedAddress: string;
+  try {
+    const { address } = await lookup(normalizedHostname);
+    resolvedAddress = address;
+  } catch {
+    throw ApiError.badRequest("Domain could not be resolved. Please enter a public hostname.");
+  }
+  if (isPrivateOrLoopbackAddress(resolvedAddress)) {
+    throw new ApiError(
+      "Resolved host points to a private or loopback address and cannot be scanned publicly.",
+      "PUBLIC_SCAN_HOST_BLOCKED",
+      400,
+      { hostname: normalizedHostname },
+    );
+  }
+}
+
+async function normalizePublicScanDomain(rawDomain: string): Promise<{ domain: string; url: string }> {
   const candidate = rawDomain.startsWith("http://") || rawDomain.startsWith("https://")
     ? rawDomain
     : `https://${rawDomain}`;
 
   const parsed = new URL(candidate);
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+    throw ApiError.badRequest("Only HTTP and HTTPS URLs are allowed");
+  }
   if (!parsed.hostname || !parsed.hostname.includes(".")) {
     throw ApiError.badRequest("Invalid domain format");
   }
 
   const normalizedDomain = parsed.hostname.toLowerCase();
+  await validatePublicScanTarget(normalizedDomain);
   return {
     domain: normalizedDomain,
     url: `${parsed.protocol}//${normalizedDomain}${parsed.pathname === "/" ? "" : parsed.pathname}`
@@ -42,7 +107,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const parsed = scanSchema.parse(body);
 
-    const { domain, url } = normalizePublicScanDomain(parsed.domain.trim());
+    const { domain, url } = await normalizePublicScanDomain(parsed.domain.trim());
 
     // Rate limit check: hash IP + domain for privacy
     const forwarded = request.headers.get("x-forwarded-for");
@@ -150,12 +215,13 @@ export async function GET(request: Request) {
       return apiError(ApiError.badRequest("Scan ID required"));
     }
 
-    const scan = await prisma.publicScanResult.findUnique({
-      where: { id },
-    });
+    const scan = await prisma.publicScanResult.findUnique({ where: { id } });
 
     if (!scan) {
       return apiError(ApiError.notFound("Scan not found"));
+    }
+    if (scan.expiresAt && scan.expiresAt <= new Date()) {
+      return apiError(new ApiError("Scan result has expired. Start a new scan to generate fresh evidence.", "SCAN_EXPIRED", 410));
     }
 
     return apiSuccess({
