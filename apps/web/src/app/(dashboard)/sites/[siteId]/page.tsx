@@ -19,6 +19,7 @@ import {
   getSiteVerificationStatus,
   getPostCrawlScanEnqueueFailureHint,
 } from "@/lib/sites/verification-status";
+import { buildFindingProofSummary } from "@/lib/findings/proof-summary";
 import { startCrawlAction } from "./actions";
 import {
   startSiteScanAction,
@@ -170,6 +171,7 @@ export default async function SiteDetailPage({
     findings,
     pageCountForScan,
     verificationExtras,
+    findingsForRecentScanProof,
   ] = await Promise.all([
     prisma.crawlRun.findMany({
       where: { siteId },
@@ -234,7 +236,41 @@ export default async function SiteDetailPage({
         };
       }
     })(),
+    prisma.canonicalFinding.findMany({
+      where: { siteId, lastScanRunId: { in: site.scanRuns.map((scan) => scan.id) } },
+      select: {
+        lastScanRunId: true,
+        evidenceSummary: true,
+        provenance: true,
+        firstSeenAt: true,
+        lastSeenAt: true,
+        reopenedCount: true,
+      },
+    }),
   ]);
+  const proofByScanRunId: Record<
+    string,
+    { complete: number; incomplete: number; regressed: number }
+  > = {};
+  for (const finding of findingsForRecentScanProof) {
+    if (!finding.lastScanRunId) continue;
+    const proof = buildFindingProofSummary({
+      evidenceSummary: finding.evidenceSummary,
+      provenance: finding.provenance,
+      firstSeenAt: finding.firstSeenAt,
+      lastSeenAt: finding.lastSeenAt,
+      reopenedCount: finding.reopenedCount,
+    });
+    const completenessCount = Object.values(proof.completeness).filter(Boolean).length;
+    const bucket = (proofByScanRunId[finding.lastScanRunId] ??= {
+      complete: 0,
+      incomplete: 0,
+      regressed: 0,
+    });
+    if (completenessCount >= 4) bucket.complete += 1;
+    else bucket.incomplete += 1;
+    if (proof.changedSinceLastRun === "regressed") bucket.regressed += 1;
+  }
 
   const { verificationStatus, postCrawlEnqueueHint, verificationLoadError } =
     verificationExtras;
@@ -547,6 +583,18 @@ export default async function SiteDetailPage({
                   </th>
                   <th
                     scope="col"
+                    className="pb-2 text-left font-medium text-slate-500"
+                  >
+                    Proof snapshot
+                  </th>
+                  <th
+                    scope="col"
+                    className="pb-2 text-right font-medium text-slate-500"
+                  >
+                    Changed
+                  </th>
+                  <th
+                    scope="col"
                     className="pb-2 text-right font-medium text-slate-500"
                   >
                     Started
@@ -554,7 +602,13 @@ export default async function SiteDetailPage({
                 </tr>
               </thead>
               <tbody>
-                {recentScans.map((scan) => (
+                {recentScans.map((scan, index) => {
+                  const previous = recentScans[index + 1];
+                  const change = previous
+                    ? scan.violationsFound - previous.violationsFound
+                    : null;
+                  const proofSnapshot = proofByScanRunId[scan.id];
+                  return (
                   <tr key={scan.id} className="border-b border-slate-100">
                     <td className="py-2">
                       <span
@@ -578,11 +632,34 @@ export default async function SiteDetailPage({
                     <td className="py-2 text-right text-slate-600">
                       {scan.violationsFound}
                     </td>
+                    <td className="py-2 text-left text-slate-600 text-xs">
+                      {proofSnapshot ? (
+                        <span>
+                          {proofSnapshot.complete} complete · {proofSnapshot.incomplete} incomplete
+                          {proofSnapshot.regressed > 0
+                            ? ` · ${proofSnapshot.regressed} regressed`
+                            : ""}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">No linked finding lineage yet</span>
+                      )}
+                    </td>
+                    <td className="py-2 text-right text-slate-600">
+                      {change == null ? (
+                        <span className="text-slate-400">—</span>
+                      ) : change > 0 ? (
+                        <span className="text-red-700">+{change}</span>
+                      ) : change < 0 ? (
+                        <span className="text-emerald-700">{change}</span>
+                      ) : (
+                        <span className="text-slate-500">0</span>
+                      )}
+                    </td>
                     <td className="py-2 text-right text-slate-500">
                       {scan.startedAt?.toLocaleString() ?? "-"}
                     </td>
                   </tr>
-                ))}
+                )})}
               </tbody>
             </table>
           </div>

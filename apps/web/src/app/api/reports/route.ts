@@ -7,6 +7,7 @@ import {
   collectPlatformHealth,
   buildRoutePlatformTruth,
 } from "@aros/core-services";
+import { buildFindingProofSummary } from "@/lib/findings/proof-summary";
 
 export async function GET(request: Request) {
   try {
@@ -99,6 +100,28 @@ export async function GET(request: Request) {
           imported: findings.filter((f) => f.evidenceSource === "IMPORTED")
             .length,
         },
+        proofCompleteness: {
+          complete: findings.filter((f) => {
+            const summary = buildFindingProofSummary({
+              evidenceSummary: f.evidenceSummary,
+              provenance: f.provenance,
+              firstSeenAt: f.firstSeenAt,
+              lastSeenAt: f.lastSeenAt,
+              reopenedCount: f.reopenedCount,
+            });
+            return Object.values(summary.completeness).filter(Boolean).length >= 4;
+          }).length,
+          partial: findings.filter((f) => {
+            const summary = buildFindingProofSummary({
+              evidenceSummary: f.evidenceSummary,
+              provenance: f.provenance,
+              firstSeenAt: f.firstSeenAt,
+              lastSeenAt: f.lastSeenAt,
+              reopenedCount: f.reopenedCount,
+            });
+            return Object.values(summary.completeness).filter(Boolean).length < 4;
+          }).length,
+        },
       },
       findings: findings.map((f) => ({
         id: f.id,
@@ -123,6 +146,13 @@ export async function GET(request: Request) {
         lastVerifiedAt: f.lastVerifiedAt,
         lastScanRunId: f.lastScanRunId,
         reopenedCount: f.reopenedCount,
+        proofSummary: buildFindingProofSummary({
+          evidenceSummary: f.evidenceSummary,
+          provenance: f.provenance,
+          firstSeenAt: f.firstSeenAt,
+          lastSeenAt: f.lastSeenAt,
+          reopenedCount: f.reopenedCount,
+        }),
         evidenceCount: f.evidenceRecords.length,
         latestVerification: f.verificationRuns[0]
           ? {

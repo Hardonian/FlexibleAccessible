@@ -12,6 +12,7 @@ import { RouteReliabilityNotice } from "@/components/reliability/route-reliabili
 import { hasPermission } from "@aros/config";
 import { StatusBadge, EmptyState } from "@aros/ui";
 import { getAutomationEvidenceFreshnessDescriptor } from "@/lib/findings/evidence-freshness";
+import { buildFindingProofSummary } from "@/lib/findings/proof-summary";
 
 type FindingListRow = Prisma.CanonicalFindingGetPayload<{
   include: {
@@ -22,6 +23,11 @@ type FindingListRow = Prisma.CanonicalFindingGetPayload<{
 }>;
 
 export const metadata = { title: "Findings - AROS" };
+const ACTIVE_FINDING_STATUSES: FindingStatus[] = [
+  "OPEN",
+  "ACKNOWLEDGED",
+  "IN_PROGRESS",
+];
 
 interface SearchParams {
   page?: string;
@@ -154,10 +160,55 @@ export default async function FindingsPage({
         select: { completedAt: true },
       }),
     ]);
+    const ruleIds = Array.from(new Set(findings.map((finding) => finding.ruleId)));
+    const familyAggregates =
+      ruleIds.length === 0
+        ? []
+        : await prisma.canonicalFinding.groupBy({
+            by: ["ruleId"],
+            where: {
+              site: {
+                workspace: { organizationId },
+                ...(params.siteId ? { id: params.siteId } : {}),
+              },
+              ruleId: { in: ruleIds },
+            },
+            _count: { _all: true },
+            _max: { lastSeenAt: true },
+          });
+    const activeFamilyAggregates =
+      ruleIds.length === 0
+        ? []
+        : await prisma.canonicalFinding.groupBy({
+            by: ["ruleId"],
+            where: {
+              site: {
+                workspace: { organizationId },
+                ...(params.siteId ? { id: params.siteId } : {}),
+              },
+              ruleId: { in: ruleIds },
+              status: { in: ACTIVE_FINDING_STATUSES },
+            },
+            _count: { _all: true },
+          });
+
+    const familySummaryByRuleId = Object.fromEntries(
+      familyAggregates.map((agg) => [
+        agg.ruleId,
+        {
+          totalFindings: agg._count._all,
+          activeFindings:
+            activeFamilyAggregates.find((active) => active.ruleId === agg.ruleId)
+              ?._count._all ?? 0,
+          lastSeenAt: agg._max.lastSeenAt ?? null,
+        },
+      ]),
+    );
     return {
       findings,
       total,
       latestCompletedScanCompletedAt: latestCompletedScan?.completedAt ?? null,
+      familySummaryByRuleId,
     };
   });
 
@@ -178,7 +229,8 @@ export default async function FindingsPage({
     );
   }
 
-  const { findings, total, latestCompletedScanCompletedAt } = listResult.data;
+  const { findings, total, latestCompletedScanCompletedAt, familySummaryByRuleId } =
+    listResult.data;
   const totalPages = Math.ceil(total / limit);
 
   return (
@@ -302,6 +354,7 @@ export default async function FindingsPage({
               finding={finding}
               latestCompletedScanCompletedAt={latestCompletedScanCompletedAt}
               jobPipelinesHealthy={platformTruth.flags.jobPipelinesHealthy}
+              familySummary={familySummaryByRuleId[finding.ruleId]}
             />
           ))}
         </div>
@@ -346,10 +399,16 @@ function FindingRow({
   finding,
   latestCompletedScanCompletedAt,
   jobPipelinesHealthy,
+  familySummary,
 }: {
   finding: FindingListRow;
   latestCompletedScanCompletedAt: Date | null;
   jobPipelinesHealthy: boolean;
+  familySummary?: {
+    totalFindings: number;
+    activeFindings: number;
+    lastSeenAt: Date | null;
+  };
 }) {
   const freshness = getAutomationEvidenceFreshnessDescriptor({
     evidenceSource: finding.evidenceSource,
@@ -362,6 +421,15 @@ function FindingRow({
     freshness?.tone === "warning"
       ? "bg-amber-50 text-amber-700 border border-amber-200"
       : "bg-slate-100 text-slate-700 border border-slate-200";
+  const proofSummary = buildFindingProofSummary({
+    evidenceSummary: finding.evidenceSummary,
+    provenance: finding.provenance,
+    firstSeenAt: finding.firstSeenAt,
+    lastSeenAt: finding.lastSeenAt,
+    reopenedCount: finding.reopenedCount,
+  });
+  const proofCompletenessScore =
+    Object.values(proofSummary.completeness).filter(Boolean).length;
 
   return (
     <article className="card hover:shadow-md transition-shadow">
@@ -404,12 +472,31 @@ function FindingRow({
                   {finding.cluster.name}
                 </span>
               )}
+              <span
+                className={`badge ${
+                  proofCompletenessScore >= 4
+                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                    : "bg-amber-50 text-amber-700 border border-amber-200"
+                }`}
+                title="Compact proof completeness across summary, verification status, page URL, and lineage metadata."
+              >
+                Proof completeness {proofCompletenessScore}/5
+              </span>
+              <span className="badge bg-white text-slate-700 border border-slate-200">
+                {proofSummary.changedSinceLastRun.replaceAll("_", " ")}
+              </span>
             </div>
             <p className="text-sm font-medium text-slate-900">
               {finding.description}
             </p>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-slate-500">
               <span>{finding._count.occurrences} occurrences</span>
+              {familySummary && (
+                <span>
+                  Family: {familySummary.totalFindings} total /{" "}
+                  {familySummary.activeFindings} active
+                </span>
+              )}
               <span>Site: {finding.site.name}</span>
               <span>
                 First seen: {finding.firstSeenAt.toLocaleDateString()}
@@ -418,6 +505,14 @@ function FindingRow({
                 <span>
                   Last verified: {finding.lastVerifiedAt.toLocaleDateString()}
                 </span>
+              )}
+              {familySummary?.lastSeenAt && (
+                <span>
+                  Family last seen: {familySummary.lastSeenAt.toLocaleDateString()}
+                </span>
+              )}
+              {proofSummary.lineage.scanRunId && (
+                <span>Lineage scan: {proofSummary.lineage.scanRunId}</span>
               )}
               {finding.wcagTags.length > 0 && (
                 <span>WCAG: {finding.wcagTags.join(", ")}</span>
