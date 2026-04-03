@@ -10,6 +10,8 @@ import {
 import { RouteReliabilityNotice } from "@/components/reliability/route-reliability-notice";
 import { hasPermission } from "@aros/config";
 import { EmptyState } from "@aros/ui";
+import { buildOnboardingStatus } from "@/lib/onboarding-status";
+import { getEntitlementState } from "@/lib/auth-guard";
 
 export const metadata = { title: "Dashboard - AROS" };
 
@@ -82,7 +84,23 @@ export default async function DashboardPage() {
     ] = await Promise.all([
       prisma.organization.findUnique({
         where: { id: oid },
-        select: { name: true },
+        select: {
+          name: true,
+          subscription: {
+            select: {
+              plan: true,
+              status: true,
+              maxDomains: true,
+              maxPagesPerCrawl: true,
+              maxScansPerMonth: true,
+              maxSeats: true,
+              aiEnabled: true,
+              aiTokenLimit: true,
+              currentPeriodEnd: true,
+              cancelAtPeriodEnd: true,
+            },
+          },
+        },
       }),
       prisma.site.count({
         where: { workspace: { organizationId: oid } },
@@ -125,6 +143,14 @@ export default async function DashboardPage() {
         take: 5,
         include: { site: { select: { name: true, domain: true } } },
       }),
+      prisma.crawlRun.count({
+        where: { site: { workspace: { organizationId: oid } } },
+      }),
+      prisma.canonicalFinding.count({
+        where: {
+          site: { workspace: { organizationId: oid } },
+        },
+      }),
     ]);
 
     if (!org) return null;
@@ -136,6 +162,9 @@ export default async function DashboardPage() {
       clustersCount,
       pendingReviews,
       recentCrawls,
+      crawlRunsCount,
+      findingsCount,
+      entitlement: getEntitlementState(org.subscription),
     };
   });
 
@@ -165,7 +194,18 @@ export default async function DashboardPage() {
     clustersCount,
     pendingReviews,
     recentCrawls,
+    crawlRunsCount,
+    findingsCount,
+    entitlement,
   } = statsResult.data;
+  const onboarding = buildOnboardingStatus({
+    sitesCount,
+    crawlRunsCount,
+    findingsCount,
+    entitlement,
+    workerRunning: platformTruth.flags.workerRunning,
+    jobPipelinesHealthy: platformTruth.flags.jobPipelinesHealthy,
+  });
 
   const workerNote =
     platformTruth.shellBlocker === "none" &&
@@ -205,12 +245,48 @@ export default async function DashboardPage() {
         />
       </div>
 
-      <div
-        className="card h-48 flex items-center justify-center bg-slate-50 border-dashed border-2 border-slate-200"
-        data-test-id="dynamic-chart"
-      >
-        <p className="text-slate-400 italic">Trend analytics pending...</p>
-      </div>
+      <section className="card space-y-4" aria-labelledby="onboarding-status-heading">
+        <div className="flex items-center justify-between gap-2">
+          <h2 id="onboarding-status-heading" className="text-lg font-semibold text-slate-900">
+            First-value onboarding status
+          </h2>
+          <span className="badge bg-slate-100 text-slate-700 border border-slate-200">
+            {onboarding.stage.replaceAll("_", " ")}
+          </span>
+        </div>
+        <p className="text-sm text-slate-600">
+          Next step:{" "}
+          <Link href={onboarding.nextStep.href} className="font-medium text-brand-700 underline">
+            {onboarding.nextStep.label}
+          </Link>
+          {onboarding.nextStep.blockerReason
+            ? ` — Blocked: ${onboarding.nextStep.blockerReason}`
+            : "."}
+        </p>
+        <ol className="space-y-2" aria-label="Onboarding checklist">
+          {onboarding.stages.map((stage) => (
+            <li key={stage.id} className="flex items-start justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2">
+              <div>
+                <p className="text-sm font-medium text-slate-900">{stage.label}</p>
+                {stage.blockerReason && (
+                  <p className="text-xs text-amber-700">{stage.blockerReason}</p>
+                )}
+              </div>
+              <span
+                className={`badge ${
+                  stage.complete
+                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                    : stage.blocked
+                      ? "bg-amber-50 text-amber-700 border border-amber-200"
+                      : "bg-slate-100 text-slate-700 border border-slate-200"
+                }`}
+              >
+                {stage.complete ? "Complete" : stage.blocked ? "Blocked" : "Pending"}
+              </span>
+            </li>
+          ))}
+        </ol>
+      </section>
 
       <div className="card">
         <h2 className="text-lg font-semibold text-slate-900 mb-4">
