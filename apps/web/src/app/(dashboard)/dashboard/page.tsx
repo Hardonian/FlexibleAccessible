@@ -81,6 +81,8 @@ export default async function DashboardPage() {
       clustersCount,
       pendingReviews,
       recentCrawls,
+      crawlRunsCount,
+      findingsCount,
     ] = await Promise.all([
       prisma.organization.findUnique({
         where: { id: oid },
@@ -256,7 +258,7 @@ export default async function DashboardPage() {
         </div>
         <p className="text-sm text-slate-600">
           Next step:{" "}
-          <Link href={onboarding.nextStep.href} className="font-medium text-brand-700 underline">
+          <Link href={onboarding.nextStep.href as any} className="font-medium text-brand-700 underline">
             {onboarding.nextStep.label}
           </Link>
           {onboarding.nextStep.blockerReason

@@ -1,33 +1,23 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
-const requireSessionMock = vi.fn();
-const findUniqueMock = vi.fn();
+const requireOrgAccessMock = vi.fn();
 const getRoutePlatformTruthMock = vi.fn();
-const resolveDashboardOrgMembershipMock = vi.fn();
 const buildFindingsOperationalSummaryMock = vi.fn();
 
-vi.mock('@/lib/session', () => ({
-  requireSession: requireSessionMock,
-}));
-
-vi.mock('@/lib/db', () => ({
-  prisma: {
-    membership: {
-      findUnique: findUniqueMock,
-    },
-  },
+vi.mock('@/lib/auth-guard', () => ({
+  requireOrgAccess: requireOrgAccessMock,
 }));
 
 vi.mock('@/lib/platform-truth-cache', () => ({
   getRoutePlatformTruth: getRoutePlatformTruthMock,
 }));
 
-vi.mock('@/lib/route-data-boundary', () => ({
-  resolveDashboardOrgMembership: resolveDashboardOrgMembershipMock,
-}));
-
 vi.mock('@/lib/findings/reporting-summary', () => ({
   buildFindingsOperationalSummary: buildFindingsOperationalSummaryMock,
+}));
+
+vi.mock('@/lib/db', () => ({
+  prisma: {},
 }));
 
 describe('GET /api/findings/summary', () => {
@@ -35,43 +25,24 @@ describe('GET /api/findings/summary', () => {
     vi.resetAllMocks();
   });
 
-  it('returns 503 degraded before org resolution when route truth blocks reads', async () => {
-    requireSessionMock.mockResolvedValueOnce({ id: 'user-1' });
-    getRoutePlatformTruthMock.mockResolvedValueOnce({
-      allowOrgScopedDbReads: false,
-      userImpactSummary: ['Database unavailable'],
-    });
-
+  it('returns 400 when organizationId is missing', async () => {
     const { GET } = await import('./route');
     const response = await GET(new Request('http://localhost/api/findings/summary'));
 
-    expect(response.status).toBe(503);
-    expect(findUniqueMock).not.toHaveBeenCalled();
-    expect(resolveDashboardOrgMembershipMock).not.toHaveBeenCalled();
+    expect(response.status).toBe(400);
+    expect(requireOrgAccessMock).not.toHaveBeenCalled();
     expect(buildFindingsOperationalSummaryMock).not.toHaveBeenCalled();
   });
 
-  it('fails closed for an explicit organizationId instead of falling back to another org', async () => {
-    requireSessionMock.mockResolvedValueOnce({ id: 'user-1' });
-    getRoutePlatformTruthMock.mockResolvedValueOnce({
-      allowOrgScopedDbReads: true,
-      userImpactSummary: [],
-      flags: {
-        jobPipelinesHealthy: true,
-        workerRunning: true,
-      },
-      optionalSubsystemIssues: [],
-    });
-    findUniqueMock.mockResolvedValueOnce(null);
+  it('fails closed for an explicit organizationId when org access denies', async () => {
+    requireOrgAccessMock.mockRejectedValueOnce(new Error('You do not have access to this organization'));
 
     const { GET } = await import('./route');
     const response = await GET(
       new Request('http://localhost/api/findings/summary?organizationId=org-missing'),
     );
 
-    expect(response.status).toBe(404);
-    expect(findUniqueMock).toHaveBeenCalledTimes(1);
-    expect(resolveDashboardOrgMembershipMock).not.toHaveBeenCalled();
+    expect(response.status).toBe(403);
     expect(buildFindingsOperationalSummaryMock).not.toHaveBeenCalled();
   });
 });

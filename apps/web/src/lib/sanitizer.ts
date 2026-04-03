@@ -6,10 +6,30 @@
 export function sanitizeAiCode(codeSnippet: string): string {
   if (!codeSnippet) return "";
 
-  // Conservative default: treat user/generated code as text by escaping it.
-  // This avoids runtime dependency on external sanitizers while preserving
-  // deterministic zero-script execution behavior.
-  return escapeHtml(codeSnippet);
+  // Remove executable / embedding tags entirely.
+  let sanitized = codeSnippet.replace(
+    /<(script|style|iframe|object|embed)\b[^>]*>[\s\S]*?<\/\1>/gi,
+    "",
+  );
+  sanitized = sanitized.replace(/<(iframe|object|embed)\b[^>]*\/?>/gi, "");
+
+  // Remove inline event handlers.
+  sanitized = sanitized.replace(/\s+on[a-z]+\s*=\s*(".*?"|'.*?'|[^\s>]+)/gi, "");
+
+  // Neutralize dangerous protocols in href/src attributes.
+  sanitized = sanitized.replace(
+    /\s(href|src)\s*=\s*("([^"]*)"|'([^']*)'|([^\s>]+))/gi,
+    (_match, attr: string, _raw: string, dquoteValue?: string, squoteValue?: string, bareValue?: string) => {
+      const value = (dquoteValue ?? squoteValue ?? bareValue ?? "").trim().toLowerCase();
+      const isDangerous = /^(javascript:|data:|vbscript:)/.test(value);
+      if (!isDangerous) {
+        return _match;
+      }
+      return attr.toLowerCase() === "href" ? ' href="#"' : "";
+    },
+  );
+
+  return sanitized;
 }
 
 /**

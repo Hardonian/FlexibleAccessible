@@ -1,9 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
-const QueueMock = vi.fn().mockImplementation(() => ({
-  add: vi.fn(),
-  close: vi.fn(),
-}));
+const QueueMock = vi.fn().mockImplementation(function QueueCtor() {
+  return {
+    add: vi.fn(),
+    close: vi.fn(),
+  };
+});
 
 vi.mock('bullmq', () => ({
   Queue: QueueMock,

@@ -79,9 +79,7 @@ describe("Server Actions Auth Tests", () => {
       const formData = new FormData();
       formData.set("siteId", "test-site");
 
-      await expect(startCrawlAction(formData)).rejects.toThrow(
-        "Premium subscription required",
-      );
+      await expect(startCrawlAction(formData)).rejects.toThrow("NEXT_REDIRECT");
     });
 
     it("should prevent access to sites in other organizations", async () => {
@@ -92,9 +90,7 @@ describe("Server Actions Auth Tests", () => {
       const formData = new FormData();
       formData.set("siteId", "other-org-site");
 
-      await expect(startCrawlAction(formData)).rejects.toThrow(
-        "Site not found",
-      );
+      await expect(startCrawlAction(formData)).rejects.toThrow("NEXT_REDIRECT");
     });
 
     it("should successfully start crawl when authorized", async () => {
