@@ -1,10 +1,8 @@
-import { NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/db";
 import { requireSession } from "@/lib/session";
-import { requireOrgAccess } from "@/lib/auth-guard";
+import { requireCanonicalOrgAccess } from "@/lib/server-org-boundary";
 import { apiSuccess, apiError } from "@/lib/api-utils";
-import { ApiError } from "@aros/shared";
+import { createFindingComment, listFindingComments } from "@/lib/comments/org-scoped-queries";
 
 const commentSchema = z.object({
   findingId: z.string().min(1),
@@ -19,7 +17,7 @@ const commentSchema = z.object({
  */
 export async function GET(request: Request) {
   try {
-    const user = await requireSession();
+    await requireSession();
     const { searchParams } = new URL(request.url);
     const findingId = searchParams.get("findingId");
     const organizationId = searchParams.get("organizationId");
@@ -31,27 +29,11 @@ export async function GET(request: Request) {
       });
     }
 
-    const ctx = await requireOrgAccess(organizationId, "finding:view", {
+    const ctx = await requireCanonicalOrgAccess(organizationId, "finding:view", {
       requirePaid: true,
     });
 
-    const comments = await prisma.findingComment.findMany({
-      where: {
-        canonicalFindingId: findingId,
-        organizationId: ctx.organizationId,
-        parentId: null, // Top-level comments only
-      },
-      include: {
-        user: { select: { id: true, name: true, email: true } },
-        replies: {
-          include: {
-            user: { select: { id: true, name: true, email: true } },
-          },
-          orderBy: { createdAt: "asc" },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    const comments = await listFindingComments(ctx, findingId);
 
     return apiSuccess(comments);
   } catch (error) {
@@ -69,49 +51,17 @@ export async function POST(request: Request) {
     const body = await request.json();
     const parsed = commentSchema.parse(body);
 
-    const ctx = await requireOrgAccess(
+    const ctx = await requireCanonicalOrgAccess(
       parsed.organizationId,
       "finding:manage",
       { requirePaid: true },
     );
 
-    // Verify finding access
-    const finding = await prisma.canonicalFinding.findFirst({
-      where: {
-        id: parsed.findingId,
-        site: { workspace: { organizationId: ctx.organizationId } },
-      },
-    });
-
-    if (!finding) {
-      return apiError(ApiError.notFound("Finding not found"));
-    }
-
-    // If parentId, verify parent exists and belongs to same finding
-    if (parsed.parentId) {
-      const parent = await prisma.findingComment.findFirst({
-        where: {
-          id: parsed.parentId,
-          canonicalFindingId: parsed.findingId,
-        },
-      });
-
-      if (!parent) {
-        return apiError(ApiError.notFound("Parent comment not found"));
-      }
-    }
-
-    const comment = await prisma.findingComment.create({
-      data: {
-        canonicalFindingId: parsed.findingId,
-        userId: user.id,
-        organizationId: ctx.organizationId,
-        body: parsed.body,
-        parentId: parsed.parentId,
-      },
-      include: {
-        user: { select: { id: true, name: true, email: true } },
-      },
+    const comment = await createFindingComment(ctx, {
+      findingId: parsed.findingId,
+      userId: user.id,
+      body: parsed.body,
+      parentId: parsed.parentId,
     });
 
     return apiSuccess(comment, 201);

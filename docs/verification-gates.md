@@ -12,7 +12,8 @@ Runs in this exact order:
 
 ## Tier 2 — Release gate (`npm run verify:release`)
 
-Includes Tier 1 and adds env-bound integration tests:
+Includes Tier 1 and adds release-blocking tenant isolation + env-bound integration tests:
+- `npm run verify:tenant-boundary` (fails if critical server entrypoints regress with tenant-boundary lint violations)
 - `npm run test:integration` (currently `apps/web` Vitest integration suite)
 
 ## Tier 3 — Browser/system gate (CI + optional local)

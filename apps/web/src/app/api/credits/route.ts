@@ -1,11 +1,10 @@
-import { NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/db";
 import { requireSession } from "@/lib/session";
-import { requireOrgAccess } from "@/lib/auth-guard";
 import { apiSuccess, apiError } from "@/lib/api-utils";
 import { getAppBaseUrl } from "@/lib/billing";
 import { ApiError } from "@aros/shared";
+import { requireCanonicalOrgAccess } from "@/lib/server-org-boundary";
+import { getBillingCustomerByOrg, getCreditLedger, grantDevCredits } from "@/lib/credits/org-scoped-queries";
 
 const purchaseSchema = z.object({
   organizationId: z.string().min(1),
@@ -38,33 +37,14 @@ export async function GET(request: Request) {
       });
     }
 
-    const ctx = await requireOrgAccess(organizationId, "org:billing", {
+    const ctx = await requireCanonicalOrgAccess(organizationId, "org:billing", {
       requirePaid: true,
     });
 
-    const balance = await prisma.fixCreditBalance.findUnique({
-      where: { organizationId: ctx.organizationId },
-    });
-
-    const recentTransactions = await prisma.fixCredit.findMany({
-      where: { organizationId: ctx.organizationId },
-      orderBy: { createdAt: "desc" },
-      take: 20,
-      select: {
-        id: true,
-        type: true,
-        amount: true,
-        description: true,
-        createdAt: true,
-      },
-    });
+    const ledger = await getCreditLedger(ctx);
 
     return apiSuccess({
-      balance: balance?.balance ?? 0,
-      totalPurchased: balance?.totalPurchased ?? 0,
-      totalSpent: balance?.totalSpent ?? 0,
-      totalRefunded: balance?.totalRefunded ?? 0,
-      recentTransactions,
+      ...ledger,
       packs: Object.entries(CREDIT_PACKS).map(([key, pack]) => ({
         id: key,
         ...pack,
@@ -85,7 +65,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const parsed = purchaseSchema.parse(body);
 
-    const ctx = await requireOrgAccess(parsed.organizationId, "org:billing", {
+    const ctx = await requireCanonicalOrgAccess(parsed.organizationId, "org:billing", {
       requirePaid: true,
     });
     const pack = CREDIT_PACKS[parsed.pack];
@@ -95,9 +75,7 @@ export async function POST(request: Request) {
     }
 
     // Get or create billing customer
-    const billingCustomer = await prisma.billingCustomer.findUnique({
-      where: { organizationId: ctx.organizationId },
-    });
+    const billingCustomer = await getBillingCustomerByOrg(ctx);
 
     if (!billingCustomer) {
       return apiError(
@@ -153,35 +131,10 @@ export async function POST(request: Request) {
     }
 
     // Development mode: directly grant credits
-    const currentBalance = await prisma.fixCreditBalance.findUnique({
-      where: { organizationId: ctx.organizationId },
+    const { newBalance } = await grantDevCredits(ctx, {
+      credits: pack.credits,
+      label: pack.label,
     });
-
-    const newBalance = (currentBalance?.balance ?? 0) + pack.credits;
-
-    await prisma.$transaction([
-      prisma.fixCredit.create({
-        data: {
-          organizationId: ctx.organizationId,
-          type: "GRANT",
-          amount: pack.credits,
-          balance: newBalance,
-          description: `Dev mode: ${pack.label} granted`,
-        },
-      }),
-      prisma.fixCreditBalance.upsert({
-        where: { organizationId: ctx.organizationId },
-        create: {
-          organizationId: ctx.organizationId,
-          balance: pack.credits,
-          totalPurchased: pack.credits,
-        },
-        update: {
-          balance: newBalance,
-          totalPurchased: { increment: pack.credits },
-        },
-      }),
-    ]);
 
     return apiSuccess({
       message: `${pack.credits} credits granted (dev mode)`,
