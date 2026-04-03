@@ -13,7 +13,7 @@ export async function generateMetadata({
   const decoded = decodeURIComponent(domain);
 
   const scan = await prisma.publicScanResult.findFirst({
-    where: { domain: decoded, status: "COMPLETED" },
+    where: { domain: decoded, status: "COMPLETED", expiresAt: { gt: new Date() } },
     orderBy: { createdAt: "desc" },
   });
 
@@ -46,7 +46,7 @@ export default async function PublicScanPage({ params }: PageProps) {
   const decoded = decodeURIComponent(domain);
 
   const scan = await prisma.publicScanResult.findFirst({
-    where: { domain: decoded },
+    where: { domain: decoded, expiresAt: { gt: new Date() } },
     orderBy: { createdAt: "desc" },
   });
 
