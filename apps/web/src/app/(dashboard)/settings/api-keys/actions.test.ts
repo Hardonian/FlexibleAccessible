@@ -328,6 +328,9 @@ describe("createApiKeyAction", () => {
 describe("revokeApiKeyAction", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(redirect).mockImplementation(() => {
+      throw new Error("NEXT_REDIRECT");
+    });
   });
 
   it("revokes active API key", async () => {
@@ -351,13 +354,14 @@ describe("revokeApiKeyAction", () => {
     formData.set("organizationId", "org_123");
     formData.set("keyId", "key_123");
 
-    await revokeApiKeyAction(formData);
+    await expect(revokeApiKeyAction(formData)).rejects.toThrow("NEXT_REDIRECT");
 
     expect(prisma.apiKey.update).toHaveBeenCalledWith({
       where: { id: "key_123" },
       data: { isActive: false },
     });
-    expect(redirect).toHaveBeenCalledWith("/settings/api-keys?status=revoked");
+    const q = new URLSearchParams({ status: "revoked" }).toString();
+    expect(redirect).toHaveBeenCalledWith(`/settings/api-keys?${q}`);
   });
 
   it("returns error when key not found", async () => {
@@ -375,12 +379,12 @@ describe("revokeApiKeyAction", () => {
     formData.set("organizationId", "org_123");
     formData.set("keyId", "key_nonexistent");
 
-    await revokeApiKeyAction(formData);
+    await expect(revokeApiKeyAction(formData)).rejects.toThrow("NEXT_REDIRECT");
 
-    expect(redirect).toHaveBeenCalledWith(
-      "/settings/api-keys?error=" +
-        encodeURIComponent("API key not found or already revoked"),
-    );
+    const q = new URLSearchParams({
+      error: "API key not found or already revoked",
+    }).toString();
+    expect(redirect).toHaveBeenCalledWith(`/settings/api-keys?${q}`);
   });
 
   it("rejects for DEVELOPER role", async () => {
@@ -396,12 +400,12 @@ describe("revokeApiKeyAction", () => {
     formData.set("organizationId", "org_123");
     formData.set("keyId", "key_123");
 
-    await revokeApiKeyAction(formData);
+    await expect(revokeApiKeyAction(formData)).rejects.toThrow("NEXT_REDIRECT");
 
-    expect(redirect).toHaveBeenCalledWith(
-      "/settings/api-keys?error=" +
-        encodeURIComponent("Only admins and owners can revoke API keys"),
-    );
+    const q = new URLSearchParams({
+      error: "Only admins and owners can revoke API keys",
+    }).toString();
+    expect(redirect).toHaveBeenCalledWith(`/settings/api-keys?${q}`);
   });
 
   it("requires keyId", async () => {
@@ -417,12 +421,12 @@ describe("revokeApiKeyAction", () => {
     formData.set("organizationId", "org_123");
     // No keyId set
 
-    await revokeApiKeyAction(formData);
+    await expect(revokeApiKeyAction(formData)).rejects.toThrow("NEXT_REDIRECT");
 
-    expect(redirect).toHaveBeenCalledWith(
-      "/settings/api-keys?error=" +
-        encodeURIComponent("API key ID is required"),
-    );
+    const q = new URLSearchParams({
+      error: "API key ID is required",
+    }).toString();
+    expect(redirect).toHaveBeenCalledWith(`/settings/api-keys?${q}`);
   });
 });
 

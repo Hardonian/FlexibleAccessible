@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { resolveDashboardOrgMembership, runOrgScopedQuery } from "./route-data-boundary";
 import { prisma } from "./db";
 import { cookies } from "next/headers";
+import { ApiError } from "@aros/shared";
 
 vi.mock("./db", () => ({
   prisma: {
@@ -100,5 +101,20 @@ describe("route-data-boundary", () => {
 
     expect(result).toEqual({ ok: true, data: { id: "result" } });
     expect(query).toHaveBeenCalledWith("org-safe");
+  });
+
+  it("preserves AppError status when callback throws (e.g. NOT_FOUND)", async () => {
+    const query = vi.fn().mockRejectedValueOnce(ApiError.notFound("Finding not found"));
+    const result = await runOrgScopedQuery(
+      { organizationId: "org-safe", role: "ADMIN" },
+      query,
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      message: "Finding not found",
+      statusCode: 404,
+      code: "NOT_FOUND",
+    });
   });
 });

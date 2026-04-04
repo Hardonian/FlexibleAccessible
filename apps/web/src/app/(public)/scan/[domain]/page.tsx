@@ -1,4 +1,8 @@
-import { getLatestValidPublicScanForDomain } from "@/lib/public-scan/validity";
+import {
+  getLatestValidPublicScanForDomain,
+  getPublicScanEvidenceState,
+  type PublicEvidenceState,
+} from "@/lib/public-scan/validity";
 import { Metadata } from "next";
 import { PublicScanResults } from "./public-scan-results";
 
@@ -12,18 +16,20 @@ export async function generateMetadata({
   const { domain } = await params;
   const decoded = decodeURIComponent(domain);
 
-  const scan = await getLatestValidPublicScanForDomain(decoded, { requireCompleted: true });
-
-  const hasCurrentEvidence = Boolean(scan);
-  const score = scan?.score ?? 0;
-  const totalViolations = scan?.totalViolations ?? 0;
+  const scan = await getLatestValidPublicScanForDomain(decoded, {
+    requireCompleted: true,
+  });
+  const hasCurrentEvidence =
+    Boolean(scan) && getPublicScanEvidenceState(scan) === "valid";
+  const score = hasCurrentEvidence ? scan!.score! : 0;
+  const totalViolations = hasCurrentEvidence ? scan!.totalViolations : 0;
   const title = hasCurrentEvidence
     ? `Accessibility Report: ${decoded} (Score: ${score})`
     : `Accessibility Report: ${decoded} (No current evidence)`;
   const description = hasCurrentEvidence
-    ? `Found ${totalViolations} accessibility issues on ${decoded}. Scan powered by AROS - source-level accessibility remediation.`
-    : `No current scan evidence is available for ${decoded}. Run a new public scan to generate fresh accessibility evidence.`;
-  const ogUrl = `/api/og?domain=${encodeURIComponent(decoded)}&score=${score}&critical=${scan?.criticalCount ?? 0}&serious=${scan?.seriousCount ?? 0}&moderate=${scan?.moderateCount ?? 0}&minor=${scan?.minorCount ?? 0}`;
+    ? `Sampled automated scan: ${totalViolations} accessibility issues on ${decoded} (up to 5 pages). Not a WCAG conformance guarantee.`
+    : `No current, unexpired public scan evidence for ${decoded}. Run a new instant scan for fresh automated results.`;
+  const ogUrl = `/api/og?domain=${encodeURIComponent(decoded)}`;
 
   return {
     title,
@@ -47,7 +53,12 @@ export default async function PublicScanPage({ params }: PageProps) {
   const { domain } = await params;
   const decoded = decodeURIComponent(domain);
 
-  const scan = await getLatestValidPublicScanForDomain(decoded, { requireCompleted: false });
+  const scan = await getLatestValidPublicScanForDomain(decoded, {
+    requireCompleted: false,
+  });
+  const evidenceState: PublicEvidenceState | null = scan
+    ? getPublicScanEvidenceState(scan)
+    : null;
 
   return (
     <PublicScanResults
@@ -58,6 +69,7 @@ export default async function PublicScanPage({ params }: PageProps) {
               id: scan.id,
               domain: scan.domain,
               status: scan.status,
+              evidenceState,
               score: scan.score,
               totalViolations: scan.totalViolations,
               criticalCount: scan.criticalCount,
@@ -68,6 +80,7 @@ export default async function PublicScanPage({ params }: PageProps) {
               violations: scan.violations as Record<string, unknown>[] | null,
               createdAt: scan.createdAt.toISOString(),
               completedAt: scan.completedAt?.toISOString() ?? null,
+              expiresAt: scan.expiresAt?.toISOString() ?? null,
             }
           : null
       }

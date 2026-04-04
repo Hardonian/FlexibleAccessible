@@ -1,3 +1,4 @@
+import { PUBLIC_SCAN_EVIDENCE_TTL_MS } from "@aros/config";
 import { Job } from "bullmq";
 import { prisma } from "@aros/db";
 import { chromium, type Browser } from "playwright";
@@ -142,6 +143,7 @@ export async function handlePublicScanJob(job: Job<PublicScanJobData>) {
         ((b.count as number) ?? 0) - ((a.count as number) ?? 0),
     );
 
+    const completedAt = new Date();
     await prisma.publicScanResult.update({
       where: { id: publicScanResultId },
       data: {
@@ -154,7 +156,8 @@ export async function handlePublicScanJob(job: Job<PublicScanJobData>) {
         minorCount,
         pagesScanned,
         violations: allViolations.slice(0, 50) as any,
-        completedAt: new Date(),
+        completedAt,
+        expiresAt: new Date(completedAt.getTime() + PUBLIC_SCAN_EVIDENCE_TTL_MS),
       },
     });
 
@@ -163,11 +166,13 @@ export async function handlePublicScanJob(job: Job<PublicScanJobData>) {
     );
   } catch (err) {
     console.error(`[PublicScan] Failed ${publicScanResultId}:`, err);
+    const failedAt = new Date();
     await prisma.publicScanResult.update({
       where: { id: publicScanResultId },
       data: {
         status: "FAILED",
-        completedAt: new Date(),
+        completedAt: failedAt,
+        expiresAt: new Date(failedAt.getTime() + PUBLIC_SCAN_EVIDENCE_TTL_MS),
       },
     });
     throw err;

@@ -3,10 +3,18 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 
+type PublicEvidenceState =
+  | "valid"
+  | "expired"
+  | "missing"
+  | "incomplete"
+  | "failed";
+
 interface ScanData {
   id: string;
   domain: string;
   status: string;
+  evidenceState?: PublicEvidenceState | null;
   score: number | null;
   totalViolations: number;
   criticalCount: number;
@@ -17,6 +25,7 @@ interface ScanData {
   violations: Record<string, unknown>[] | null;
   createdAt: string;
   completedAt: string | null;
+  expiresAt?: string | null;
 }
 
 interface Props {
@@ -52,37 +61,88 @@ function getScoreLabel(score: number): string {
   return "Critical";
 }
 
+function isCurrentPublicProof(scan: ScanData | null): boolean {
+  return (
+    scan?.status === "COMPLETED" &&
+    scan.score !== null &&
+    scan.evidenceState === "valid"
+  );
+}
+
 export function PublicScanResults({ domain, initialScan }: Props) {
   const [scan, setScan] = useState<ScanData | null>(initialScan);
-  const [polling, setPolling] = useState(
-    !initialScan || initialScan.status !== "COMPLETED",
-  );
+  const [polling, setPolling] = useState(() => {
+    if (!initialScan?.id) return false;
+    if (initialScan.status === "FAILED") return false;
+    if (initialScan.evidenceState === "expired") return false;
+    if (isCurrentPublicProof(initialScan)) return false;
+    if (initialScan.status === "COMPLETED") return false;
+    return true;
+  });
 
   const fetchScan = useCallback(async () => {
-    if (!scan?.id && !initialScan?.id) return;
-    const id = scan?.id ?? initialScan?.id;
+    const pollId = scan?.id ?? initialScan?.id;
+    if (!pollId) return;
     try {
-      const res = await fetch(`/api/public-scan/${id}`);
+      const res = await fetch(`/api/public-scan/${pollId}`);
       const json = await res.json();
+      if (res.status === 410) {
+        setPolling(false);
+        setScan((prev) =>
+          prev
+            ? { ...prev, evidenceState: "expired" }
+            : {
+                id: pollId,
+                domain,
+                status: "COMPLETED",
+                evidenceState: "expired",
+                score: null,
+                totalViolations: 0,
+                criticalCount: 0,
+                seriousCount: 0,
+                moderateCount: 0,
+                minorCount: 0,
+                pagesScanned: 0,
+                violations: null,
+                createdAt: new Date().toISOString(),
+                completedAt: null,
+                expiresAt: null,
+              },
+        );
+        return;
+      }
       if (json.success) {
         setScan(json.data);
-        if (json.data.status === "COMPLETED" || json.data.status === "FAILED") {
+        const done =
+          json.data.status === "FAILED" ||
+          json.data.evidenceState === "expired" ||
+          isCurrentPublicProof(json.data);
+        if (done) {
           setPolling(false);
         }
       }
     } catch {
       // Silent poll failure; will retry
     }
-  }, [scan?.id, initialScan?.id]);
+  }, [domain, scan?.id, initialScan?.id]);
+
+  useEffect(() => {
+    if (!initialScan?.id && !scan?.id) {
+      setPolling(false);
+    }
+  }, [initialScan?.id, scan?.id]);
 
   useEffect(() => {
     if (!polling) return;
+    void fetchScan();
     const interval = setInterval(fetchScan, 2000);
     return () => clearInterval(interval);
   }, [polling, fetchScan]);
 
+  const currentProof =
+    scan !== null && isCurrentPublicProof(scan) ? scan : null;
   const violations: Record<string, unknown>[] =
-    (scan?.violations as Record<string, unknown>[] | null) ?? [];
+    (currentProof?.violations as Record<string, unknown>[] | null) ?? [];
 
   return (
     <div className="min-h-screen bg-white">
@@ -120,7 +180,12 @@ export function PublicScanResults({ domain, initialScan }: Props) {
 
         {/* Loading State */}
         {polling && (!scan || scan.status !== "COMPLETED") && (
-          <div className="text-center py-20">
+          <div
+            className="text-center py-20"
+            role="status"
+            aria-live="polite"
+            aria-busy="true"
+          >
             <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-slate-200 border-t-brand-600" />
             <p className="mt-4 text-lg text-slate-600">Scanning {domain}...</p>
             <p className="mt-2 text-sm text-slate-400">
@@ -143,22 +208,46 @@ export function PublicScanResults({ domain, initialScan }: Props) {
           </div>
         )}
 
-        {/* Results */}
-        {scan?.status === "COMPLETED" && scan.score !== null && (
+        {scan?.status === "COMPLETED" && scan.evidenceState === "expired" && (
+          <div className="card border-amber-200 bg-amber-50 py-10 px-6 text-center">
+            <p className="text-lg font-semibold text-amber-900">
+              This public scan evidence has expired
+            </p>
+            <p className="mt-2 text-sm text-amber-800 max-w-lg mx-auto">
+              Shared previews and badges only reflect unexpired completed scans.
+              Start a new instant scan from the home page to refresh results.
+            </p>
+            <Link href="/" className="btn-primary mt-6 inline-block">
+              Run a new scan
+            </Link>
+          </div>
+        )}
+
+        {/* Results — only when server classifies evidence as current */}
+        {currentProof && (
           <div className="space-y-8">
+            {currentProof.expiresAt && (
+              <p className="text-sm text-slate-500">
+                Public evidence valid until{" "}
+                <time dateTime={currentProof.expiresAt}>
+                  {new Date(currentProof.expiresAt).toLocaleString()}
+                </time>
+                . Sampled up to 5 pages; not a WCAG conformance guarantee.
+              </p>
+            )}
             {/* Score + Summary */}
             <div className="grid md:grid-cols-3 gap-6">
               {/* Score Card */}
               <div className="card text-center md:col-span-1">
                 <div
-                  className={`text-6xl font-extrabold ${getScoreColor(scan.score)}`}
+                  className={`text-6xl font-extrabold ${getScoreColor(currentProof.score!)}`}
                 >
-                  {scan.score}
+                  {currentProof.score}
                 </div>
                 <p
-                  className={`mt-2 font-semibold ${getScoreColor(scan.score)}`}
+                  className={`mt-2 font-semibold ${getScoreColor(currentProof.score!)}`}
                 >
-                  {getScoreLabel(scan.score)}
+                  {getScoreLabel(currentProof.score!)}
                 </p>
                 <p className="mt-1 text-sm text-slate-400">
                   Accessibility Score
@@ -168,26 +257,26 @@ export function PublicScanResults({ domain, initialScan }: Props) {
               {/* Severity Breakdown */}
               <div className="card md:col-span-2">
                 <h2 className="text-lg font-semibold text-slate-900 mb-4">
-                  Issues Found: {scan.totalViolations}
+                  Issues Found: {currentProof.totalViolations}
                 </h2>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   {[
                     {
                       label: "Critical",
-                      count: scan.criticalCount,
+                      count: currentProof.criticalCount,
                       key: "critical",
                     },
                     {
                       label: "Serious",
-                      count: scan.seriousCount,
+                      count: currentProof.seriousCount,
                       key: "serious",
                     },
                     {
                       label: "Moderate",
-                      count: scan.moderateCount,
+                      count: currentProof.moderateCount,
                       key: "moderate",
                     },
-                    { label: "Minor", count: scan.minorCount, key: "minor" },
+                    { label: "Minor", count: currentProof.minorCount, key: "minor" },
                   ].map(({ label, count, key }) => (
                     <div
                       key={key}
@@ -199,8 +288,8 @@ export function PublicScanResults({ domain, initialScan }: Props) {
                   ))}
                 </div>
                 <p className="mt-4 text-sm text-slate-400">
-                  Scanned {scan.pagesScanned} page
-                  {scan.pagesScanned !== 1 ? "s" : ""}
+                  Scanned {currentProof.pagesScanned} page
+                  {currentProof.pagesScanned !== 1 ? "s" : ""}
                 </p>
               </div>
             </div>
@@ -254,15 +343,16 @@ export function PublicScanResults({ domain, initialScan }: Props) {
             {/* CTA */}
             <div className="card bg-brand-50 border-brand-200 text-center py-12">
               <h2 className="text-2xl font-bold text-slate-900">
-                Want to fix these issues?
+                Want deeper coverage and exports?
               </h2>
               <p className="mt-2 text-slate-600 max-w-xl mx-auto">
-                Get AI-powered remediation suggestions, component clustering,
-                GitHub PR export, and full evidence reports.
+                Create a workspace for private crawls, tracked findings,
+                remediation workflows, and plan-gated exports — with
+                server-enforced limits.
               </p>
               <div className="mt-6 flex items-center justify-center gap-4">
                 <Link href="/signup" className="btn-primary px-6 py-3">
-                  Start Free — Fix These Issues
+                  Create workspace
                 </Link>
                 <Link href="/" className="btn-secondary px-6 py-3">
                   Scan Another Site

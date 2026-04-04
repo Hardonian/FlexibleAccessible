@@ -45,6 +45,15 @@ describe("public scan validity contract", () => {
     ).toBe("valid");
   });
 
+  it("treats completed rows without expiresAt as expired (fail closed)", () => {
+    expect(
+      getPublicScanEvidenceState(
+        { status: "COMPLETED", completedAt: new Date("2020-01-01T00:00:00Z"), expiresAt: null },
+        new Date("2020-01-02T00:00:00Z"),
+      ),
+    ).toBe("expired");
+  });
+
   it("maps canonical API payload fields", () => {
     const payload = toPublicScanApiPayload({
       id: "scan_123",
@@ -71,7 +80,32 @@ describe("public scan validity contract", () => {
       evidenceState: "expired",
       score: 90,
       totalViolations: 2,
+      expiresAt: new Date("2020-01-02T00:00:00Z"),
+      evidenceExpiresAt: null,
     });
-    expect(payload).not.toHaveProperty("expiresAt");
+  });
+
+  it("exposes evidence expiry on API payload when evidence is valid", () => {
+    const exp = new Date("2030-01-05T00:00:00Z");
+    const payload = toPublicScanApiPayload({
+      id: "scan_456",
+      domain: "example.com",
+      status: "COMPLETED",
+      score: 88,
+      totalViolations: 1,
+      criticalCount: 0,
+      seriousCount: 0,
+      moderateCount: 1,
+      minorCount: 0,
+      pagesScanned: 3,
+      violations: [],
+      screenshotKeys: [],
+      createdAt: new Date("2030-01-01T00:00:00Z"),
+      completedAt: new Date("2030-01-01T00:05:00Z"),
+      expiresAt: exp,
+    });
+
+    expect(payload.evidenceState).toBe("valid");
+    expect(payload.evidenceExpiresAt).toEqual(exp);
   });
 });

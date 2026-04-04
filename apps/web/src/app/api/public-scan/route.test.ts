@@ -47,6 +47,7 @@ describe("GET /api/public-scan?id=...", () => {
       id: "scan_1",
       domain: "example.com",
       status: "COMPLETED",
+      completedAt: new Date(Date.now() - 120_000),
       expiresAt: new Date(Date.now() - 60_000),
     });
 
