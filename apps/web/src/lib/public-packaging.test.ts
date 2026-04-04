@@ -19,9 +19,9 @@ describe('getPublicPlanCards', () => {
     const starter = cards.find((c) => c.tier === 'STARTER');
     const professional = cards.find((c) => c.tier === 'PROFESSIONAL');
 
-    expect(starter?.bullets).toContain('AI remediation not included');
+    expect(starter?.bullets).toContain('No AI draft assist on this tier');
     expect(professional?.bullets).toContain(
-      `AI remediation included (${PLANS.PROFESSIONAL.aiTokenLimit.toLocaleString()} tokens/month)`,
+      `Bounded AI draft assist: ${PLANS.PROFESSIONAL.aiTokenLimit.toLocaleString()} tokens/mo (review required)`,
     );
   });
 });

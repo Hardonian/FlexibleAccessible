@@ -14,8 +14,8 @@ export function getPublicPlanCards(): PublicPlanCard[] {
   return PUBLIC_PLAN_ORDER.map((tier) => {
     const plan = PLANS[tier];
     const aiLine = plan.aiEnabled
-      ? `AI remediation included (${plan.aiTokenLimit.toLocaleString()} tokens/month)`
-      : 'AI remediation not included';
+      ? `Bounded AI draft assist: ${plan.aiTokenLimit.toLocaleString()} tokens/mo (review required)`
+      : 'No AI draft assist on this tier';
 
     return {
       tier,
