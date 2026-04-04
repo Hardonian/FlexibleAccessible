@@ -7,6 +7,10 @@
   "bin": {
     "aros-mcp": "src/index.ts"
   },
+  "exports": {
+    ".": "./src/index.ts",
+    "./billing": "./src/billing.ts"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",

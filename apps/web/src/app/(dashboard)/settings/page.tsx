@@ -232,6 +232,100 @@ export default async function SettingsPage() {
         )}
       </div>
 
+      <div className="card">
+        <h2 className="text-lg font-semibold text-slate-900 mb-4">
+          Management
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Link
+            href="/settings/api-keys"
+            className="group flex items-start gap-3 rounded-xl border border-slate-200 p-4 transition-colors hover:border-brand-200 hover:bg-brand-50/30"
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-600 group-hover:bg-brand-100 group-hover:text-brand-600">
+              <svg
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
+                />
+              </svg>
+            </div>
+            <div>
+              <h3 className="font-medium text-slate-900 group-hover:text-brand-700">
+                API Keys
+              </h3>
+              <p className="mt-1 text-xs text-slate-500">
+                Manage programmatic access to AROS
+              </p>
+            </div>
+          </Link>
+
+          <Link
+            href="/settings/members"
+            className="group flex items-start gap-3 rounded-xl border border-slate-200 p-4 transition-colors hover:border-brand-200 hover:bg-brand-50/30"
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-600 group-hover:bg-brand-100 group-hover:text-brand-600">
+              <svg
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+                />
+              </svg>
+            </div>
+            <div>
+              <h3 className="font-medium text-slate-900 group-hover:text-brand-700">
+                Members
+              </h3>
+              <p className="mt-1 text-xs text-slate-500">
+                Invite and manage team access
+              </p>
+            </div>
+          </Link>
+
+          <Link
+            href="/settings/api-keys/usage"
+            className="group flex items-start gap-3 rounded-xl border border-slate-200 p-4 transition-colors hover:border-brand-200 hover:bg-brand-50/30"
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-600 group-hover:bg-brand-100 group-hover:text-brand-600">
+              <svg
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                />
+              </svg>
+            </div>
+            <div>
+              <h3 className="font-medium text-slate-900 group-hover:text-brand-700">
+                API Usage
+              </h3>
+              <p className="mt-1 text-xs text-slate-500">
+                Monitor usage and quotas
+              </p>
+            </div>
+          </Link>
+        </div>
+      </div>
+
       {subscription?.aiEnabled && (
         <div className="card border-brand-200 bg-gradient-to-br from-white to-brand-50/30">
           <div className="flex items-center justify-between mb-4">

@@ -3,6 +3,7 @@
 import { useTransition } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Key, Users } from "lucide-react";
 import {
   DASHBOARD_NAV_ITEMS,
   NAV_ICON_MAP,
@@ -68,7 +69,9 @@ export function Sidebar({
             defaultValue={currentOrgId}
             className="input text-sm"
             disabled={isPending}
-            {...(isPending ? { 'aria-busy': 'true' } : { 'aria-busy': 'false' })}
+            {...(isPending
+              ? { "aria-busy": "true" }
+              : { "aria-busy": "false" })}
           >
             {orgs.map((org) => (
               <option key={org.id} value={org.id}>
@@ -81,7 +84,9 @@ export function Sidebar({
 
       <nav className="flex-1 overflow-y-auto p-3">
         <ul className="space-y-1" role="list">
-          {DASHBOARD_NAV_ITEMS.filter((item) => hasPaidAccess || !item.premium).map((item) => {
+          {DASHBOARD_NAV_ITEMS.filter(
+            (item) => hasPaidAccess || !item.premium,
+          ).map((item) => {
             const isActive =
               pathname === item.href || pathname.startsWith(item.href + "/");
             const Icon = NAV_ICON_MAP[item.icon];
@@ -105,7 +110,7 @@ export function Sidebar({
             );
           })}
           {canViewSystem && hasPaidAccess && (
-            <li>
+            <li className="space-y-1">
               <Link
                 href="/system"
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
@@ -123,9 +128,67 @@ export function Sidebar({
                 />
                 System
               </Link>
+              <ul
+                className="ml-5 space-y-1 border-l border-slate-200 pl-2"
+                role="list"
+              >
+                <li>
+                  <Link
+                    href="/system"
+                    className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${
+                      pathname === "/system"
+                        ? "text-brand-700"
+                        : "text-slate-500 hover:text-slate-700"
+                    }`}
+                    aria-current={pathname === "/system" ? "page" : undefined}
+                  >
+                    Operator
+                  </Link>
+                </li>
+              </ul>
             </li>
           )}
         </ul>
+
+        <div className="mt-6">
+          <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+            Settings
+          </div>
+          <ul className="mt-1 space-y-1" role="list">
+            <li>
+              <Link
+                href="/settings/api-keys"
+                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  pathname.startsWith("/settings/api-keys")
+                    ? "bg-brand-50 text-brand-700"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                }`}
+                aria-current={
+                  pathname.startsWith("/settings/api-keys") ? "page" : undefined
+                }
+              >
+                <Key className="h-4 w-4 shrink-0" aria-hidden="true" />
+                API Keys
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/settings/members"
+                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  pathname.startsWith("/settings/members")
+                    ? "bg-brand-50 text-brand-700"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                }`}
+                aria-current={
+                  pathname.startsWith("/settings/members") ? "page" : undefined
+                }
+              >
+                <Users className="h-4 w-4 shrink-0" aria-hidden="true" />
+                Members
+              </Link>
+            </li>
+          </ul>
+        </div>
 
         {aiUsage && (
           <AiUsageIndicator

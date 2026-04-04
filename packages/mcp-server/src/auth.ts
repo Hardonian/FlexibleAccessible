@@ -1,4 +1,6 @@
 import { prisma } from "@aros/db";
+import { getRedisClient } from "@aros/shared";
+import { authLogger } from "@aros/shared";
 
 export interface ApiKeyRecord {
   id: string;
@@ -55,33 +57,69 @@ export function hasScope(key: ApiKeyRecord, scope: string): boolean {
   return key.scopes.includes("*") || key.scopes.includes(scope);
 }
 
-// Rate limiting per API key
-const rateLimitBuckets = new Map<string, { count: number; resetAt: number }>();
+// Rate limiting configuration
+const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute sliding window
 
-export function checkRateLimit(key: ApiKeyRecord): {
+export interface RateLimitResult {
   allowed: boolean;
   remaining: number;
   resetAt: number;
-} {
+}
+
+/**
+ * Check rate limit for an API key using Redis sliding window.
+ * @param key - The API key record
+ * @returns Rate limit result indicating if request is allowed and remaining quota
+ */
+export async function checkRateLimit(
+  key: ApiKeyRecord,
+): Promise<RateLimitResult> {
   const now = Date.now();
-  const bucket = rateLimitBuckets.get(key.id);
+  const windowStart = now - RATE_LIMIT_WINDOW_MS;
+  const resetAt = now + RATE_LIMIT_WINDOW_MS;
 
-  if (!bucket || bucket.resetAt < now) {
-    const resetAt = now + 60_000;
-    rateLimitBuckets.set(key.id, { count: 1, resetAt });
-    return { allowed: true, remaining: key.rateLimitPerMinute - 1, resetAt };
+  const redisKey = `rate_limit:${key.id}`;
+
+  try {
+    const redis = getRedisClient();
+
+    // Multi-command for atomic operations:
+    // 1. Remove expired entries (outside window)
+    // 2. Add current request timestamp
+    // 3. Set expiry on the key
+    // 4. Count current requests in window
+    const pipeline = redis.pipeline();
+    pipeline.zremrangebyscore(redisKey, 0, windowStart);
+    pipeline.zadd(redisKey, now, `${now}:${Math.random()}`);
+    pipeline.pexpire(redisKey, RATE_LIMIT_WINDOW_MS);
+    pipeline.zcard(redisKey);
+
+    const results = await pipeline.exec();
+    if (!results) {
+      throw new Error("Redis pipeline returned null");
+    }
+
+    // results is an array of [error, result] tuples
+    const [, countResult] = results[3];
+    const count = countResult as number;
+
+    const remaining = Math.max(0, key.rateLimitPerMinute - count);
+    const allowed = count <= key.rateLimitPerMinute;
+
+    return { allowed, remaining, resetAt };
+  } catch (error) {
+    // Fail open: log warning and allow request when Redis is unavailable
+    authLogger.warn("Rate limiting Redis unavailable, failing open", {
+      userId: key.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
+
+    return {
+      allowed: true,
+      remaining: key.rateLimitPerMinute,
+      resetAt,
+    };
   }
-
-  if (bucket.count >= key.rateLimitPerMinute) {
-    return { allowed: false, remaining: 0, resetAt: bucket.resetAt };
-  }
-
-  bucket.count++;
-  return {
-    allowed: true,
-    remaining: key.rateLimitPerMinute - bucket.count,
-    resetAt: bucket.resetAt,
-  };
 }
 
 async function hashKey(key: string): Promise<string> {

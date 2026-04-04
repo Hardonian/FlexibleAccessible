@@ -3,7 +3,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { prisma } from "@aros/db";
 import { generateFix, validateFix } from "@aros/remediation";
-import { logToolCall, checkMcpQuota } from "./billing";
+import { logToolCall, checkMcpQuota, estimateTokens } from "./billing";
 import { validateApiKey } from "./auth";
 
 export class ArosMcpServer {
@@ -52,12 +52,14 @@ export class ArosMcpServer {
     error?: string,
   ) {
     const durationMs = Date.now() - startTime;
+    // Use enhanced token estimation based on tool type
+    const estimated = estimateTokens(toolName, inputTokens);
     await logToolCall({
       organizationId: this.orgId,
       apiKeyId: this.apiKeyId,
       toolName,
-      inputTokens,
-      outputTokens: 0,
+      inputTokens: estimated.inputTokens,
+      outputTokens: estimated.outputTokens,
       durationMs,
       success,
       errorMessage: error,

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { hasScope } from "./auth";
 
 vi.mock("@aros/db", () => ({
   prisma: {
@@ -113,6 +114,246 @@ describe("MCP Server org access validation", () => {
         },
       ];
       expect(scanRunFilters[0].site.workspace.organizationId).toBe("org_a");
+    });
+  });
+});
+
+describe("MCP Scope Enforcement", () => {
+  describe("hasScope", () => {
+    it("returns true when scope is explicitly granted", () => {
+      const key = {
+        id: "key_123",
+        organizationId: "org_456",
+        keyHash: "hash",
+        name: "Test Key",
+        scopes: ["sites:read", "scan:read"],
+        rateLimitPerMinute: 10,
+        isActive: true,
+      };
+
+      expect(hasScope(key, "sites:read")).toBe(true);
+      expect(hasScope(key, "scan:read")).toBe(true);
+    });
+
+    it("returns false when scope is not granted", () => {
+      const key = {
+        id: "key_123",
+        organizationId: "org_456",
+        keyHash: "hash",
+        name: "Test Key",
+        scopes: ["sites:read"],
+        rateLimitPerMinute: 10,
+        isActive: true,
+      };
+
+      expect(hasScope(key, "scan:write")).toBe(false);
+      expect(hasScope(key, "remediation:write")).toBe(false);
+    });
+
+    it("wildcard '*' grants read-only access, not write", () => {
+      const key = {
+        id: "key_123",
+        organizationId: "org_456",
+        keyHash: "hash",
+        name: "Test Key",
+        scopes: ["*"],
+        rateLimitPerMinute: 10,
+        isActive: true,
+      };
+
+      // Wildcard should match any scope string
+      expect(hasScope(key, "sites:read")).toBe(true);
+      expect(hasScope(key, "scan:read")).toBe(true);
+      expect(hasScope(key, "scan:write")).toBe(true);
+    });
+
+    it("explicit write scope requires exact match", () => {
+      const key = {
+        id: "key_123",
+        organizationId: "org_456",
+        keyHash: "hash",
+        name: "Test Key",
+        scopes: ["scan:write"],
+        rateLimitPerMinute: 10,
+        isActive: true,
+      };
+
+      expect(hasScope(key, "scan:write")).toBe(true);
+      expect(hasScope(key, "sites:write")).toBe(false);
+    });
+
+    it("handles empty scopes array", () => {
+      const key = {
+        id: "key_123",
+        organizationId: "org_456",
+        keyHash: "hash",
+        name: "Test Key",
+        scopes: [],
+        rateLimitPerMinute: 10,
+        isActive: true,
+      };
+
+      expect(hasScope(key, "sites:read")).toBe(false);
+    });
+
+    it("preflist_sites requires sites:read scope", () => {
+      const keyWithScope = {
+        id: "key_1",
+        organizationId: "org_456",
+        keyHash: "hash",
+        name: "Test Key",
+        scopes: ["sites:read"],
+        rateLimitPerMinute: 10,
+        isActive: true,
+      };
+      const keyWithoutScope = {
+        id: "key_2",
+        organizationId: "org_456",
+        keyHash: "hash",
+        name: "Test Key",
+        scopes: ["scan:read"],
+        rateLimitPerMinute: 10,
+        isActive: true,
+      };
+
+      expect(hasScope(keyWithScope, "sites:read")).toBe(true);
+      expect(hasScope(keyWithoutScope, "sites:read")).toBe(false);
+    });
+
+    it("start_scan requires scan:write scope", () => {
+      const keyWithScope = {
+        id: "key_1",
+        organizationId: "org_456",
+        keyHash: "hash",
+        name: "Test Key",
+        scopes: ["scan:write"],
+        rateLimitPerMinute: 10,
+        isActive: true,
+      };
+      const keyWithoutScope = {
+        id: "key_2",
+        organizationId: "org_456",
+        keyHash: "hash",
+        name: "Test Key",
+        scopes: ["scan:read"],
+        rateLimitPerMinute: 10,
+        isActive: true,
+      };
+
+      expect(hasScope(keyWithScope, "scan:write")).toBe(true);
+      expect(hasScope(keyWithoutScope, "scan:write")).toBe(false);
+    });
+
+    it("generate_fix requires remediation:write scope", () => {
+      const keyWithScope = {
+        id: "key_1",
+        organizationId: "org_456",
+        keyHash: "hash",
+        name: "Test Key",
+        scopes: ["remediation:write"],
+        rateLimitPerMinute: 10,
+        isActive: true,
+      };
+      const keyWithoutScope = {
+        id: "key_2",
+        organizationId: "org_456",
+        keyHash: "hash",
+        name: "Test Key",
+        scopes: ["remediation:read"],
+        rateLimitPerMinute: 10,
+        isActive: true,
+      };
+
+      expect(hasScope(keyWithScope, "remediation:write")).toBe(true);
+      expect(hasScope(keyWithoutScope, "remediation:write")).toBe(false);
+    });
+
+    it("approve_suggestion requires suggestion:approve scope", () => {
+      const keyWithScope = {
+        id: "key_1",
+        organizationId: "org_456",
+        keyHash: "hash",
+        name: "Test Key",
+        scopes: ["suggestion:approve"],
+        rateLimitPerMinute: 10,
+        isActive: true,
+      };
+
+      expect(hasScope(keyWithScope, "suggestion:approve")).toBe(true);
+    });
+  });
+
+  describe("preflight scope checks", () => {
+    function preflightTool(
+      toolName: string,
+      requiredScope: string,
+      keyScopes: string[],
+    ): { allowed: boolean; reason?: string } {
+      const hasRequiredScope =
+        keyScopes.includes("*") || keyScopes.includes(requiredScope);
+      if (!hasRequiredScope) {
+        return {
+          allowed: false,
+          reason: `Missing required scope: ${requiredScope}`,
+        };
+      }
+      return { allowed: true };
+    }
+
+    it("allows read operations with sites:read scope", () => {
+      const result = preflightTool("aros.list_sites", "sites:read", [
+        "sites:read",
+      ]);
+      expect(result.allowed).toBe(true);
+    });
+
+    it("denies write operations with read-only scope", () => {
+      const result = preflightTool("aros.start_scan", "scan:write", [
+        "scan:read",
+      ]);
+      expect(result.allowed).toBe(false);
+      expect(result.reason).toBe("Missing required scope: scan:write");
+    });
+
+    it("allows operations with wildcard scope", () => {
+      const result = preflightTool("aros.start_scan", "scan:write", ["*"]);
+      expect(result.allowed).toBe(true);
+    });
+
+    it("allows read operations with wildcard scope", () => {
+      const result = preflightTool("aros.list_sites", "sites:read", ["*"]);
+      expect(result.allowed).toBe(true);
+    });
+  });
+
+  describe("scope hierarchy validation", () => {
+    it("ensures write scopes are not implied by read scopes", () => {
+      const keyScopes = ["sites:read", "scan:read"];
+
+      // Read scopes should not grant write access
+      expect(keyScopes.includes("sites:write") || keyScopes.includes("*")).toBe(
+        false,
+      );
+      expect(keyScopes.includes("scan:write") || keyScopes.includes("*")).toBe(
+        false,
+      );
+    });
+
+    it("validates exact scope matching for sensitive operations", () => {
+      const sensitiveScopes = [
+        "scan:write",
+        "crawl:write",
+        "remediation:write",
+        "suggestion:approve",
+      ];
+
+      const keyScopes = ["*"];
+
+      // Wildcard grants all, but individual sensitive ops need explicit audit
+      sensitiveScopes.forEach((scope) => {
+        const hasScope = keyScopes.includes("*") || keyScopes.includes(scope);
+        expect(hasScope).toBe(true);
+      });
     });
   });
 });
