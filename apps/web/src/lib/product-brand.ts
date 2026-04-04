@@ -1,0 +1,21 @@
+/**
+ * Canonical product identity for user-facing surfaces (marketing, app chrome, metadata).
+ * Package and API identifiers remain @aros/*; this is the commercial product name.
+ */
+export const PRODUCT_DISPLAY_NAME = "FlexibleAccessible" as const;
+
+export const PRODUCT_TAGLINE =
+  "Accessibility operations and evidence—not vanity scores." as const;
+
+export const PRODUCT_DESCRIPTION =
+  "A trustworthy platform for teams that need to detect, prove, prioritize, communicate, and improve accessibility with browser-accurate scans, clustered findings, exports, and workflows that hold up under review." as const;
+
+/** PWA / compact labels */
+export const PRODUCT_SHORT_NAME = "FlexAcc" as const;
+
+export const PRODUCT_LEGAL_LINE =
+  "Ships on the AROS engine (@aros/* packages)—same scanning core the CLI and MCP use." as const;
+
+export function pageTitle(segment: string): string {
+  return `${segment} · ${PRODUCT_DISPLAY_NAME}`;
+}

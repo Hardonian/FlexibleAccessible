@@ -9,7 +9,8 @@
     --color-muted: 100 116 139;
     --color-border: 226 232 240;
     --color-card: 255 255 255;
-    --color-accent: 37 99 235;
+    --color-accent: 13 148 136;
+    --color-canvas: 248 250 252;
   }
 
   html {
@@ -18,7 +19,7 @@
   }
 
   body {
-    @apply bg-white text-slate-900 antialiased;
+    @apply bg-[rgb(var(--color-canvas))] text-slate-900 antialiased;
   }
 
   *:focus-visible {
