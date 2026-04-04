@@ -15,7 +15,7 @@
     "test:ct": "playwright test -c playwright-ct.config.ts",
     "test:e2e:update": "playwright test --update-snapshots",
     "test:integration": "vitest run src/lib/__tests__/stripe-webhook.integration.test.ts",
-    "test:launch-critical": "vitest run src/app/api/public-scan/route.test.ts src/app/api/public-scan/[id]/route.test.ts src/lib/public-scan/og-render-model.test.ts src/lib/public-scan/validity.test.ts src/lib/public-scan/target-validation.test.ts src/app/api/github-action/status/[scanRunId]/route.test.ts src/app/api/reports/vpat/route.test.ts src/lib/server-org-boundary.test.ts"
+    "test:launch-critical": "vitest run src/app/api/public-scan/route.test.ts src/app/api/public-scan/[id]/route.test.ts src/lib/public-scan/og-render-model.test.ts src/lib/public-scan/validity.test.ts src/lib/public-scan/target-validation.test.ts src/app/api/github-action/status/[scanRunId]/route.test.ts src/app/api/reports/vpat/route.test.ts src/lib/server-org-boundary.test.ts src/lib/operator-org-resolution.test.ts"
   },
   "dependencies": {
     "@aros/config": "*",

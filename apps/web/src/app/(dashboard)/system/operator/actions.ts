@@ -1,10 +1,13 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
 import { requireSession } from "@/lib/session";
-import { hasPermission } from "@aros/config";
 import type { MemberRole, SubscriptionStatus } from "@aros/db";
 import { ApiError } from "@aros/shared";
+import { resolveOperatorScopedMembership } from "@/lib/operator-org-resolution";
+
+const ACTIVE_ORG_COOKIE = "aros_active_org";
 
 const DAYS_30_MS = 30 * 24 * 60 * 60 * 1000;
 const DAYS_90_MS = 90 * 24 * 60 * 60 * 1000;
@@ -130,23 +133,36 @@ async function requireOperatorAccess(): Promise<{
 }> {
   const user = await requireSession();
 
-  const membership = await prisma.membership.findFirst({
+  const memberships = await prisma.membership.findMany({
     where: { userId: user.id },
-    include: { organization: { select: { id: true, name: true, slug: true } } },
+    select: { organizationId: true, role: true, createdAt: true },
   });
 
-  if (!membership) {
+  if (memberships.length === 0) {
     throw ApiError.forbidden("No organization membership found");
   }
 
-  if (!hasPermission(membership.role as MemberRole, "org:system:view")) {
+  const cookieStore = await cookies();
+  const preferredOrgId = cookieStore.get(ACTIVE_ORG_COOKIE)?.value;
+
+  const resolved = resolveOperatorScopedMembership(
+    memberships.map((m) => ({
+      organizationId: m.organizationId,
+      role: m.role,
+      createdAt: m.createdAt,
+    })),
+    preferredOrgId ?? undefined,
+    "org:system:view",
+  );
+
+  if (!resolved) {
     throw ApiError.forbidden("Missing permission: org:system:view");
   }
 
   return {
     user,
-    organizationId: membership.organizationId,
-    role: membership.role as MemberRole,
+    organizationId: resolved.organizationId,
+    role: resolved.role,
   };
 }
 
