@@ -1,5 +1,6 @@
 "use server";
 
+import type { Route } from "next";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
@@ -11,6 +12,11 @@ import crypto from "node:crypto";
 
 const API_KEY_PREFIX = "arsk_live_";
 const KEY_BYTES = 32; // 64 hex chars
+
+function redirectApiKeysQuery(params: Record<string, string>): never {
+  const q = new URLSearchParams(params).toString();
+  redirect(`/settings/api-keys?${q}` as Route);
+}
 
 /**
  * Generate a secure random API key with SHA-256 hash for storage.
@@ -289,19 +295,15 @@ export async function revokeApiKeyAction(formData: FormData): Promise<void> {
   const keyId = (formData.get("keyId") as string) ?? "";
 
   if (!keyId) {
-    redirect(
-      "/settings/api-keys?error=" +
-        encodeURIComponent("API key ID is required"),
-    );
+    redirectApiKeysQuery({ error: "API key ID is required" });
   }
 
   // Permission check
   const ctx = await requireOrgAccess(organizationId);
   if (!hasPermission(ctx.role, "integrations:manage")) {
-    redirect(
-      "/settings/api-keys?error=" +
-        encodeURIComponent("Only admins and owners can revoke API keys"),
-    );
+    redirectApiKeysQuery({
+      error: "Only admins and owners can revoke API keys",
+    });
   }
 
   // Soft delete by setting isActive to false
@@ -315,10 +317,9 @@ export async function revokeApiKeyAction(formData: FormData): Promise<void> {
     });
 
     if (!key) {
-      redirect(
-        "/settings/api-keys?error=" +
-          encodeURIComponent("API key not found or already revoked"),
-      );
+      redirectApiKeysQuery({
+        error: "API key not found or already revoked",
+      });
     }
 
     await prisma.apiKey.update({
@@ -327,15 +328,12 @@ export async function revokeApiKeyAction(formData: FormData): Promise<void> {
     });
 
     revalidatePath("/settings/api-keys");
-    redirect("/settings/api-keys?status=revoked");
+    redirectApiKeysQuery({ status: "revoked" });
   } catch (error) {
     if (error instanceof ApiError) {
-      redirect("/settings/api-keys?error=" + encodeURIComponent(error.message));
+      redirectApiKeysQuery({ error: error.message });
     }
-    redirect(
-      "/settings/api-keys?error=" +
-        encodeURIComponent("Failed to revoke API key"),
-    );
+    redirectApiKeysQuery({ error: "Failed to revoke API key" });
   }
 }
 

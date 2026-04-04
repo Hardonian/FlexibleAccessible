@@ -50,6 +50,23 @@ describe("server-org-boundary", () => {
     });
   });
 
+  it("rethrows AppError-shaped failures from org wrapper (correct HTTP semantics)", async () => {
+    vi.mocked(runOrgScopedQuery).mockResolvedValueOnce({
+      ok: false,
+      message: "Finding not found",
+      statusCode: 404,
+      code: "NOT_FOUND",
+    });
+
+    await expect(
+      runCanonicalOrgQuery({ organizationId: "org-1", role: "ADMIN" } as any, async () => "never"),
+    ).rejects.toMatchObject({
+      code: "NOT_FOUND",
+      statusCode: 404,
+      message: "Finding not found",
+    });
+  });
+
   it("returns data when org wrapper succeeds", async () => {
     vi.mocked(runOrgScopedQuery).mockResolvedValueOnce({ ok: true, data: { count: 4 } });
 

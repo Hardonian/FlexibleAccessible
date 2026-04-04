@@ -2,6 +2,7 @@ import { prisma } from "./db";
 import { cookies } from "next/headers";
 import type { MemberRole } from "@aros/db";
 import type { RoutePlatformTruth } from "@aros/core-services";
+import { AppError } from "@aros/shared";
 
 const ACTIVE_ORG_COOKIE = "aros_active_org";
 
@@ -68,7 +69,13 @@ export async function resolveDashboardOrgMembership(
 
 export type OrgScopedQueryResult<T> =
   | { ok: true; data: T }
-  | { ok: false; message: string };
+  | {
+      ok: false;
+      message: string;
+      /** Present when the scoped callback threw an AppError (e.g. NOT_FOUND). */
+      statusCode?: number;
+      code?: string;
+    };
 
 export async function runOrgScopedQuery<T>(
   ctx: OrgMembershipCore,
@@ -82,6 +89,15 @@ export async function runOrgScopedQuery<T>(
     const data = await fn(ctx.organizationId);
     return { ok: true, data };
   } catch (e) {
+    if (e instanceof AppError) {
+      console.error("[route-data-boundary] org-scoped query failed", e);
+      return {
+        ok: false,
+        message: e.message,
+        statusCode: e.statusCode,
+        code: e.code,
+      };
+    }
     const message = e instanceof Error ? e.message : "Database error";
     console.error("[route-data-boundary] org-scoped query failed", e);
     return { ok: false, message };

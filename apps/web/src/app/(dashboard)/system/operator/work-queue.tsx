@@ -1,5 +1,6 @@
 "use client";
 
+import type { Route } from "next";
 import Link from "next/link";
 import { useTransition } from "react";
 import type { WorkQueueItem } from "./actions";
@@ -81,7 +82,7 @@ function WorkQueueItemCard({
           </div>
           <div className="mt-3 flex items-center gap-2">
             <Link
-              href={item.actionHref}
+              href={item.actionHref as Route}
               className="inline-flex items-center rounded-md bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700 transition-colors"
             >
               {item.actionLabel}
@@ -214,7 +215,7 @@ export function WorkQueueCompact({ items, limit = 5 }: WorkQueueCompactProps) {
       {displayItems.map((item) => (
         <Link
           key={item.id}
-          href={item.actionHref}
+          href={item.actionHref as Route}
           className="flex items-center gap-3 rounded-lg border border-slate-200 p-3 hover:border-slate-300 hover:bg-slate-50 transition-colors"
         >
           <span className="text-lg">{typeIcons[item.type]}</span>

@@ -1,5 +1,6 @@
 "use client";
 
+import type { Route } from "next";
 import Link from "next/link";
 import type {
   StaleSite,
@@ -74,7 +75,7 @@ function MetricCard({
       {description && <p className="mt-3 text-sm opacity-80">{description}</p>}
       {href && actionLabel && (
         <Link
-          href={href}
+          href={href as Route}
           className="mt-4 inline-flex items-center text-sm font-medium underline underline-offset-2 hover:opacity-80"
         >
           {actionLabel} →
@@ -86,7 +87,7 @@ function MetricCard({
   if (href && !actionLabel) {
     return (
       <Link
-        href={href}
+        href={href as Route}
         className="block transition-transform hover:scale-[1.02]"
       >
         {content}
