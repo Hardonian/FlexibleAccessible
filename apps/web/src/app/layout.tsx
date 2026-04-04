@@ -6,8 +6,10 @@ import {
   PRODUCT_SHORT_NAME,
   PRODUCT_TAGLINE,
 } from "@/lib/product-brand";
+import { getAppBaseUrl } from "@/lib/site-url";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(getAppBaseUrl()),
   title: {
     default: `${PRODUCT_DISPLAY_NAME} — ${PRODUCT_TAGLINE}`,
     template: `%s · ${PRODUCT_DISPLAY_NAME}`,

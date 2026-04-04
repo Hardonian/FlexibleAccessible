@@ -5,6 +5,8 @@ import {
 } from "@/lib/public-scan/validity";
 import { Metadata } from "next";
 import { PublicScanResults } from "./public-scan-results";
+import { getAppBaseUrl } from "@/lib/site-url";
+import { PRODUCT_DISPLAY_NAME } from "@/lib/product-brand";
 
 interface PageProps {
   params: Promise<{ domain: string }>;
@@ -24,19 +26,24 @@ export async function generateMetadata({
   const score = hasCurrentEvidence ? scan!.score! : 0;
   const totalViolations = hasCurrentEvidence ? scan!.totalViolations : 0;
   const title = hasCurrentEvidence
-    ? `Accessibility Report: ${decoded} (Score: ${score})`
-    : `Accessibility Report: ${decoded} (No current evidence)`;
+    ? `Public scan sample: ${decoded}`
+    : `Public scan: ${decoded} (no current evidence)`;
   const description = hasCurrentEvidence
-    ? `Sampled automated scan: ${totalViolations} accessibility issues on ${decoded} (up to 5 pages). Not a WCAG conformance guarantee.`
-    : `No current, unexpired public scan evidence for ${decoded}. Run a new instant scan for fresh automated results.`;
-  const ogUrl = `/api/og?domain=${encodeURIComponent(decoded)}`;
+    ? `Sampled automated scan on ${decoded}: ${totalViolations} issues found in up to 5 pages (severity breakdown in the report). Not a WCAG conformance guarantee.`
+    : `No current, unexpired public scan evidence for ${decoded}. Run a new instant scan from ${PRODUCT_DISPLAY_NAME} for fresh automated results.`;
+  const ogPath = `/api/og?domain=${encodeURIComponent(decoded)}`;
+  const ogUrl = new URL(ogPath, getAppBaseUrl()).toString();
 
   return {
     title,
     description,
+    alternates: {
+      canonical: `/scan/${encodeURIComponent(decoded)}`,
+    },
     openGraph: {
       title,
       description,
+      url: `/scan/${encodeURIComponent(decoded)}`,
       images: [{ url: ogUrl, width: 1200, height: 630 }],
       type: "website",
     },

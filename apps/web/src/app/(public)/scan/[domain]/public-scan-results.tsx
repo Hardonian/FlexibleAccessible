@@ -56,10 +56,10 @@ function getScoreColor(score: number): string {
 }
 
 function getScoreLabel(score: number): string {
-  if (score >= 90) return "Good";
-  if (score >= 70) return "Needs Work";
-  if (score >= 50) return "Poor";
-  return "Critical";
+  if (score >= 90) return "Strong sample";
+  if (score >= 70) return "Mixed sample";
+  if (score >= 50) return "Weak sample";
+  return "High defect density";
 }
 
 function isCurrentPublicProof(scan: ScanData | null): boolean {
@@ -164,7 +164,7 @@ export function PublicScanResults({ domain, initialScan }: Props) {
               Sign In
             </Link>
             <Link href="/signup" className="btn-primary text-sm">
-              Get Full Report
+              Open workspace
             </Link>
           </div>
         </nav>
@@ -256,8 +256,12 @@ export function PublicScanResults({ domain, initialScan }: Props) {
                 >
                   {getScoreLabel(currentProof.score!)}
                 </p>
-                <p className="mt-1 text-sm text-slate-400">
-                  Accessibility Score
+                <p className="mt-1 text-sm text-slate-500">
+                  Automated sample index
+                </p>
+                <p className="mt-1 text-xs text-slate-400 max-w-[12rem] mx-auto">
+                  Higher means fewer detected issues in this sample—not WCAG
+                  conformance.
                 </p>
               </div>
 
