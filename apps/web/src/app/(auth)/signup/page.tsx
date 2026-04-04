@@ -1,8 +1,15 @@
 import { redirect } from 'next/navigation';
+import type { Metadata } from 'next';
 import { getSession } from '@/lib/session';
 import { SignupForm } from './signup-form';
+import { pageTitle } from '@/lib/product-brand';
 
-export const metadata = { title: 'Sign Up' };
+export const metadata: Metadata = {
+  title: pageTitle('Create workspace'),
+  description:
+    'Create a FlexibleAccessible workspace for private scans, findings, exports, and plan-gated API access.',
+  robots: { index: false, follow: true },
+};
 
 export default async function SignupPage() {
   const user = await getSession();

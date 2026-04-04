@@ -149,7 +149,7 @@ export async function GET(request: NextRequest) {
                 color: "#94a3b8",
               }}
             >
-              Score
+              Sample index
             </div>
           </div>
 

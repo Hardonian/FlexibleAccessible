@@ -2,6 +2,8 @@ import { PLANS } from '@aros/config';
 import type { PlanTier } from '@aros/db';
 import type { OrgSubscriptionSnapshot } from './auth-guard';
 
+export { getAppBaseUrl } from './site-url';
+
 export const PAID_PLAN_TIERS: PlanTier[] = [
   'STARTER',
   'PROFESSIONAL',
@@ -20,30 +22,6 @@ export function getBillingPlanCards() {
     ...PLANS[tier],
     isPaid: tier !== 'FREE',
   }));
-}
-
-export function getAppBaseUrl(): string {
-  const normalizedNextAuthUrl = normalizeConfiguredBaseUrl(process.env.NEXTAUTH_URL);
-  if (normalizedNextAuthUrl) return normalizedNextAuthUrl;
-
-  const normalizedVercelUrl = normalizeConfiguredBaseUrl(
-    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
-  );
-  if (normalizedVercelUrl) return normalizedVercelUrl;
-
-  return 'http://localhost:3000';
-}
-
-function normalizeConfiguredBaseUrl(input: string | undefined): string | null {
-  if (!input) return null;
-
-  try {
-    const parsed = new URL(input);
-    if (!['http:', 'https:'].includes(parsed.protocol)) return null;
-    return parsed.origin;
-  } catch {
-    return null;
-  }
 }
 
 export function isStripeBillingConfigured(): boolean {

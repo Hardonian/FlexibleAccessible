@@ -4,6 +4,10 @@ const config: Config = {
   content: ['./src/**/*.{ts,tsx}'],
   theme: {
     extend: {
+      spacing: {
+        'section-md': '4rem',
+        'section-lg': '6rem',
+      },
       colors: {
         brand: {
           50: '#f0fdfa',

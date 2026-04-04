@@ -1,8 +1,14 @@
 import { redirect } from 'next/navigation';
+import type { Metadata } from 'next';
 import { getSession } from '@/lib/session';
 import { LoginForm } from './login-form';
+import { pageTitle } from '@/lib/product-brand';
 
-export const metadata = { title: 'Sign In' };
+export const metadata: Metadata = {
+  title: pageTitle('Sign in'),
+  description: 'Sign in to your FlexibleAccessible workspace.',
+  robots: { index: false, follow: true },
+};
 
 export default async function LoginPage() {
   const user = await getSession();
