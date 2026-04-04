@@ -12,7 +12,7 @@ import { getEntitlementState } from "@/lib/auth-guard";
 import { getOrgUsageSummary, checkQuotaThreshold } from "@/lib/mcp-billing";
 import { UsageDashboard } from "./usage-dashboard";
 
-export const metadata = { title: "API Usage - AROS" };
+export const metadata = { title: "API Usage" };
 
 type TimeRange = "7" | "30" | "90";
 

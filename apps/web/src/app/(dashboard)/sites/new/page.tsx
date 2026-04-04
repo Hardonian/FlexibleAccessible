@@ -1,7 +1,7 @@
 import { requireSession } from '@/lib/session';
 import { AddSiteForm } from './add-site-form';
 
-export const metadata = { title: 'Add Site - AROS' };
+export const metadata = { title: 'Add Site' };
 
 export default async function AddSitePage() {
   await requireSession();

@@ -2,6 +2,7 @@ import { ImageResponse } from "next/og";
 import { NextRequest } from "next/server";
 import { toASCII } from "node:punycode";
 import { getPublicOgRenderModel } from "@/lib/public-scan/og-render-model";
+import { PRODUCT_DISPLAY_NAME } from "@/lib/product-brand";
 
 export const runtime = "nodejs";
 
@@ -74,7 +75,7 @@ export async function GET(request: NextRequest) {
               fontWeight: 600,
             }}
           >
-            AROS public scan preview
+            {PRODUCT_DISPLAY_NAME} · public scan evidence
           </div>
           <div
             style={{

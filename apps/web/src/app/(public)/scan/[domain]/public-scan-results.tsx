@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { PRODUCT_DISPLAY_NAME } from "@/lib/product-brand";
 
 type PublicEvidenceState =
   | "valid"
@@ -149,8 +150,11 @@ export function PublicScanResults({ domain, initialScan }: Props) {
       {/* Header */}
       <header className="border-b border-slate-200">
         <nav className="mx-auto max-w-5xl px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="text-xl font-bold text-brand-600">
-            AROS
+          <Link
+            href="/"
+            className="text-lg font-semibold tracking-tight text-brand-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 rounded"
+          >
+            {PRODUCT_DISPLAY_NAME}
           </Link>
           <div className="flex items-center gap-4">
             <Link
@@ -186,7 +190,10 @@ export function PublicScanResults({ domain, initialScan }: Props) {
             aria-live="polite"
             aria-busy="true"
           >
-            <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-slate-200 border-t-brand-600" />
+            <div
+              className="inline-block h-12 w-12 rounded-full border-4 border-slate-200 border-t-brand-600 motion-safe:animate-spin"
+              aria-hidden="true"
+            />
             <p className="mt-4 text-lg text-slate-600">Scanning {domain}...</p>
             <p className="mt-2 text-sm text-slate-400">
               Running accessibility checks on up to 5 pages
@@ -367,7 +374,7 @@ export function PublicScanResults({ domain, initialScan }: Props) {
                 <code className="bg-slate-100 px-2 py-1 rounded">
                   {typeof window !== "undefined"
                     ? window.location.href
-                    : `aros.dev/scan/${encodeURIComponent(domain)}`}
+                    : `/scan/${encodeURIComponent(domain)}`}
                 </code>
               </p>
             </div>

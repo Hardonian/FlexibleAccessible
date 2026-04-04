@@ -11,7 +11,7 @@ import { EntitlementWall } from "@/components/monetization/entitlement-wall";
 import { getEntitlementState } from "@/lib/auth-guard";
 import { hasPermission } from "@aros/config";
 
-export const metadata = { title: "Settings - AROS" };
+export const metadata = { title: "Settings" };
 
 export default async function SettingsPage() {
   const user = await requireSession();
@@ -261,7 +261,7 @@ export default async function SettingsPage() {
                 API Keys
               </h3>
               <p className="mt-1 text-xs text-slate-500">
-                Manage programmatic access to AROS
+                Scoped keys for automation and integrations
               </p>
             </div>
           </Link>
@@ -330,12 +330,11 @@ export default async function SettingsPage() {
         <div className="card border-brand-200 bg-gradient-to-br from-white to-brand-50/30">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-slate-900">
-              AI Insights & Efficiency
+              AI draft assist (bounded)
             </h2>
             <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-xs font-medium text-slate-500">
-                Connected to AROS AI Mesh
+              <span className="text-xs font-medium text-slate-600">
+                Enabled for this organization · usage metered server-side
               </span>
             </div>
           </div>
@@ -370,15 +369,15 @@ export default async function SettingsPage() {
                 })}
               </p>
               <div className="mt-2 text-[10px] text-slate-400">
-                Automated fixes generated
+                Draft generations logged (review before ship)
               </div>
             </div>
 
-            <div className="p-4 rounded-xl border border-brand-100 bg-brand-50/50 shadow-sm border-dashed">
-              <p className="text-xs font-medium text-brand-700 uppercase">
-                Value Generated
+            <div className="p-4 rounded-xl border border-slate-100 bg-white shadow-sm">
+              <p className="text-xs font-medium text-slate-500 uppercase">
+                Estimated provider cost
               </p>
-              <p className="mt-1 text-2xl font-bold text-brand-900">
+              <p className="mt-1 text-2xl font-bold text-slate-900">
                 $
                 {(
                   (
@@ -389,8 +388,8 @@ export default async function SettingsPage() {
                   )._sum.cost ?? 0
                 ).toFixed(2)}
               </p>
-              <div className="mt-2 text-[10px] text-brand-600">
-                Cost reduction estimate
+              <div className="mt-2 text-[10px] text-slate-500">
+                Internal meter only—not a savings or ROI claim
               </div>
             </div>
           </div>

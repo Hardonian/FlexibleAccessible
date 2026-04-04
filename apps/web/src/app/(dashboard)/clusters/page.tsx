@@ -6,7 +6,7 @@ import { resolveDashboardOrgMembership, runOrgScopedQuery } from '@/lib/route-da
 import { RouteReliabilityNotice } from '@/components/reliability/route-reliability-notice';
 import { hasPermission } from '@aros/config';
 
-export const metadata = { title: 'Issue Clusters - AROS' };
+export const metadata = { title: 'Issue Clusters' };
 
 export default async function ClustersPage() {
   const user = await requireSession();

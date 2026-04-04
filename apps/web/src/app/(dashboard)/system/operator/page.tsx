@@ -17,7 +17,7 @@ import {
 } from "./health-cards";
 import { WorkQueue, WorkQueueCompact } from "./work-queue";
 
-export const metadata = { title: "Operator Dashboard - AROS" };
+export const metadata = { title: "Operator Dashboard" };
 
 export default async function OperatorDashboardPage() {
   const user = await requireSession();

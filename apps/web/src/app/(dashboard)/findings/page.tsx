@@ -23,7 +23,7 @@ type FindingListRow = Prisma.CanonicalFindingGetPayload<{
   };
 }>;
 
-export const metadata = { title: "Findings - AROS" };
+export const metadata = { title: "Findings" };
 
 interface SearchParams {
   page?: string;

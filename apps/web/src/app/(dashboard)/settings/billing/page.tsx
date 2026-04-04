@@ -15,7 +15,7 @@ import {
   startSubscriptionCheckoutAction,
 } from "./actions";
 
-export const metadata = { title: "Billing - AROS" };
+export const metadata = { title: "Billing" };
 
 function noticeFromSearchParams(
   searchParams: Awaited<PageProps["searchParams"]>,
