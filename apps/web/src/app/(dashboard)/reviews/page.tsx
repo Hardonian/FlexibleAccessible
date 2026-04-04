@@ -9,7 +9,7 @@ import { RouteReliabilityNotice } from "@/components/reliability/route-reliabili
 import { hasPermission } from "@aros/config";
 import { StatusBadge } from "@aros/ui";
 
-export const metadata = { title: "Reviews - AROS" };
+export const metadata = { title: "Reviews" };
 
 export default async function ReviewsPage({
   searchParams,

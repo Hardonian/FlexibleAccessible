@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "API & integrations",
   description:
-    "How to integrate AROS today: MCP server, API keys, and webhooks. Reference docs for a standalone public REST API are not shipped in this deployment.",
+    "How to integrate FlexibleAccessible today: MCP server, API keys, and webhooks. A standalone public REST API reference site is not shipped in this deployment.",
 };
 
 export default function DocsApiPage() {

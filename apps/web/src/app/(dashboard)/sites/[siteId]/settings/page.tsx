@@ -24,7 +24,7 @@ export async function generateMetadata({
     select: { name: true },
   });
   return {
-    title: site ? `${site.name} settings - AROS` : "Site settings - AROS",
+    title: site ? `${site.name} settings` : "Site settings",
   };
 }
 

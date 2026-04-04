@@ -14,7 +14,7 @@ import { EmptyState } from "@aros/ui";
 import { getEntitlementState } from "@/lib/auth-guard";
 import { ApiKeysList } from "./api-keys-list";
 
-export const metadata = { title: "API Keys - AROS" };
+export const metadata = { title: "API Keys" };
 
 const VALID_SCOPES = [
   { id: "read", label: "Read", description: "Read-only access to data" },
@@ -231,7 +231,7 @@ export default async function ApiKeysPage({ searchParams }: PageProps) {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">API Keys</h1>
           <p className="mt-1 text-sm text-slate-500">
-            Manage API keys for programmatic access to the AROS platform.
+            Manage API keys for programmatic access to your workspace.
           </p>
         </div>
       </div>

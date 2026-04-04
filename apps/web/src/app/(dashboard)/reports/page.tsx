@@ -10,7 +10,7 @@ import { RouteReliabilityNotice } from "@/components/reliability/route-reliabili
 import { hasPermission } from "@aros/config";
 import { buildFindingsOperationalSummary } from "@/lib/findings/reporting-summary";
 
-export const metadata = { title: "Reports - AROS" };
+export const metadata = { title: "Reports" };
 
 export default async function ReportsPage({
   searchParams,

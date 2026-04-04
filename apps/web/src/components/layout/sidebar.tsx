@@ -11,6 +11,7 @@ import {
 } from "./dashboard-nav-config";
 import { switchOrgAction } from "./switch-org-action";
 import { AiUsageIndicator } from "../system/ai-usage-indicator";
+import { PRODUCT_DISPLAY_NAME } from "@/lib/product-brand";
 
 interface SidebarProps {
   orgs: OrgInfo[];
@@ -45,8 +46,16 @@ export function Sidebar({
       aria-label="Main navigation"
     >
       <div className="flex h-14 items-center border-b border-slate-200 px-4">
-        <Link href="/dashboard" className="flex items-center gap-2">
-          <span className="text-lg font-bold text-brand-600">AROS</span>
+        <Link
+          href="/dashboard"
+          className="flex flex-col leading-tight focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 rounded"
+        >
+          <span className="text-lg font-semibold tracking-tight text-brand-800">
+            {PRODUCT_DISPLAY_NAME}
+          </span>
+          <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
+            Ops console
+          </span>
         </Link>
       </div>
 

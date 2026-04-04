@@ -13,7 +13,7 @@ import { getEntitlementState } from "@/lib/auth-guard";
 import { hasPermission } from "@aros/config";
 import { MembersList } from "./members-list";
 
-export const metadata = { title: "Members - AROS" };
+export const metadata = { title: "Members" };
 
 export default async function MembersPage() {
   const user = await requireSession();

@@ -10,7 +10,7 @@ import { RouteReliabilityNotice } from "@/components/reliability/route-reliabili
 import { hasPermission } from "@aros/config";
 import { StatusBadge } from "@aros/ui";
 
-export const metadata = { title: "Remediation - AROS" };
+export const metadata = { title: "Remediation" };
 
 export default async function RemediationPage() {
   const user = await requireSession();

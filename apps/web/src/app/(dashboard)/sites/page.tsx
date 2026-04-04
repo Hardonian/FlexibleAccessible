@@ -11,7 +11,7 @@ import { RouteReliabilityNotice } from "@/components/reliability/route-reliabili
 import { hasPermission } from "@aros/config";
 import { EmptyState } from "@aros/ui";
 
-export const metadata = { title: "Sites - AROS" };
+export const metadata = { title: "Sites" };
 
 export default async function SitesPage() {
   const user = await requireSession();

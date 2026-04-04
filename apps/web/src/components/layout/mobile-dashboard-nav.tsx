@@ -11,6 +11,7 @@ import {
 import { useDashboardNav } from "./dashboard-nav-context";
 import { switchOrgAction } from "./switch-org-action";
 import { AiUsageIndicator } from "../system/ai-usage-indicator";
+import { PRODUCT_DISPLAY_NAME } from "@/lib/product-brand";
 
 interface MobileDashboardNavProps {
   orgs: OrgInfo[];
@@ -88,10 +89,10 @@ export function MobileDashboardNav({
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 px-4">
           <Link
             href="/dashboard"
-            className="text-lg font-bold text-brand-600"
+            className="text-lg font-semibold tracking-tight text-brand-800"
             onClick={closeMobileNav}
           >
-            AROS
+            {PRODUCT_DISPLAY_NAME}
           </Link>
           <button
             type="button"

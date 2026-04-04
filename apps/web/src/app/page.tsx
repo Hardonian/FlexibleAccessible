@@ -4,51 +4,61 @@ import { useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getPublicPlanCards } from "@/lib/public-packaging";
+import {
+  PRODUCT_DISPLAY_NAME,
+  PRODUCT_LEGAL_LINE,
+  PRODUCT_TAGLINE,
+} from "@/lib/product-brand";
 
 const developerFeatures = [
-  "MCP server with 20+ tools for IDE integration",
-  "API keys with scoped access control",
-  "CLI for CI/CD pipeline integration",
-  "Webhook notifications for scan completion",
-  "Programmatic access to all platform features",
+  "MCP server with 20+ tools for IDE-native workflows",
+  "Scoped API keys with organization boundaries enforced server-side",
+  "CLI for CI gates and diff-friendly scan output",
+  "Webhooks when crawls complete—wire into your own runbooks",
+  "Same engine as the product UI—no mystery “AI score” API",
 ];
 
 const managedServices = [
   {
     icon: "\u{1F6E0}",
-    title: "White-Glove Onboarding",
+    title: "Program setup & playbooks",
     description:
-      "Our team configures your sites, sets up scanning schedules, and trains your staff on the platform.",
+      "We help you define scan scope, severity policy, export templates, and stakeholder reporting rhythms so the work stays accountable.",
   },
   {
     icon: "\u{1F6A8}",
-    title: "Remediation-as-a-Service",
+    title: "Remediation partnership",
     description:
-      "We fix the issues for you. Our accessibility experts implement fixes directly in your codebase or CMS.",
+      "Engineers pair with your team on high-impact clusters—PRs, CMS patterns, and design-system fixes—not widget overlays.",
   },
   {
     icon: "\u{1F4C8}",
-    title: "Ongoing Monitoring",
+    title: "Ongoing operations",
     description:
-      "Continuous scanning, trend analysis, and executive reporting delivered to your inbox monthly.",
+      "Scheduled scans, regression alerts, and evidence packs for leadership—priced as a service, not shelf-ware.",
   },
 ];
 
 const faqs = [
   {
-    question: "How is this different from free scanners?",
+    question: "How is this different from another “AI accessibility” checker?",
     answer:
-      "Free scanners typically check single pages and provide basic pass/fail results. AROS provides browser-accurate crawling of entire sites, component-level clustering to reduce noise, AI-assisted remediation suggestions, and source-level fix mapping. We help you fix issues, not just find them.",
+      "FlexibleAccessible is built as an operations surface: browser-accurate crawling, clustered findings so you fix root causes, review queues, exports, and API/MCP hooks. Where AI appears, it is bounded—draft suggestions with confidence and human review—not a black-box compliance promise.",
   },
   {
     question: "How is this different from accessibility overlays?",
     answer:
-      "Overlays inject JavaScript widgets that claim to 'fix' accessibility automatically. They do not work for screen reader users and have been widely criticized by the disability community. AROS provides source-first remediation, helping you fix the actual HTML, CSS, and ARIA in your codebase.",
+      "Overlays inject third-party widgets that do not repair underlying code and are widely rejected by the disability community. This product is source-first: fix HTML, CSS, ARIA, and components where they belong.",
   },
   {
-    question: "Do you guarantee compliance?",
+    question: "Do you guarantee WCAG or legal compliance?",
     answer:
-      "No. Automated tools can detect many accessibility issues but cannot verify all WCAG criteria. Manual testing by users with disabilities remains essential for full conformance. We provide evidence of testing and remediation efforts, not legal guarantees.",
+      "No. Automated testing covers a fraction of WCAG. We surface evidence and workflow state; manual testing by experts and users with disabilities remains essential for any serious conformance claim.",
+  },
+  {
+    question: "What does the free instant scan include?",
+    answer:
+      "A bounded public sample of pages with clear limitations—enough to see signal, not a substitute for full-site monitoring, private workspaces, history, or exports. Upgrade for the complete operator workflow.",
   },
 ];
 
@@ -103,370 +113,483 @@ export default function HomePage() {
   );
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Header */}
-      <header className="border-b border-slate-200">
+    <div className="min-h-screen bg-[rgb(var(--color-canvas))] text-slate-900">
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[9999] focus:rounded-lg focus:bg-brand-700 focus:px-4 focus:py-2 focus:text-white focus:outline-none focus:ring-2 focus:ring-brand-400"
+      >
+        Skip to main content
+      </a>
+
+      <header className="border-b border-slate-200/80 bg-white/90 backdrop-blur-sm supports-[backdrop-filter]:bg-white/75">
         <nav
-          className="mx-auto max-w-7xl px-6 py-4 flex items-center justify-between"
+          className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4"
           aria-label="Main"
         >
-          <Link href="/" className="text-xl font-bold text-brand-600">
-            AROS
+          <Link
+            href="/"
+            className="group flex flex-col leading-tight focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 rounded-md"
+          >
+            <span className="text-lg font-semibold tracking-tight text-brand-800">
+              {PRODUCT_DISPLAY_NAME}
+            </span>
+            <span className="text-xs font-medium text-slate-500 group-hover:text-slate-700">
+              {PRODUCT_TAGLINE}
+            </span>
           </Link>
-          <div className="hidden sm:flex items-center gap-6">
+          <div className="hidden items-center gap-8 sm:flex">
             <Link
-              href="#features"
-              className="text-sm text-slate-600 hover:text-slate-900"
+              href="#proof"
+              className="text-sm font-medium text-slate-600 hover:text-slate-900"
             >
-              Features
+              Proof &amp; workflow
             </Link>
             <Link
               href="#pricing"
-              className="text-sm text-slate-600 hover:text-slate-900"
+              className="text-sm font-medium text-slate-600 hover:text-slate-900"
             >
-              Pricing
+              Plans
+            </Link>
+            <Link
+              href="/docs/api"
+              className="text-sm font-medium text-slate-600 hover:text-slate-900"
+            >
+              Integrations
             </Link>
             <Link
               href="/login"
-              className="text-sm text-slate-600 hover:text-slate-900"
+              className="text-sm font-medium text-slate-600 hover:text-slate-900"
             >
-              Sign In
+              Sign in
             </Link>
             <Link href="/signup" className="btn-primary">
-              Get Started
+              Start workspace
             </Link>
           </div>
           <Link href="/signup" className="btn-primary sm:hidden">
-            Get Started
+            Start
           </Link>
         </nav>
       </header>
 
-      {/* Hero with Instant Scan */}
-      <section className="mx-auto max-w-7xl px-6 py-24 text-center">
-        <h1 className="text-5xl font-bold text-slate-900 leading-tight max-w-3xl mx-auto">
-          Accessibility remediation at the source level
-        </h1>
-        <p className="mt-6 text-xl text-slate-500 max-w-2xl mx-auto">
-          Discover, scan, cluster, and fix accessibility issues with
-          browser-accurate scanning, component-level root cause analysis, and
-          AI-assisted remediation suggestions.
-        </p>
-
-        {/* Instant Scan Form */}
-        <form
-          onSubmit={handleInstantScan}
-          className="mt-10 max-w-xl mx-auto"
-          aria-label="Instant accessibility scan"
+      <main id="main">
+        <section
+          className="relative overflow-hidden border-b border-slate-200/60 bg-gradient-to-b from-white to-[rgb(var(--color-canvas))]"
+          aria-labelledby="hero-heading"
         >
-          <div className="flex gap-3">
-            <label htmlFor="scan-domain" className="sr-only">
-              Domain to scan
-            </label>
-            <input
-              id="scan-domain"
-              type="text"
-              value={scanDomain}
-              onChange={(e) => setScanDomain(e.target.value)}
-              placeholder="Enter any URL (e.g., example.com)"
-              className="input flex-1 text-base"
-              disabled={scanning}
-              autoComplete="url"
-              required
-            />
-            <button
-              type="submit"
-              className="btn-primary px-6 py-3 text-base whitespace-nowrap"
-              disabled={scanning}
-            >
-              {scanning ? "Scanning..." : "Scan Free"}
-            </button>
+          <div
+            className="pointer-events-none absolute inset-0 opacity-[0.35]"
+            aria-hidden="true"
+          >
+            <div className="absolute -left-24 top-0 h-72 w-72 rounded-full bg-brand-200/40 blur-3xl" />
+            <div className="absolute -right-16 bottom-0 h-64 w-64 rounded-full bg-teal-200/30 blur-3xl" />
           </div>
-          {scanError && (
-            <p className="mt-2 text-sm text-red-600" role="alert">
-              {scanError}
-            </p>
-          )}
-          <p className="mt-2 text-sm text-slate-400">
-            No signup required. Results in seconds.
-          </p>
-        </form>
+          <div className="relative mx-auto max-w-7xl px-6 py-20 md:py-28">
+            <div className="mx-auto max-w-3xl text-center">
+              <p className="text-sm font-semibold uppercase tracking-widest text-brand-800">
+                Accessibility operations platform
+              </p>
+              <h1
+                id="hero-heading"
+                className="mt-4 text-4xl font-bold leading-tight tracking-tight text-slate-900 md:text-5xl md:leading-tight"
+              >
+                Prove accessibility progress—don&apos;t just publish a score
+              </h1>
+              <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-600">
+                Continuous scans, clustered issues, review trails, and exports
+                your agency or enterprise can stand behind. Built for teams who
+                ship fixes in code—not overlays.
+              </p>
+            </div>
 
-        <div className="mt-8 flex items-center justify-center gap-4">
-          <Link href="/signup" className="btn-secondary text-base px-6 py-3">
-            Create Free Account
-          </Link>
-        </div>
-      </section>
+            <form
+              onSubmit={handleInstantScan}
+              className="mx-auto mt-12 max-w-xl"
+              aria-label="Instant public accessibility scan"
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
+                <label htmlFor="scan-domain" className="sr-only">
+                  URL or domain to scan
+                </label>
+                <input
+                  id="scan-domain"
+                  type="text"
+                  value={scanDomain}
+                  onChange={(e) => setScanDomain(e.target.value)}
+                  placeholder="example.com or https://…"
+                  className="input flex-1 text-base"
+                  disabled={scanning}
+                  autoComplete="url"
+                  required
+                />
+                <button
+                  type="submit"
+                  className="btn-primary px-6 py-3 text-base whitespace-nowrap sm:shrink-0"
+                  disabled={scanning}
+                >
+                  {scanning ? "Starting…" : "Run public scan"}
+                </button>
+              </div>
+              {scanError && (
+                <p className="mt-3 text-sm text-red-700" role="alert">
+                  {scanError}
+                </p>
+              )}
+              <p className="mt-3 text-center text-sm text-slate-500">
+                No account needed. Sample depth and rate limits apply—see results
+                for caveats.
+              </p>
+            </form>
 
-      {/* Anti-Overlay Statement */}
-      <section className="bg-slate-50 py-16">
-        <div className="mx-auto max-w-4xl px-6 text-center">
-          <h2 className="text-2xl font-bold text-slate-900">
-            Source-first remediation. Not an overlay.
-          </h2>
-          <p className="mt-4 text-slate-600 max-w-2xl mx-auto">
-            AROS helps development teams fix accessibility issues in source
-            code, templates, and components. We do not inject widgets, overlays,
-            or runtime patches. Real accessibility requires fixing the
-            underlying code.
-          </p>
-        </div>
-      </section>
-
-      {/* Developer/API Lane */}
-      <section className="mx-auto max-w-7xl px-6 py-24">
-        <div className="grid md:grid-cols-2 gap-12 items-center">
-          <div>
-            <h2 className="text-3xl font-bold text-slate-900 mb-4">
-              Built for Developers
-            </h2>
-            <p className="text-slate-600 mb-6">
-              Automate accessibility workflows with our comprehensive API and
-              tooling ecosystem. Integrate scanning, remediation, and reporting
-              into your CI/CD pipeline.
-            </p>
-            <ul className="space-y-3">
-              {developerFeatures.map((feature) => (
-                <li key={feature} className="flex items-start gap-3">
-                  <span className="text-brand-600 font-bold" aria-hidden="true">
-                    &rarr;
-                  </span>
-                  <span className="text-slate-700">{feature}</span>
-                </li>
-              ))}
-            </ul>
-            <div className="mt-8 flex gap-4">
-              <Link href="/docs/api" className="btn-secondary">
-                View API Docs
+            <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+              <Link href="/signup" className="btn-secondary text-base px-6 py-3">
+                Open private workspace
               </Link>
               <Link
-                href="/signup"
-                className="text-brand-600 hover:text-brand-700 font-medium inline-flex items-center gap-1"
+                href="#pricing"
+                className="text-sm font-semibold text-brand-800 underline-offset-4 hover:underline"
               >
-                Get API Access
-                <span aria-hidden="true">&rarr;</span>
+                Compare plans
               </Link>
             </div>
           </div>
-          <div className="bg-slate-900 rounded-xl p-6 text-slate-300 font-mono text-sm overflow-x-auto">
-            <pre>{`# MCP Server with 20+ tools
-npx @aros/mcp-server
+        </section>
 
-# REST API with scoped keys
-curl -H "Authorization: Bearer $API_KEY" \
-  https://api.aros.dev/v1/sites
-
-# CLI integration
-npx @aros/cli scan --site example.com`}</pre>
-          </div>
-        </div>
-      </section>
-
-      {/* Managed Services Lane */}
-      <section className="bg-brand-50 py-24">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-slate-900 mb-4">
-              Managed Accessibility Operations
+        <section
+          className="border-b border-slate-200/80 bg-white py-16"
+          aria-labelledby="anti-overlay-heading"
+        >
+          <div className="mx-auto max-w-4xl px-6 text-center">
+            <h2
+              id="anti-overlay-heading"
+              className="text-2xl font-bold text-slate-900"
+            >
+              Source-first. Never an overlay substitute.
             </h2>
-            <p className="text-xl text-slate-600 max-w-2xl mx-auto">
-              We can run it for you. Outsource your accessibility program to our
-              expert team and get results without the operational overhead.
+            <p className="mx-auto mt-4 max-w-2xl text-slate-600">
+              {PRODUCT_DISPLAY_NAME} helps you remediate in templates,
+              components, and repositories. We do not sell runtime patches that
+              pretend away accessibility debt.
             </p>
           </div>
-          <div className="grid md:grid-cols-3 gap-8">
-            {managedServices.map((service) => (
-              <article
-                key={service.title}
-                className="bg-white rounded-lg p-6 shadow-sm"
+        </section>
+
+        <section
+          id="proof"
+          className="mx-auto max-w-7xl px-6 py-24"
+          aria-labelledby="developer-lane-heading"
+        >
+          <div className="grid items-center gap-12 md:grid-cols-2">
+            <div>
+              <h2
+                id="developer-lane-heading"
+                className="text-3xl font-bold text-slate-900"
               >
-                <div className="text-2xl mb-3" aria-hidden="true">
-                  {service.icon}
-                </div>
-                <h3 className="text-lg font-semibold text-slate-900 mb-2">
-                  {service.title}
-                </h3>
-                <p className="text-sm text-slate-600">{service.description}</p>
-              </article>
-            ))}
-          </div>
-          <div className="mt-12 text-center">
-            <Link
-              href="mailto:sales@aros.dev"
-              className="btn-primary text-base px-8 py-3"
-            >
-              Contact for Managed Services
-            </Link>
-            <p className="mt-3 text-sm text-slate-500">
-              Custom scopes, SLAs, and pricing based on your needs
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Features */}
-      <section id="features" className="mx-auto max-w-7xl px-6 py-24">
-        <h2 className="text-3xl font-bold text-slate-900 text-center mb-12">
-          How AROS Works
-        </h2>
-        <div className="grid md:grid-cols-3 gap-8">
-          {features.map((feature) => (
-            <article key={feature.title} className="card">
-              <div className="text-2xl mb-3" aria-hidden="true">
-                {feature.icon}
-              </div>
-              <h3 className="text-lg font-semibold text-slate-900">
-                {feature.title}
-              </h3>
-              <p className="mt-2 text-sm text-slate-500">
-                {feature.description}
+                Built for builders and operators
+              </h2>
+              <p className="mt-4 text-slate-600">
+                Wire scans into how your team already works—IDE, CI, ticketing,
+                and internal tools. Entitlements and org boundaries are enforced
+                on the server, not buried in client UI.
               </p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      {/* Honest Positioning */}
-      <section className="bg-slate-50 py-16">
-        <div className="mx-auto max-w-4xl px-6">
-          <h2 className="text-2xl font-bold text-slate-900 text-center mb-8">
-            What We Believe
-          </h2>
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="card">
-              <h3 className="font-semibold text-slate-900 mb-2">
-                No guaranteed compliance
-              </h3>
-              <p className="text-sm text-slate-500">
-                Automated tools can detect many issues but cannot verify all
-                WCAG criteria. Human review remains essential for full
-                conformance.
-              </p>
-            </div>
-            <div className="card">
-              <h3 className="font-semibold text-slate-900 mb-2">
-                Native HTML over ARIA
-              </h3>
-              <p className="text-sm text-slate-500">
-                We prioritize suggestions that use semantic HTML elements over
-                ARIA attributes. The best accessibility fix is often the
-                simplest one.
-              </p>
-            </div>
-            <div className="card">
-              <h3 className="font-semibold text-slate-900 mb-2">
-                Human-in-the-loop
-              </h3>
-              <p className="text-sm text-slate-500">
-                AI suggestions are drafts. Every fix requires review before
-                export. Low-confidence suggestions route to human review queues.
-              </p>
-            </div>
-            <div className="card">
-              <h3 className="font-semibold text-slate-900 mb-2">
-                Evidence, not claims
-              </h3>
-              <p className="text-sm text-slate-500">
-                We provide evidence of testing and remediation efforts. We do
-                not make unsubstantiated legal compliance claims.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing */}
-      <section id="pricing" className="mx-auto max-w-7xl px-6 py-24">
-        <h2 className="text-3xl font-bold text-slate-900 text-center mb-12">
-          Pricing
-        </h2>
-        <div className="grid md:grid-cols-4 gap-6">
-          {plans.map((plan) => (
-            <div
-              key={plan.name}
-              className={`card ${plan.highlighted ? "ring-2 ring-brand-600" : ""}`}
-            >
-              <h3 className="text-lg font-semibold text-slate-900">
-                {plan.name}
-              </h3>
-              <p className="mt-2">
-                <span className="text-3xl font-bold text-slate-900">
-                  ${plan.priceMonthly}
-                </span>
-                {plan.priceMonthly > 0 && (
-                  <span className="text-slate-500">/mo</span>
-                )}
-              </p>
-              <ul className="mt-4 space-y-2" role="list">
-                {plan.bullets.map((f) => (
-                  <li
-                    key={f}
-                    className="text-sm text-slate-600 flex items-start gap-2"
-                  >
-                    <span className="text-green-500 mt-0.5" aria-hidden="true">
-                      &#10003;
+              <ul className="mt-8 space-y-3">
+                {developerFeatures.map((feature) => (
+                  <li key={feature} className="flex items-start gap-3">
+                    <span
+                      className="mt-0.5 font-mono text-sm text-brand-700"
+                      aria-hidden="true"
+                    >
+                      &gt;
                     </span>
-                    {f}
+                    <span className="text-slate-700">{feature}</span>
                   </li>
                 ))}
               </ul>
-              <Link
-                href="/signup"
-                className={`mt-6 w-full inline-flex justify-center ${
-                  plan.highlighted ? "btn-primary" : "btn-secondary"
-                }`}
-                aria-label={`Get started with ${plan.name} plan`}
-              >
-                Get Started
-              </Link>
+              <div className="mt-8 flex flex-wrap gap-4">
+                <Link href="/docs/api" className="btn-secondary">
+                  Integration guide
+                </Link>
+                <Link
+                  href="/signup"
+                  className="inline-flex items-center gap-1 font-semibold text-brand-800 underline-offset-4 hover:underline"
+                >
+                  Get API access on paid plans
+                  <span aria-hidden="true">&rarr;</span>
+                </Link>
+              </div>
             </div>
-          ))}
-        </div>
-      </section>
+            <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950 p-6 font-mono text-sm text-slate-300 shadow-lg">
+              <pre className="whitespace-pre text-[13px] leading-relaxed">{`# MCP (IDE-native)
+npx @aros/mcp-server
 
-      {/* FAQ / Objections */}
-      <section className="bg-slate-50 py-24">
-        <div className="mx-auto max-w-4xl px-6">
-          <h2 className="text-3xl font-bold text-slate-900 text-center mb-12">
-            Common Questions
-          </h2>
-          <div className="space-y-6">
-            {faqs.map((faq) => (
-              <details
-                key={faq.question}
-                className="bg-white rounded-lg p-6 group"
+# Authenticated API (org-scoped keys)
+curl -H "Authorization: Bearer $API_KEY" \\
+  $BASE_URL/api/...
+
+# CLI / CI
+npx @aros/cli scan --site example.com`}</pre>
+              <p className="mt-4 border-t border-slate-800 pt-4 text-xs text-slate-500">
+                Package names stay @aros/*; the product you use is{" "}
+                {PRODUCT_DISPLAY_NAME}.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section
+          className="border-y border-slate-200/80 bg-brand-50/40 py-24"
+          aria-labelledby="managed-heading"
+        >
+          <div className="mx-auto max-w-7xl px-6">
+            <div className="mb-12 text-center">
+              <h2
+                id="managed-heading"
+                className="text-3xl font-bold text-slate-900"
               >
-                <summary className="font-semibold text-slate-900 cursor-pointer list-none flex items-center justify-between">
-                  {faq.question}
-                  <span
-                    className="text-slate-400 group-open:rotate-180 transition-transform"
-                    aria-hidden="true"
-                  >
-                    &#9662;
-                  </span>
-                </summary>
-                <p className="mt-4 text-slate-600 leading-relaxed">
-                  {faq.answer}
+                Managed accessibility operations
+              </h2>
+              <p className="mx-auto mt-4 max-w-2xl text-lg text-slate-600">
+                When you want outcomes without hiring a full internal program
+                overnight—we embed with your release cadence and evidence
+                requirements.
+              </p>
+            </div>
+            <div className="grid gap-8 md:grid-cols-3">
+              {managedServices.map((service) => (
+                <article
+                  key={service.title}
+                  className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
+                >
+                  <div className="mb-3 text-2xl" aria-hidden="true">
+                    {service.icon}
+                  </div>
+                  <h3 className="text-lg font-semibold text-slate-900">
+                    {service.title}
+                  </h3>
+                  <p className="mt-2 text-sm text-slate-600">
+                    {service.description}
+                  </p>
+                </article>
+              ))}
+            </div>
+            <div className="mt-12 text-center">
+              <Link
+                href="mailto:sales@aros.dev"
+                className="btn-primary px-8 py-3 text-base"
+              >
+                Talk to us about scope
+              </Link>
+              <p className="mt-3 text-sm text-slate-500">
+                Custom SOWs—procurement-friendly documentation on request
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="features"
+          className="mx-auto max-w-7xl px-6 py-24"
+          aria-labelledby="how-heading"
+        >
+          <h2
+            id="how-heading"
+            className="mb-4 text-center text-3xl font-bold text-slate-900"
+          >
+            How it works
+          </h2>
+          <p className="mx-auto mb-12 max-w-2xl text-center text-slate-600">
+            A recurring loop—scan, cluster, triage, prove—so accessibility stays
+            legible to engineering, design, and legal stakeholders.
+          </p>
+          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+            {features.map((feature) => (
+              <article
+                key={feature.title}
+                className="card border-slate-200/90 transition-shadow hover:shadow-md"
+              >
+                <div className="mb-3 text-2xl" aria-hidden="true">
+                  {feature.icon}
+                </div>
+                <h3 className="text-lg font-semibold text-slate-900">
+                  {feature.title}
+                </h3>
+                <p className="mt-2 text-sm text-slate-600">
+                  {feature.description}
                 </p>
-              </details>
+              </article>
             ))}
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Footer */}
-      <footer className="border-t border-slate-200 py-8">
-        <div className="mx-auto max-w-7xl px-6 flex items-center justify-between">
-          <p className="text-sm text-slate-400">
-            AROS - Accessibility Remediation OS
+        <section
+          className="border-y border-slate-200/80 bg-slate-100/50 py-16"
+          aria-labelledby="beliefs-heading"
+        >
+          <div className="mx-auto max-w-4xl px-6">
+            <h2
+              id="beliefs-heading"
+              className="mb-8 text-center text-2xl font-bold text-slate-900"
+            >
+              What we will not pretend
+            </h2>
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="card">
+                <h3 className="mb-2 font-semibold text-slate-900">
+                  No magic compliance button
+                </h3>
+                <p className="text-sm text-slate-600">
+                  Automation finds many failures; it cannot certify your product
+                  for every WCAG success criterion. We are explicit about scope.
+                </p>
+              </div>
+              <div className="card">
+                <h3 className="mb-2 font-semibold text-slate-900">
+                  Native HTML first
+                </h3>
+                <p className="text-sm text-slate-600">
+                  Prefer semantic elements over ARIA sprawl. The best fix is often
+                  the smallest change that removes entire classes of bugs.
+                </p>
+              </div>
+              <div className="card">
+                <h3 className="mb-2 font-semibold text-slate-900">
+                  Human review is a feature
+                </h3>
+                <p className="text-sm text-slate-600">
+                  AI-assisted drafts stay in review queues with rationale and
+                  confidence—exports and PRs reflect human decisions.
+                </p>
+              </div>
+              <div className="card">
+                <h3 className="mb-2 font-semibold text-slate-900">
+                  Evidence you can attach
+                </h3>
+                <p className="text-sm text-slate-600">
+                  Reports and exports are designed for procurement and
+                  post-incident review—not vanity dashboards.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="pricing"
+          className="mx-auto max-w-7xl px-6 py-24"
+          aria-labelledby="pricing-heading"
+        >
+          <h2
+            id="pricing-heading"
+            className="mb-4 text-center text-3xl font-bold text-slate-900"
+          >
+            Plans
+          </h2>
+          <p className="mx-auto mb-12 max-w-2xl text-center text-slate-600">
+            Free public scans invite you in; paid tiers unlock private workspaces,
+            history, automation, and API access—enforced server-side.
           </p>
-          <div className="flex gap-6 text-sm text-slate-400">
-            <Link href="/login" className="hover:text-slate-600">
-              Sign In
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            {plans.map((plan) => (
+              <div
+                key={plan.name}
+                className={`card flex flex-col ${plan.highlighted ? "ring-2 ring-brand-600 ring-offset-2" : ""}`}
+              >
+                <h3 className="text-lg font-semibold text-slate-900">
+                  {plan.name}
+                </h3>
+                <p className="mt-2">
+                  <span className="text-3xl font-bold text-slate-900">
+                    ${plan.priceMonthly}
+                  </span>
+                  {plan.priceMonthly > 0 && (
+                    <span className="text-slate-500">/mo</span>
+                  )}
+                </p>
+                <ul className="mt-4 flex-1 space-y-2" role="list">
+                  {plan.bullets.map((f) => (
+                    <li
+                      key={f}
+                      className="flex items-start gap-2 text-sm text-slate-600"
+                    >
+                      <span
+                        className="mt-0.5 text-brand-700"
+                        aria-hidden="true"
+                      >
+                        &#10003;
+                      </span>
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  href="/signup"
+                  className={`mt-6 inline-flex w-full justify-center ${
+                    plan.highlighted ? "btn-primary" : "btn-secondary"
+                  }`}
+                  aria-label={`Get started with ${plan.name} plan`}
+                >
+                  {plan.tier === "FREE" ? "Try instant scan" : "Choose plan"}
+                </Link>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section
+          className="border-t border-slate-200/80 bg-slate-100/40 py-24"
+          aria-labelledby="faq-heading"
+        >
+          <div className="mx-auto max-w-4xl px-6">
+            <h2
+              id="faq-heading"
+              className="mb-12 text-center text-3xl font-bold text-slate-900"
+            >
+              Questions
+            </h2>
+            <div className="space-y-4">
+              {faqs.map((faq) => (
+                <details
+                  key={faq.question}
+                  className="group rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
+                >
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold text-slate-900">
+                    <span>{faq.question}</span>
+                    <span
+                      className="shrink-0 text-slate-400 group-open:rotate-180 motion-reduce:transition-none transition-transform"
+                      aria-hidden="true"
+                    >
+                      &#9662;
+                    </span>
+                  </summary>
+                  <p className="mt-4 leading-relaxed text-slate-600">
+                    {faq.answer}
+                  </p>
+                </details>
+              ))}
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer className="border-t border-slate-200 bg-white py-10">
+        <div className="mx-auto flex max-w-7xl flex-col gap-6 px-6 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-slate-800">
+              {PRODUCT_DISPLAY_NAME}
+            </p>
+            <p className="mt-1 max-w-md text-xs text-slate-500">
+              {PRODUCT_LEGAL_LINE}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-6 text-sm text-slate-500">
+            <Link href="/login" className="hover:text-slate-800">
+              Sign in
             </Link>
-            <Link href="/signup" className="hover:text-slate-600">
-              Sign Up
+            <Link href="/signup" className="hover:text-slate-800">
+              Create account
+            </Link>
+            <Link href="/docs/api" className="hover:text-slate-800">
+              Docs
             </Link>
           </div>
         </div>
@@ -478,38 +601,38 @@ npx @aros/cli scan --site example.com`}</pre>
 const features = [
   {
     icon: "\u{1F50D}",
-    title: "Browser-Accurate Scanning",
+    title: "Browser-accurate crawling",
     description:
-      "Playwright-based crawling renders pages like a real browser, capturing CSR/SSR content, accessibility trees, and screenshots.",
+      "Playwright renders like users’ browsers—CSR, SSR, and real accessibility trees—so findings match what ships.",
   },
   {
     icon: "\u{1F9E9}",
-    title: "Component Clustering",
+    title: "Clustered root causes",
     description:
-      'Instead of 10,000 page-level findings, see "Header nav button issue appears on 1,842 pages." Fix once, resolve everywhere.',
+      "Roll thousands of page hits into one component-level issue. Triage once, clear the blast radius with intent.",
   },
   {
     icon: "\u{1F916}",
-    title: "AI-Assisted Remediation",
+    title: "Bounded assist, not autopilot",
     description:
-      "Get contextual fix suggestions with rationale and confidence scores. Native HTML fixes preferred over ARIA patches.",
+      "Draft fixes with rationale and confidence where enabled. Nothing ships as “AI magic”—review and export are explicit gates.",
   },
   {
     icon: "\u{1F527}",
-    title: "Source-Level Fixes",
+    title: "Fixes in your repo",
     description:
-      "Map findings to source code, templates, and components. Export patches, create GitHub PRs, or copy snippets.",
+      "Map to source, open GitHub PRs, or export patches—so remediation lives in version control.",
   },
   {
     icon: "\u{1F4CB}",
-    title: "Review Workflows",
+    title: "Review & accountability",
     description:
-      "Route non-automatable criteria to human review queues. Alt text, content clarity, keyboard flows, screen reader checks.",
+      "Queues for what automation cannot judge: copy, context, keyboard flows, and assistive-tech nuance.",
   },
   {
     icon: "\u{1F4CA}",
-    title: "Evidence Reporting",
+    title: "Evidence for stakeholders",
     description:
-      "Generate evidence-grade reports with before/after snapshots, reviewer sign-offs, timestamps, and audit trails.",
+      "Exports and report artifacts meant for agencies, execs, and procurement—not a single green score.",
   },
 ];

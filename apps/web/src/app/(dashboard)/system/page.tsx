@@ -15,7 +15,7 @@ import { type PlatformDiagnosticIssue } from '@aros/core-services';
 import { getQueueDiagnostics } from '@/lib/queue-diagnostics';
 
 
-export const metadata = { title: 'System & services - AROS' };
+export const metadata = { title: 'System & services' };
 
 const healthStateStyles: Record<string, string> = {
   running: 'bg-emerald-100 text-emerald-900',

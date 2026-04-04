@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/session';
 import { LoginForm } from './login-form';
 
-export const metadata = { title: 'Sign In - AROS' };
+export const metadata = { title: 'Sign In' };
 
 export default async function LoginPage() {
   const user = await getSession();

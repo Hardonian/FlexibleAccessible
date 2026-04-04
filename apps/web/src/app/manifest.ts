@@ -1,17 +1,21 @@
 import type { MetadataRoute } from 'next';
+import {
+  PRODUCT_DESCRIPTION,
+  PRODUCT_DISPLAY_NAME,
+  PRODUCT_SHORT_NAME,
+} from '@/lib/product-brand';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'AROS — Accessibility Remediation OS',
-    short_name: 'AROS',
-    description:
-      'Discover, scan, cluster, and remediate accessibility issues with browser-accurate scanning.',
+    name: `${PRODUCT_DISPLAY_NAME} — accessibility operations`,
+    short_name: PRODUCT_SHORT_NAME,
+    description: PRODUCT_DESCRIPTION,
     start_url: '/',
     scope: '/',
     display: 'standalone',
     orientation: 'portrait-primary',
     background_color: '#f8fafc',
-    theme_color: '#2563eb',
+    theme_color: '#0d9488',
     icons: [
       {
         src: '/icons/icon-192.png',

@@ -36,7 +36,7 @@ export async function generateMetadata({
     where: { id: siteId },
     select: { name: true },
   });
-  return { title: site ? `${site.name} - AROS` : "Site - AROS" };
+  return { title: site ? site.name : "Site" };
 }
 
 export default async function SiteDetailPage({

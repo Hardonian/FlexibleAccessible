@@ -13,7 +13,7 @@ import { EmptyState } from "@aros/ui";
 import { buildOnboardingStatus } from "@/lib/onboarding-status";
 import { getEntitlementState } from "@/lib/auth-guard";
 
-export const metadata = { title: "Dashboard - AROS" };
+export const metadata = { title: "Dashboard" };
 
 export default async function DashboardPage() {
   const user = await requireSession();
@@ -250,7 +250,7 @@ export default async function DashboardPage() {
       <section className="card space-y-4" aria-labelledby="onboarding-status-heading">
         <div className="flex items-center justify-between gap-2">
           <h2 id="onboarding-status-heading" className="text-lg font-semibold text-slate-900">
-            First-value onboarding status
+            Workspace readiness
           </h2>
           <span className="badge bg-slate-100 text-slate-700 border border-slate-200">
             {onboarding.stage.replaceAll("_", " ")}

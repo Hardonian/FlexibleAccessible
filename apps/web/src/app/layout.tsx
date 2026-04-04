@@ -1,15 +1,23 @@
 import type { Metadata, Viewport } from "next";
 import "@/styles/globals.css";
+import {
+  PRODUCT_DESCRIPTION,
+  PRODUCT_DISPLAY_NAME,
+  PRODUCT_SHORT_NAME,
+  PRODUCT_TAGLINE,
+} from "@/lib/product-brand";
 
 export const metadata: Metadata = {
-  title: "AROS - Accessibility Remediation OS",
-  description:
-    "Discover, scan, cluster, and remediate accessibility issues at the source level with browser-accurate scanning and AI-assisted fixes.",
-  applicationName: "AROS",
+  title: {
+    default: `${PRODUCT_DISPLAY_NAME} — ${PRODUCT_TAGLINE}`,
+    template: `%s · ${PRODUCT_DISPLAY_NAME}`,
+  },
+  description: PRODUCT_DESCRIPTION,
+  applicationName: PRODUCT_DISPLAY_NAME,
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "AROS",
+    title: PRODUCT_SHORT_NAME,
   },
   formatDetection: {
     telephone: false,
@@ -26,8 +34,8 @@ export const viewport: Viewport = {
   maximumScale: 5,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#2563eb" },
-    { media: "(prefers-color-scheme: dark)", color: "#1e3a8a" },
+    { media: "(prefers-color-scheme: light)", color: "#0d9488" },
+    { media: "(prefers-color-scheme: dark)", color: "#115e59" },
   ],
 };
 
@@ -38,7 +46,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" dir="ltr">
-      <body className="min-h-dvh bg-slate-50">{children}</body>
+      <body className="min-h-dvh bg-[rgb(var(--color-canvas))]">{children}</body>
     </html>
   );
 }

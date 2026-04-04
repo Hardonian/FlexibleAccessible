@@ -487,7 +487,7 @@ export function ApiKeysList({
         <EmptyState
           icon={Key}
           title="No API keys yet"
-          description="Create your first API key to start using the AROS platform programmatically."
+          description="Create your first API key to automate scans, exports, and integrations from your own systems."
           action={
             <button
               type="button"
