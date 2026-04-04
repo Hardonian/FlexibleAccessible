@@ -1,182 +1,216 @@
 import { ImageResponse } from "next/og";
 import { NextRequest } from "next/server";
+import { toASCII } from "node:punycode";
+import { getPublicOgRenderModel } from "@/lib/public-scan/og-render-model";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
+
+function isValidDomainParam(domain: string): boolean {
+  if (domain.length > 253) return false;
+  if (domain.includes("/") || domain.includes("\\") || domain.includes(" ")) {
+    return false;
+  }
+  try {
+    const parsed = new URL(`https://${domain}`);
+    return Boolean(parsed.hostname && parsed.hostname.includes("."));
+  } catch {
+    return false;
+  }
+}
 
 /**
- * GET /api/og?domain=example.com&score=85&critical=2&serious=5
- * Generates an Open Graph image for social sharing of scan results.
- * Used as the og:image meta tag on public scan results pages.
+ * GET /api/og?domain=example.com
+ * Open Graph image for public scan share cards. Renders only from current,
+ * non-expired completed public scan data — query-string scores are ignored
+ * so social previews cannot overstate evidence we do not hold.
  */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = request.nextUrl;
-  const domain = searchParams.get("domain") ?? "unknown";
-  const score = parseInt(searchParams.get("score") ?? "0", 10);
-  const critical = parseInt(searchParams.get("critical") ?? "0", 10);
-  const serious = parseInt(searchParams.get("serious") ?? "0", 10);
-  const moderate = parseInt(searchParams.get("moderate") ?? "0", 10);
-  const minor = parseInt(searchParams.get("minor") ?? "0", 10);
-  const total = critical + serious + moderate + minor;
+    const rawDomain = searchParams.get("domain")?.trim();
 
-  const scoreColor =
-    score >= 90
-      ? "#22c55e"
-      : score >= 70
-        ? "#eab308"
-        : score >= 50
-          ? "#f97316"
-          : "#ef4444";
+    if (!rawDomain) {
+      return new Response("Missing domain parameter", { status: 400 });
+    }
+
+    let displayDomain = rawDomain;
+    try {
+      displayDomain = toASCII(rawDomain.toLowerCase().replace(/\.$/, ""));
+    } catch {
+      displayDomain = rawDomain;
+    }
+
+    if (!isValidDomainParam(displayDomain)) {
+      return new Response("Invalid domain parameter", { status: 400 });
+    }
+
+    const model = await getPublicOgRenderModel(displayDomain);
 
     return new ImageResponse(
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        width: "100%",
-        height: "100%",
-        backgroundColor: "#0f172a",
-        padding: "60px",
-        fontFamily: "system-ui, sans-serif",
-      }}
-    >
-      {/* Header */}
       <div
         style={{
           display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "40px",
+          flexDirection: "column",
+          width: "100%",
+          height: "100%",
+          backgroundColor: "#0f172a",
+          padding: "60px",
+          fontFamily: "system-ui, sans-serif",
         }}
       >
         <div
           style={{
             display: "flex",
-            fontSize: "24px",
-            color: "#94a3b8",
-            fontWeight: 600,
-          }}
-        >
-          AROS Accessibility Scan
-        </div>
-        <div
-          style={{
-            display: "flex",
-            fontSize: "18px",
-            color: "#64748b",
-          }}
-        >
-          {new Date().toLocaleDateString()}
-        </div>
-      </div>
-
-      {/* Domain */}
-      <div
-        style={{
-          display: "flex",
-          fontSize: "42px",
-          color: "#f8fafc",
-          fontWeight: 700,
-          marginBottom: "32px",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-        }}
-      >
-        {domain}
-      </div>
-
-      {/* Score + Breakdown */}
-      <div style={{ display: "flex", gap: "48px", alignItems: "center" }}>
-        {/* Score Circle */}
-        <div
-          style={{
-            display: "flex",
-            width: "200px",
-            height: "200px",
-            borderRadius: "50%",
-            border: `8px solid ${scoreColor}`,
+            justifyContent: "space-between",
             alignItems: "center",
-            justifyContent: "center",
-            flexDirection: "column",
+            marginBottom: "40px",
           }}
         >
           <div
             style={{
               display: "flex",
-              fontSize: "72px",
-              fontWeight: 800,
-              color: scoreColor,
+              fontSize: "24px",
+              color: "#94a3b8",
+              fontWeight: 600,
             }}
           >
-            {score}
+            AROS public scan preview
           </div>
           <div
             style={{
               display: "flex",
               fontSize: "18px",
-              color: "#94a3b8",
+              color: "#64748b",
             }}
           >
-            Score
+            {new Date().toLocaleDateString()}
           </div>
         </div>
 
-        {/* Severity Breakdown */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+        <div
+          style={{
+            display: "flex",
+            fontSize: "42px",
+            color: "#f8fafc",
+            fontWeight: 700,
+            marginBottom: "24px",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {model.displayDomain}
+        </div>
+
+        {!model.hasCurrentProof && (
           <div
             style={{
               display: "flex",
-              fontSize: "28px",
-              color: "#f8fafc",
-              fontWeight: 600,
+              fontSize: "22px",
+              color: "#94a3b8",
+              marginBottom: "32px",
+              maxWidth: "900px",
+              lineHeight: 1.4,
             }}
           >
-            {total} issues found
+            Run a fresh instant scan on the site to generate shareable
+            accessibility evidence. Previews only reflect unexpired completed
+            scans.
           </div>
-          {[
-            { label: "Critical", count: critical, color: "#ef4444" },
-            { label: "Serious", count: serious, color: "#f97316" },
-            { label: "Moderate", count: moderate, color: "#eab308" },
-            { label: "Minor", count: minor, color: "#22c55e" },
-          ].map(({ label, count, color }) => (
-            <div
-              key={label}
-              style={{ display: "flex", gap: "12px", alignItems: "center" }}
-            >
-              <div
-                style={{
-                  width: "16px",
-                  height: "16px",
-                  borderRadius: "4px",
-                  backgroundColor: color,
-                }}
-              />
-              <div
-                style={{ display: "flex", fontSize: "22px", color: "#e2e8f0" }}
-              >
-                {label}: {count}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+        )}
 
-      {/* Footer */}
-      <div
-        style={{
-          display: "flex",
-          marginTop: "auto",
-          fontSize: "18px",
-          color: "#64748b",
-        }}
-      >
-        Scan your site free at aros.dev
-      </div>
-    </div>,
-    {
-      width: 1200,
-      height: 630,
-    },
+        <div style={{ display: "flex", gap: "48px", alignItems: "center" }}>
+          <div
+            style={{
+              display: "flex",
+              width: "200px",
+              height: "200px",
+              borderRadius: "50%",
+              border: `8px solid ${model.scoreColor}`,
+              alignItems: "center",
+              justifyContent: "center",
+              flexDirection: "column",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                fontSize: "72px",
+                fontWeight: 800,
+                color: model.scoreColor,
+              }}
+            >
+              {model.scoreDisplay}
+            </div>
+            <div
+              style={{
+                display: "flex",
+                fontSize: "18px",
+                color: "#94a3b8",
+              }}
+            >
+              Score
+            </div>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <div
+              style={{
+                display: "flex",
+                fontSize: "28px",
+                color: "#f8fafc",
+                fontWeight: 600,
+              }}
+            >
+              {model.headline}
+            </div>
+            {model.hasCurrentProof &&
+              [
+                { label: "Critical", count: model.critical, color: "#ef4444" },
+                { label: "Serious", count: model.serious, color: "#f97316" },
+                { label: "Moderate", count: model.moderate, color: "#eab308" },
+                { label: "Minor", count: model.minor, color: "#22c55e" },
+              ].map(({ label, count, color }) => (
+                <div
+                  key={label}
+                  style={{ display: "flex", gap: "12px", alignItems: "center" }}
+                >
+                  <div
+                    style={{
+                      width: "16px",
+                      height: "16px",
+                      borderRadius: "4px",
+                      backgroundColor: color,
+                    }}
+                  />
+                  <div
+                    style={{
+                      display: "flex",
+                      fontSize: "22px",
+                      color: "#e2e8f0",
+                    }}
+                  >
+                    {label}: {count}
+                  </div>
+                </div>
+              ))}
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            marginTop: "auto",
+            fontSize: "18px",
+            color: "#64748b",
+          }}
+        >
+          Automated sampling — not a WCAG conformance guarantee
+        </div>
+      </div>,
+      {
+        width: 1200,
+        height: 630,
+      },
     );
   } catch {
     return new Response("Failed to generate OG image", { status: 500 });

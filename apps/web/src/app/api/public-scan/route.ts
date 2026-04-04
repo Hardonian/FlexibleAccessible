@@ -7,6 +7,7 @@ import { createPublicScanResult, findRecentPublicScanForRateLimit } from "@/lib/
 import { validatePublicScanTarget } from "@/lib/public-scan/target-validation";
 import { createHash } from "crypto";
 import { toASCII } from "node:punycode";
+import { PUBLIC_SCAN_EVIDENCE_TTL_MS } from "@aros/config";
 
 export const runtime = "nodejs";
 
@@ -116,7 +117,7 @@ export async function POST(request: Request) {
       status: "PENDING",
       maxPages: PUBLIC_SCAN_MAX_PAGES,
       ipHash,
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      expiresAt: new Date(Date.now() + PUBLIC_SCAN_EVIDENCE_TTL_MS),
     });
 
     // Enqueue the scan job (fire and forget - client polls for results)

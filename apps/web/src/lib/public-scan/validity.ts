@@ -1,3 +1,4 @@
+import { PUBLIC_SCAN_EVIDENCE_TTL_MS } from "@aros/config";
 import { prisma } from "@/lib/db";
 
 export type PublicEvidenceState =
@@ -30,18 +31,20 @@ export function getPublicScanEvidenceState(
   now = new Date(),
 ): PublicEvidenceState {
   if (!scan) return "missing";
-  if (scan.expiresAt && scan.expiresAt <= now) return "expired";
   if (scan.status === "FAILED") return "failed";
   if (scan.status !== "COMPLETED" || !scan.completedAt) return "incomplete";
+  // Fail closed: completed rows must carry a future expiry to be treated as current public proof.
+  if (!scan.expiresAt || scan.expiresAt <= now) return "expired";
   return "valid";
 }
 
 export function toPublicScanApiPayload(scan: PublicScanCore) {
+  const evidenceState = getPublicScanEvidenceState(scan);
   return {
     id: scan.id,
     domain: scan.domain,
     status: scan.status,
-    evidenceState: getPublicScanEvidenceState(scan),
+    evidenceState,
     score: scan.score,
     totalViolations: scan.totalViolations,
     criticalCount: scan.criticalCount,
@@ -53,6 +56,9 @@ export function toPublicScanApiPayload(scan: PublicScanCore) {
     screenshotKeys: scan.screenshotKeys,
     createdAt: scan.createdAt,
     completedAt: scan.completedAt,
+    expiresAt: scan.expiresAt,
+    evidenceExpiresAt:
+      evidenceState === "valid" && scan.expiresAt ? scan.expiresAt : null,
   };
 }
 
@@ -86,6 +92,7 @@ export async function getLatestValidPublicScanForDomain(
   return prisma.publicScanResult.findFirst({
     where: {
       domain,
+      // NULL expiresAt is never current evidence (legacy or inconsistent rows).
       expiresAt: { gt: new Date() },
       ...(options.requireCompleted
         ? {
