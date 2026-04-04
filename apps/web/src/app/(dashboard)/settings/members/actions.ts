@@ -1,12 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { requireSession } from "@/lib/session";
 import { requireOrgAccess } from "@/lib/auth-guard";
+import { runOrgScopedQuery } from "@/lib/route-data-boundary";
 import { hasPermission } from "@aros/config";
-import { ApiError } from "@aros/shared";
 import type { MemberRole } from "@aros/db";
 
 const INVITABLE_ROLES: MemberRole[] = [
@@ -100,38 +98,65 @@ export async function inviteMemberAction(
     };
   }
 
-  const subscription = await prisma.subscription.findUnique({
-    where: { organizationId },
-    select: { maxSeats: true },
-  });
+  const subscriptionResult = await runOrgScopedQuery(ctx, async (orgId) =>
+    prisma.subscription.findUnique({
+      where: { organizationId: orgId },
+      select: { maxSeats: true },
+    }),
+  );
+  if (!subscriptionResult.ok) {
+    return { success: false, error: "Unable to validate seat limits" };
+  }
 
-  const currentMemberCount = await prisma.membership.count({
-    where: { organizationId },
-  });
+  const memberCountResult = await runOrgScopedQuery(ctx, async (orgId) =>
+    prisma.membership.count({
+      where: { organizationId: orgId },
+    }),
+  );
+  if (!memberCountResult.ok) {
+    return { success: false, error: "Unable to validate current membership" };
+  }
 
-  if (subscription && currentMemberCount >= subscription.maxSeats) {
+  if (
+    subscriptionResult.data &&
+    memberCountResult.data >= subscriptionResult.data.maxSeats
+  ) {
     return {
       success: false,
       error: "Seat limit reached. Upgrade your plan to add more members.",
     };
   }
 
-  const existingUser = await prisma.user.findUnique({
-    where: { email },
-    select: { id: true },
-  });
+  const existingUserResult = await runOrgScopedQuery(ctx, async () =>
+    prisma.user.findUnique({
+      where: { email },
+      select: { id: true },
+    }),
+  );
+  if (!existingUserResult.ok) {
+    return { success: false, error: "Unable to verify existing user account" };
+  }
+  const existingUser = existingUserResult.data;
 
   if (existingUser) {
-    const existingMembership = await prisma.membership.findUnique({
-      where: {
-        userId_organizationId: {
-          userId: existingUser.id,
-          organizationId,
+    const existingMembershipResult = await runOrgScopedQuery(ctx, async (orgId) =>
+      prisma.membership.findUnique({
+        where: {
+          userId_organizationId: {
+            userId: existingUser.id,
+            organizationId: orgId,
+          },
         },
-      },
-    });
+      }),
+    );
+    if (!existingMembershipResult.ok) {
+      return {
+        success: false,
+        error: "Unable to validate existing organization membership",
+      };
+    }
 
-    if (existingMembership) {
+    if (existingMembershipResult.data) {
       return {
         success: false,
         error: "This user is already a member of this organization",
@@ -139,24 +164,32 @@ export async function inviteMemberAction(
     }
 
     try {
-      await prisma.membership.create({
-        data: {
-          userId: existingUser.id,
-          organizationId,
-          role,
-        },
-      });
+      const inviteResult = await runOrgScopedQuery(ctx, async (orgId) => {
+        await prisma.membership.create({
+          data: {
+            userId: existingUser.id,
+            organizationId: orgId,
+            role,
+          },
+        });
 
-      await prisma.auditLog.create({
-        data: {
-          organizationId,
-          userId: ctx.user.id,
-          action: "member:invite",
-          entityType: "membership",
-          entityId: existingUser.id,
-          metadata: { invitedEmail: email, role },
-        },
+        await prisma.auditLog.create({
+          data: {
+            organizationId: orgId,
+            userId: ctx.user.id,
+            action: "member:invite",
+            entityType: "membership",
+            entityId: existingUser.id,
+            metadata: { invitedEmail: email, role },
+          },
+        });
       });
+      if (!inviteResult.ok) {
+        return {
+          success: false,
+          error: "Failed to add member. Please try again.",
+        };
+      }
 
       revalidatePath("/settings/members");
       return { success: true, error: null };
@@ -170,15 +203,23 @@ export async function inviteMemberAction(
   }
 
   try {
-    await prisma.auditLog.create({
-      data: {
-        organizationId,
-        userId: ctx.user.id,
-        action: "member:invite_pending",
-        entityType: "user",
-        metadata: { invitedEmail: email, role },
-      },
-    });
+    const pendingInviteResult = await runOrgScopedQuery(ctx, async (orgId) =>
+      prisma.auditLog.create({
+        data: {
+          organizationId: orgId,
+          userId: ctx.user.id,
+          action: "member:invite_pending",
+          entityType: "user",
+          metadata: { invitedEmail: email, role },
+        },
+      }),
+    );
+    if (!pendingInviteResult.ok) {
+      return {
+        success: false,
+        error: "Failed to send invitation. Please try again.",
+      };
+    }
 
     revalidatePath("/settings/members");
     return {
@@ -220,15 +261,21 @@ export async function changeMemberRoleAction(
     };
   }
 
-  const targetMembership = await prisma.membership.findFirst({
-    where: {
-      id: membershipId,
-      organizationId,
-    },
-    include: {
-      user: { select: { id: true, email: true } },
-    },
-  });
+  const targetMembershipResult = await runOrgScopedQuery(ctx, async (orgId) =>
+    prisma.membership.findFirst({
+      where: {
+        id: membershipId,
+        organizationId: orgId,
+      },
+      include: {
+        user: { select: { id: true, email: true } },
+      },
+    }),
+  );
+  if (!targetMembershipResult.ok) {
+    return { success: false, error: "Unable to resolve member details" };
+  }
+  const targetMembership = targetMembershipResult.data;
 
   if (!targetMembership) {
     return { success: false, error: "Member not found" };
@@ -272,26 +319,34 @@ export async function changeMemberRoleAction(
   }
 
   try {
-    await prisma.membership.update({
-      where: { id: membershipId },
-      data: { role: newRole },
-    });
+    const roleChangeResult = await runOrgScopedQuery(ctx, async (orgId) => {
+      await prisma.membership.update({
+        where: { id: membershipId },
+        data: { role: newRole },
+      });
 
-    await prisma.auditLog.create({
-      data: {
-        organizationId,
-        userId: ctx.user.id,
-        action: "member:role_change",
-        entityType: "membership",
-        entityId: membershipId,
-        metadata: {
-          targetUserId: targetMembership.userId,
-          targetUserEmail: targetMembership.user.email,
-          oldRole: targetMembership.role,
-          newRole,
+      await prisma.auditLog.create({
+        data: {
+          organizationId: orgId,
+          userId: ctx.user.id,
+          action: "member:role_change",
+          entityType: "membership",
+          entityId: membershipId,
+          metadata: {
+            targetUserId: targetMembership.userId,
+            targetUserEmail: targetMembership.user.email,
+            oldRole: targetMembership.role,
+            newRole,
+          },
         },
-      },
+      });
     });
+    if (!roleChangeResult.ok) {
+      return {
+        success: false,
+        error: "Failed to change role. Please try again.",
+      };
+    }
 
     revalidatePath("/settings/members");
     return { success: true, error: null };
@@ -324,15 +379,21 @@ export async function removeMemberAction(
     };
   }
 
-  const targetMembership = await prisma.membership.findFirst({
-    where: {
-      id: membershipId,
-      organizationId,
-    },
-    include: {
-      user: { select: { id: true, email: true } },
-    },
-  });
+  const targetMembershipResult = await runOrgScopedQuery(ctx, async (orgId) =>
+    prisma.membership.findFirst({
+      where: {
+        id: membershipId,
+        organizationId: orgId,
+      },
+      include: {
+        user: { select: { id: true, email: true } },
+      },
+    }),
+  );
+  if (!targetMembershipResult.ok) {
+    return { success: false, error: "Unable to resolve member details" };
+  }
+  const targetMembership = targetMembershipResult.data;
 
   if (!targetMembership) {
     return { success: false, error: "Member not found" };
@@ -353,14 +414,19 @@ export async function removeMemberAction(
   }
 
   if (targetMembership.role === "OWNER") {
-    const ownerCount = await prisma.membership.count({
-      where: {
-        organizationId,
-        role: "OWNER",
-      },
-    });
+    const ownerCountResult = await runOrgScopedQuery(ctx, async (orgId) =>
+      prisma.membership.count({
+        where: {
+          organizationId: orgId,
+          role: "OWNER",
+        },
+      }),
+    );
+    if (!ownerCountResult.ok) {
+      return { success: false, error: "Unable to validate owner membership" };
+    }
 
-    if (ownerCount <= 1) {
+    if (ownerCountResult.data <= 1) {
       return {
         success: false,
         error: "Cannot remove the last owner. Transfer ownership first.",
@@ -369,24 +435,32 @@ export async function removeMemberAction(
   }
 
   try {
-    await prisma.membership.delete({
-      where: { id: membershipId },
-    });
+    const removeResult = await runOrgScopedQuery(ctx, async (orgId) => {
+      await prisma.membership.delete({
+        where: { id: membershipId },
+      });
 
-    await prisma.auditLog.create({
-      data: {
-        organizationId,
-        userId: ctx.user.id,
-        action: "member:remove",
-        entityType: "membership",
-        entityId: membershipId,
-        metadata: {
-          removedUserId: targetMembership.userId,
-          removedUserEmail: targetMembership.user.email,
-          role: targetMembership.role,
+      await prisma.auditLog.create({
+        data: {
+          organizationId: orgId,
+          userId: ctx.user.id,
+          action: "member:remove",
+          entityType: "membership",
+          entityId: membershipId,
+          metadata: {
+            removedUserId: targetMembership.userId,
+            removedUserEmail: targetMembership.user.email,
+            role: targetMembership.role,
+          },
         },
-      },
+      });
     });
+    if (!removeResult.ok) {
+      return {
+        success: false,
+        error: "Failed to remove member. Please try again.",
+      };
+    }
 
     revalidatePath("/settings/members");
     return { success: true, error: null };
