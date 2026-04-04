@@ -384,7 +384,7 @@ npx @aros/cli scan --site example.com`}</pre>
               return (
                 <article
                   key={feature.title}
-                  className="card border-[rgb(var(--color-border))] transition-shadow hover:shadow-md"
+                  className="card border-[rgb(var(--color-border))] transition-shadow hover:shadow-[var(--shadow-card-hover)]"
                 >
                   <div className="mb-3 text-brand-700" aria-hidden="true">
                     <Icon className="h-8 w-8" strokeWidth={1.75} />

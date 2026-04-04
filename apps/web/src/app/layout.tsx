@@ -7,9 +7,15 @@ import {
   PRODUCT_TAGLINE,
 } from "@/lib/product-brand";
 import { getAppBaseUrl } from "@/lib/site-url";
+import {
+  siteDefaultOpenGraphImages,
+  siteDefaultTwitterImages,
+} from "@/lib/site-metadata";
+
+const appBase = getAppBaseUrl();
 
 export const metadata: Metadata = {
-  metadataBase: new URL(getAppBaseUrl()),
+  metadataBase: new URL(appBase),
   title: {
     default: `${PRODUCT_DISPLAY_NAME} — ${PRODUCT_TAGLINE}`,
     template: `%s · ${PRODUCT_DISPLAY_NAME}`,
@@ -27,6 +33,21 @@ export const metadata: Metadata = {
   icons: {
     icon: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
     apple: [{ url: "/icons/icon-192.png", sizes: "192x192" }],
+  },
+  openGraph: {
+    siteName: PRODUCT_DISPLAY_NAME,
+    locale: "en_US",
+    type: "website",
+    url: appBase,
+    title: `${PRODUCT_DISPLAY_NAME} — ${PRODUCT_TAGLINE}`,
+    description: PRODUCT_DESCRIPTION,
+    images: siteDefaultOpenGraphImages(),
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${PRODUCT_DISPLAY_NAME} — ${PRODUCT_TAGLINE}`,
+    description: PRODUCT_DESCRIPTION,
+    images: siteDefaultTwitterImages(),
   },
 };
 

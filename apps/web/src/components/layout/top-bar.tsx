@@ -21,7 +21,7 @@ export function TopBar({ user, platformTruth, canViewSystem = false }: TopBarPro
 
   return (
     <header
-      className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 md:px-6"
+      className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-app-elevated))] px-4 md:px-6"
       style={{ paddingTop: 'max(0px, env(safe-area-inset-top))' }}
     >
       <div className="flex min-w-0 flex-1 items-center gap-2">

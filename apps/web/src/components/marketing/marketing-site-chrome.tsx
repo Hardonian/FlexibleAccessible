@@ -34,7 +34,10 @@ export function MarketingSiteChrome({ children }: { children: ReactNode }) {
           </Link>
           <div className="flex flex-wrap items-center gap-6 text-sm font-medium text-slate-600">
             <Link href="/#proof" className="hover:text-slate-900">
-              Product
+              Proof &amp; workflow
+            </Link>
+            <Link href="/#pricing" className="hover:text-slate-900">
+              Plans
             </Link>
             <Link href="/trust" className="hover:text-slate-900">
               Trust

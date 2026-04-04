@@ -31,19 +31,22 @@ export async function generateMetadata({
   const description = hasCurrentEvidence
     ? `Sampled automated scan on ${decoded}: ${totalViolations} issues found in up to 5 pages (severity breakdown in the report). Not a WCAG conformance guarantee.`
     : `No current, unexpired public scan evidence for ${decoded}. Run a new instant scan from ${PRODUCT_DISPLAY_NAME} for fresh automated results.`;
+  const base = getAppBaseUrl();
   const ogPath = `/api/og?domain=${encodeURIComponent(decoded)}`;
-  const ogUrl = new URL(ogPath, getAppBaseUrl()).toString();
+  const ogUrl = new URL(ogPath, base).toString();
+  const pagePath = `/scan/${encodeURIComponent(decoded)}`;
+  const pageUrl = new URL(pagePath, base).toString();
 
   return {
     title,
     description,
     alternates: {
-      canonical: `/scan/${encodeURIComponent(decoded)}`,
+      canonical: pagePath,
     },
     openGraph: {
       title,
       description,
-      url: `/scan/${encodeURIComponent(decoded)}`,
+      url: pageUrl,
       images: [{ url: ogUrl, width: 1200, height: 630 }],
       type: "website",
     },

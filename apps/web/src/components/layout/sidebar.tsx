@@ -41,11 +41,11 @@ export function Sidebar({
 
   return (
     <aside
-      className="hidden w-64 shrink-0 flex-col border-r border-slate-200 bg-white md:flex"
+      className="hidden w-64 shrink-0 flex-col border-r border-[rgb(var(--color-border))] bg-[rgb(var(--color-app-elevated))] md:flex"
       role="navigation"
       aria-label="Main navigation"
     >
-      <div className="flex h-14 items-center border-b border-slate-200 px-4">
+      <div className="flex h-14 items-center border-b border-[rgb(var(--color-border))] px-4">
         <Link
           href="/dashboard"
           className="flex flex-col leading-tight focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 rounded"
@@ -59,7 +59,7 @@ export function Sidebar({
         </Link>
       </div>
 
-      <div className="border-b border-slate-200 p-3">
+      <div className="border-b border-[rgb(var(--color-border))] p-3">
         <label htmlFor="org-select" className="sr-only">
           Select organization
         </label>

@@ -12,8 +12,9 @@ import { hasPermission } from "@aros/config";
 import { EmptyState } from "@aros/ui";
 import { buildOnboardingStatus } from "@/lib/onboarding-status";
 import { getEntitlementState } from "@/lib/auth-guard";
+import { pageTitle } from "@/lib/product-brand";
 
-export const metadata = { title: "Dashboard" };
+export const metadata = { title: pageTitle("Dashboard") };
 
 export default async function DashboardPage() {
   const user = await requireSession();

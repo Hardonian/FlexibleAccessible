@@ -84,9 +84,9 @@ export function MobileDashboardNav({
       />
       <aside
         ref={panelRef}
-        className="absolute left-0 top-0 flex h-full w-[min(20rem,88vw)] flex-col border-r border-slate-200 bg-white shadow-xl pt-[env(safe-area-inset-top)]"
+        className="absolute left-0 top-0 flex h-full w-[min(20rem,88vw)] flex-col border-r border-[rgb(var(--color-border))] bg-[rgb(var(--color-app-elevated))] shadow-xl pt-[env(safe-area-inset-top)]"
       >
-        <div className="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 px-4">
+        <div className="flex h-14 shrink-0 items-center justify-between border-b border-[rgb(var(--color-border))] px-4">
           <Link
             href="/dashboard"
             className="text-lg font-semibold tracking-tight text-brand-800"
@@ -105,7 +105,7 @@ export function MobileDashboardNav({
           </button>
         </div>
 
-        <div className="border-b border-slate-200 p-3">
+        <div className="border-b border-[rgb(var(--color-border))] p-3">
           <label htmlFor="org-select-mobile" className="sr-only">
             Select organization
           </label>
@@ -201,7 +201,7 @@ export function MobileDashboardNav({
           )}
         </nav>
 
-        <div className="border-t border-slate-200 p-3">
+        <div className="border-t border-[rgb(var(--color-border))] p-3">
           <div className="flex items-center gap-3 rounded-lg px-3 py-2">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-100 text-sm font-medium text-brand-700">
               {(user.name ?? user.email).charAt(0).toUpperCase()}

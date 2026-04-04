@@ -1,20 +1,14 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { MarketingSiteChrome } from "@/components/marketing/marketing-site-chrome";
-import { pageTitle, PRODUCT_DISPLAY_NAME } from "@/lib/product-brand";
-import { getAppBaseUrl } from "@/lib/site-url";
+import { PRODUCT_DISPLAY_NAME } from "@/lib/product-brand";
+import { marketingSurfaceMetadata } from "@/lib/site-metadata";
 
-export const metadata: Metadata = {
-  title: pageTitle("API & integrations"),
-  description: `How to integrate ${PRODUCT_DISPLAY_NAME} today: MCP server, org-scoped API keys, and webhooks. This deployment does not ship a separate public OpenAPI browser.`,
-  alternates: { canonical: "/docs/api" },
-  openGraph: {
-    title: pageTitle("API & integrations"),
-    description: `Integration paths for ${PRODUCT_DISPLAY_NAME}: MCP, API keys, and webhooks.`,
-    url: `${getAppBaseUrl()}/docs/api`,
-    type: "website",
-  },
-};
+export const metadata: Metadata = marketingSurfaceMetadata(
+  "API & integrations",
+  `How to integrate ${PRODUCT_DISPLAY_NAME} today: MCP server, org-scoped API keys, and webhooks. This deployment does not ship a separate public OpenAPI browser.`,
+  "/docs/api",
+);
 
 export default function DocsApiPage() {
   return (

@@ -129,7 +129,7 @@ export default async function DashboardLayout({
       >
         Skip to main content
       </a>
-      <div className="flex min-h-dvh overflow-hidden bg-slate-50 md:h-screen">
+      <div className="flex min-h-dvh overflow-hidden bg-[rgb(var(--color-app-canvas))] md:h-screen">
         <Sidebar
           orgs={orgs}
           user={user}
