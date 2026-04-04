@@ -12,6 +12,16 @@
     --color-surface-elevated: 255 255 255;
     --color-accent: 13 148 136;
     --color-canvas: 248 250 252;
+    /* Layout chrome (dashboard): align with marketing surface tokens */
+    --color-app-canvas: 248 250 252;
+    --color-app-elevated: 255 255 255;
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+    --shadow-card: 0 1px 2px 0 rgb(15 23 42 / 0.05);
+    --shadow-card-hover: 0 4px 6px -1px rgb(15 23 42 / 0.08),
+      0 2px 4px -2px rgb(15 23 42 / 0.06);
   }
 
   html {
@@ -65,7 +75,9 @@
   }
 
   .card {
-    @apply rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-6 shadow-sm;
+    @apply border border-[rgb(var(--color-border))] bg-[rgb(var(--color-card))] p-6;
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-card);
   }
 
   .badge {

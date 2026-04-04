@@ -1,20 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { MarketingSiteChrome } from "@/components/marketing/marketing-site-chrome";
-import { pageTitle, PRODUCT_DISPLAY_NAME } from "@/lib/product-brand";
-import { getAppBaseUrl } from "@/lib/site-url";
+import { PRODUCT_DISPLAY_NAME } from "@/lib/product-brand";
+import { marketingSurfaceMetadata } from "@/lib/site-metadata";
 
-export const metadata: Metadata = {
-  title: pageTitle("Security & privacy"),
-  description: `Security and privacy posture for ${PRODUCT_DISPLAY_NAME}: accounts, org boundaries, and what this page is not (a legal contract).`,
-  alternates: { canonical: "/security" },
-  openGraph: {
-    title: pageTitle("Security & privacy"),
-    description: `Security and privacy posture for ${PRODUCT_DISPLAY_NAME}.`,
-    url: `${getAppBaseUrl()}/security`,
-    type: "website",
-  },
-};
+export const metadata: Metadata = marketingSurfaceMetadata(
+  "Security & privacy",
+  `Security and privacy posture for ${PRODUCT_DISPLAY_NAME}: accounts, org boundaries, and what this page is not (a legal contract).`,
+  "/security",
+);
 
 export default function SecurityPage() {
   return (

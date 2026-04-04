@@ -7,6 +7,11 @@ import {
 } from "@/lib/product-brand";
 import { getAppBaseUrl } from "@/lib/site-url";
 import { homeFaqs, productFeatures } from "@/lib/marketing-content";
+import {
+  siteDefaultOpenGraphImages,
+  siteDefaultTwitterImages,
+  siteMarketingJsonLd,
+} from "@/lib/site-metadata";
 
 const baseUrl = getAppBaseUrl();
 
@@ -25,11 +30,13 @@ export const metadata: Metadata = {
     siteName: PRODUCT_DISPLAY_NAME,
     title: `${PRODUCT_DISPLAY_NAME} — ${PRODUCT_TAGLINE}`,
     description: PRODUCT_DESCRIPTION,
+    images: siteDefaultOpenGraphImages(),
   },
   twitter: {
     card: "summary_large_image",
     title: `${PRODUCT_DISPLAY_NAME} — ${PRODUCT_TAGLINE}`,
     description: PRODUCT_DESCRIPTION,
+    images: siteDefaultTwitterImages(),
   },
 };
 
@@ -72,8 +79,14 @@ export default function HomePage() {
     description: PRODUCT_DESCRIPTION,
   };
 
+  const webSiteSchema = siteMarketingJsonLd(baseUrl);
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(webSiteSchema) }}
+      />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(orgSchema) }}

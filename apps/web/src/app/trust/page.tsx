@@ -1,20 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { MarketingSiteChrome } from "@/components/marketing/marketing-site-chrome";
-import { pageTitle, PRODUCT_DISPLAY_NAME } from "@/lib/product-brand";
-import { getAppBaseUrl } from "@/lib/site-url";
+import { PRODUCT_DISPLAY_NAME } from "@/lib/product-brand";
+import { marketingSurfaceMetadata } from "@/lib/site-metadata";
 
-export const metadata: Metadata = {
-  title: pageTitle("Trust"),
-  description: `How ${PRODUCT_DISPLAY_NAME} handles evidence, automation limits, and buyer expectations—without fake compliance promises.`,
-  alternates: { canonical: "/trust" },
-  openGraph: {
-    title: pageTitle("Trust"),
-    description: `How ${PRODUCT_DISPLAY_NAME} handles evidence, automation limits, and buyer expectations.`,
-    url: `${getAppBaseUrl()}/trust`,
-    type: "website",
-  },
-};
+export const metadata: Metadata = marketingSurfaceMetadata(
+  "Trust",
+  `How ${PRODUCT_DISPLAY_NAME} handles evidence, automation limits, and buyer expectations—without fake compliance promises.`,
+  "/trust",
+);
 
 export default function TrustPage() {
   return (

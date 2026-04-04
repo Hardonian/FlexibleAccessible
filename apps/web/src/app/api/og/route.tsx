@@ -2,9 +2,19 @@ import { ImageResponse } from "next/og";
 import { NextRequest } from "next/server";
 import { toASCII } from "node:punycode";
 import { getPublicOgRenderModel } from "@/lib/public-scan/og-render-model";
-import { PRODUCT_DISPLAY_NAME } from "@/lib/product-brand";
+import {
+  PRODUCT_DISPLAY_NAME,
+  PRODUCT_TAGLINE,
+} from "@/lib/product-brand";
+import { SITE_OG_BULLET_LINES, SITE_OG_IMAGE_SIZE } from "@/lib/site-metadata";
 
 export const runtime = "nodejs";
+
+const BRAND_HEX = "#0d9488";
+const CANVAS_HEX = "#f8fafc";
+const SLATE_900 = "#0f172a";
+const SLATE_600 = "#475569";
+const SLATE_500 = "#64748b";
 
 function isValidDomainParam(domain: string): boolean {
   if (domain.length > 253) return false;
@@ -19,19 +29,128 @@ function isValidDomainParam(domain: string): boolean {
   }
 }
 
+function siteOgImageResponse() {
+  return new ImageResponse(
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        width: "100%",
+        height: "100%",
+        backgroundColor: CANVAS_HEX,
+        padding: "56px 64px",
+        fontFamily: "system-ui, sans-serif",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "16px",
+          marginBottom: "36px",
+        }}
+      >
+        <div
+          style={{
+            width: "14px",
+            height: "56px",
+            borderRadius: "8px",
+            backgroundColor: BRAND_HEX,
+          }}
+        />
+        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+          <div
+            style={{
+              fontSize: "38px",
+              fontWeight: 800,
+              color: SLATE_900,
+              letterSpacing: "-0.02em",
+            }}
+          >
+            {PRODUCT_DISPLAY_NAME}
+          </div>
+          <div
+            style={{
+              fontSize: "26px",
+              fontWeight: 600,
+              color: SLATE_600,
+              lineHeight: 1.35,
+              maxWidth: "980px",
+            }}
+          >
+            {PRODUCT_TAGLINE}
+          </div>
+        </div>
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "18px",
+          flex: 1,
+          justifyContent: "center",
+        }}
+      >
+        {SITE_OG_BULLET_LINES.map((line) => (
+          <div
+            key={line}
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: "16px",
+              fontSize: "24px",
+              color: SLATE_600,
+              lineHeight: 1.4,
+            }}
+          >
+            <span style={{ color: BRAND_HEX, fontWeight: 700 }}>—</span>
+            <span>{line}</span>
+          </div>
+        ))}
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          marginTop: "auto",
+          paddingTop: "28px",
+          borderTop: `2px solid #e2e8f0`,
+          fontSize: "18px",
+          color: SLATE_500,
+          lineHeight: 1.45,
+        }}
+      >
+        Instant public scan on the home page · Private workspaces on paid plans ·
+        Automation is sampling, not legal conformance
+      </div>
+    </div>,
+    {
+      width: SITE_OG_IMAGE_SIZE.width,
+      height: SITE_OG_IMAGE_SIZE.height,
+    },
+  );
+}
+
 /**
- * GET /api/og?domain=example.com
- * Open Graph image for public scan share cards. Renders only from current,
- * non-expired completed public scan data — query-string scores are ignored
- * so social previews cannot overstate evidence we do not hold.
+ * GET /api/og?kind=site — default marketing share card (truthful, no scores).
+ * GET /api/og?domain=example.com — public scan evidence card (data-backed only).
  */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = request.nextUrl;
+    const kind = searchParams.get("kind")?.trim().toLowerCase();
+
+    if (kind === "site") {
+      return siteOgImageResponse();
+    }
+
     const rawDomain = searchParams.get("domain")?.trim();
 
     if (!rawDomain) {
-      return new Response("Missing domain parameter", { status: 400 });
+      return new Response("Missing domain parameter or kind=site", {
+        status: 400,
+      });
     }
 
     let displayDomain = rawDomain;
@@ -209,8 +328,8 @@ export async function GET(request: NextRequest) {
         </div>
       </div>,
       {
-        width: 1200,
-        height: 630,
+        width: SITE_OG_IMAGE_SIZE.width,
+        height: SITE_OG_IMAGE_SIZE.height,
       },
     );
   } catch {
