@@ -5,6 +5,53 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getPublicPlanCards } from "@/lib/public-packaging";
 
+const developerFeatures = [
+  "MCP server with 20+ tools for IDE integration",
+  "API keys with scoped access control",
+  "CLI for CI/CD pipeline integration",
+  "Webhook notifications for scan completion",
+  "Programmatic access to all platform features",
+];
+
+const managedServices = [
+  {
+    icon: "\u{1F6E0}",
+    title: "White-Glove Onboarding",
+    description:
+      "Our team configures your sites, sets up scanning schedules, and trains your staff on the platform.",
+  },
+  {
+    icon: "\u{1F6A8}",
+    title: "Remediation-as-a-Service",
+    description:
+      "We fix the issues for you. Our accessibility experts implement fixes directly in your codebase or CMS.",
+  },
+  {
+    icon: "\u{1F4C8}",
+    title: "Ongoing Monitoring",
+    description:
+      "Continuous scanning, trend analysis, and executive reporting delivered to your inbox monthly.",
+  },
+];
+
+const faqs = [
+  {
+    question: "How is this different from free scanners?",
+    answer:
+      "Free scanners typically check single pages and provide basic pass/fail results. AROS provides browser-accurate crawling of entire sites, component-level clustering to reduce noise, AI-assisted remediation suggestions, and source-level fix mapping. We help you fix issues, not just find them.",
+  },
+  {
+    question: "How is this different from accessibility overlays?",
+    answer:
+      "Overlays inject JavaScript widgets that claim to 'fix' accessibility automatically. They do not work for screen reader users and have been widely criticized by the disability community. AROS provides source-first remediation, helping you fix the actual HTML, CSS, and ARIA in your codebase.",
+  },
+  {
+    question: "Do you guarantee compliance?",
+    answer:
+      "No. Automated tools can detect many accessibility issues but cannot verify all WCAG criteria. Manual testing by users with disabilities remains essential for full conformance. We provide evidence of testing and remediation efforts, not legal guarantees.",
+  },
+];
+
 export default function HomePage() {
   const plans = getPublicPlanCards();
   const [scanDomain, setScanDomain] = useState("");
@@ -167,6 +214,97 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Developer/API Lane */}
+      <section className="mx-auto max-w-7xl px-6 py-24">
+        <div className="grid md:grid-cols-2 gap-12 items-center">
+          <div>
+            <h2 className="text-3xl font-bold text-slate-900 mb-4">
+              Built for Developers
+            </h2>
+            <p className="text-slate-600 mb-6">
+              Automate accessibility workflows with our comprehensive API and
+              tooling ecosystem. Integrate scanning, remediation, and reporting
+              into your CI/CD pipeline.
+            </p>
+            <ul className="space-y-3">
+              {developerFeatures.map((feature) => (
+                <li key={feature} className="flex items-start gap-3">
+                  <span className="text-brand-600 font-bold" aria-hidden="true">
+                    &rarr;
+                  </span>
+                  <span className="text-slate-700">{feature}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-8 flex gap-4">
+              <Link href="/docs/api" className="btn-secondary">
+                View API Docs
+              </Link>
+              <Link
+                href="/signup"
+                className="text-brand-600 hover:text-brand-700 font-medium inline-flex items-center gap-1"
+              >
+                Get API Access
+                <span aria-hidden="true">&rarr;</span>
+              </Link>
+            </div>
+          </div>
+          <div className="bg-slate-900 rounded-xl p-6 text-slate-300 font-mono text-sm overflow-x-auto">
+            <pre>{`# MCP Server with 20+ tools
+npx @aros/mcp-server
+
+# REST API with scoped keys
+curl -H "Authorization: Bearer $API_KEY" \
+  https://api.aros.dev/v1/sites
+
+# CLI integration
+npx @aros/cli scan --site example.com`}</pre>
+          </div>
+        </div>
+      </section>
+
+      {/* Managed Services Lane */}
+      <section className="bg-brand-50 py-24">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-slate-900 mb-4">
+              Managed Accessibility Operations
+            </h2>
+            <p className="text-xl text-slate-600 max-w-2xl mx-auto">
+              We can run it for you. Outsource your accessibility program to our
+              expert team and get results without the operational overhead.
+            </p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-8">
+            {managedServices.map((service) => (
+              <article
+                key={service.title}
+                className="bg-white rounded-lg p-6 shadow-sm"
+              >
+                <div className="text-2xl mb-3" aria-hidden="true">
+                  {service.icon}
+                </div>
+                <h3 className="text-lg font-semibold text-slate-900 mb-2">
+                  {service.title}
+                </h3>
+                <p className="text-sm text-slate-600">{service.description}</p>
+              </article>
+            ))}
+          </div>
+          <div className="mt-12 text-center">
+            <Link
+              href="mailto:sales@aros.dev"
+              className="btn-primary text-base px-8 py-3"
+            >
+              Contact for Managed Services
+            </Link>
+            <p className="mt-3 text-sm text-slate-500">
+              Custom scopes, SLAs, and pricing based on your needs
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Features */}
       <section id="features" className="mx-auto max-w-7xl px-6 py-24">
         <h2 className="text-3xl font-bold text-slate-900 text-center mb-12">
@@ -256,7 +394,9 @@ export default function HomePage() {
                 <span className="text-3xl font-bold text-slate-900">
                   ${plan.priceMonthly}
                 </span>
-                {plan.priceMonthly > 0 && <span className="text-slate-500">/mo</span>}
+                {plan.priceMonthly > 0 && (
+                  <span className="text-slate-500">/mo</span>
+                )}
               </p>
               <ul className="mt-4 space-y-2" role="list">
                 {plan.bullets.map((f) => (
@@ -282,6 +422,36 @@ export default function HomePage() {
               </Link>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* FAQ / Objections */}
+      <section className="bg-slate-50 py-24">
+        <div className="mx-auto max-w-4xl px-6">
+          <h2 className="text-3xl font-bold text-slate-900 text-center mb-12">
+            Common Questions
+          </h2>
+          <div className="space-y-6">
+            {faqs.map((faq) => (
+              <details
+                key={faq.question}
+                className="bg-white rounded-lg p-6 group"
+              >
+                <summary className="font-semibold text-slate-900 cursor-pointer list-none flex items-center justify-between">
+                  {faq.question}
+                  <span
+                    className="text-slate-400 group-open:rotate-180 transition-transform"
+                    aria-hidden="true"
+                  >
+                    &#9662;
+                  </span>
+                </summary>
+                <p className="mt-4 text-slate-600 leading-relaxed">
+                  {faq.answer}
+                </p>
+              </details>
+            ))}
+          </div>
         </div>
       </section>
 
