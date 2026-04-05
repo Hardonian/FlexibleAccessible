@@ -9,7 +9,13 @@ import {
   runOrgScopedQuery,
 } from "@/lib/route-data-boundary";
 import { RouteReliabilityNotice } from "@/components/reliability/route-reliability-notice";
-import { StatusBadge, EmptyState, SeverityChip, type SeverityLevel } from "@aros/ui";
+import {
+  StatusBadge,
+  EmptyState,
+  SeverityChip,
+  ProcessBadge,
+  type SeverityLevel,
+} from "@aros/ui";
 import { ScanNowButton } from "./scan-now-button";
 import { ScanSiteActionState, scanSiteInitialState } from "./scan-action-state";
 import { getAutomationEvidenceFreshnessDescriptor } from "@/lib/findings/evidence-freshness";
