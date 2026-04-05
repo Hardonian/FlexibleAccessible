@@ -10,7 +10,11 @@ import {
 } from "@/lib/route-data-boundary";
 import { RouteReliabilityNotice } from "@/components/reliability/route-reliability-notice";
 import { hasPermission } from "@aros/config";
-import { StatusBadge, EmptyState } from "@aros/ui";
+import { StatusBadge, EmptyState, SeverityChip } from "@aros/ui";
+import {
+  findingsActiveFilterSummary,
+  findingsListQueryString,
+} from "@/lib/findings-list-query";
 import { getAutomationEvidenceFreshnessDescriptor } from "@/lib/findings/evidence-freshness";
 import { buildFindingProofSummary } from "@/lib/findings/proof-summary";
 import { summarizeFindingFamilies } from "@/lib/findings/family-summary";
@@ -192,6 +196,7 @@ export default async function FindingsPage({
   const { findings, total, latestCompletedScanCompletedAt, familySummaryByRuleId } =
     listResult.data;
   const totalPages = Math.ceil(total / limit);
+  const filterSummary = findingsActiveFilterSummary(params);
 
   return (
     <div className="space-y-6">
@@ -202,6 +207,12 @@ export default async function FindingsPage({
             {total} deduplicated finding{total === 1 ? "" : "s"} in your
             organization (not a legal conformance score).
           </p>
+          {filterSummary.hasFilters && (
+            <p className="text-sm text-slate-600 mt-2" aria-live="polite">
+              <span className="font-medium text-slate-700">Filtered by:</span>{" "}
+              {filterSummary.parts.join(" · ")}
+            </p>
+          )}
         </div>
       </div>
 
@@ -221,6 +232,12 @@ export default async function FindingsPage({
 
       <div className="card">
         <form className="flex flex-wrap gap-4" method="GET">
+          {params.siteId ? (
+            <input type="hidden" name="siteId" value={params.siteId} />
+          ) : null}
+          {params.ruleId ? (
+            <input type="hidden" name="ruleId" value={params.ruleId} />
+          ) : null}
           <div>
             <label htmlFor="severity-filter" className="label">
               Severity
@@ -327,7 +344,7 @@ export default async function FindingsPage({
         >
           {page > 1 && (
             <Link
-              href={`/findings?page=${page - 1}&severity=${params.severity ?? ""}&status=${params.status ?? ""}&evidenceSource=${params.evidenceSource ?? ""}`}
+              href={`/findings${findingsListQueryString(params, page - 1)}` as any}
               className="btn-secondary text-sm min-h-[44px]"
               aria-label={`Go to previous page, currently on page ${page} of ${totalPages}`}
             >
@@ -342,7 +359,7 @@ export default async function FindingsPage({
           </span>
           {page < totalPages && (
             <Link
-              href={`/findings?page=${page + 1}&severity=${params.severity ?? ""}&status=${params.status ?? ""}&evidenceSource=${params.evidenceSource ?? ""}`}
+              href={`/findings${findingsListQueryString(params, page + 1)}` as any}
               className="btn-secondary text-sm min-h-[44px]"
               aria-label={`Go to next page, currently on page ${page} of ${totalPages}`}
             >
@@ -381,10 +398,6 @@ function FindingRow({
     jobPipelinesHealthy,
   });
 
-  const freshnessToneClass =
-    freshness?.tone === "warning"
-      ? "bg-amber-50 text-amber-700 border border-amber-200"
-      : "bg-slate-100 text-slate-700 border border-slate-200";
   const proofSummary = buildFindingProofSummary({
     evidenceSummary: finding.evidenceSummary,
     provenance: finding.provenance,
@@ -395,133 +408,90 @@ function FindingRow({
   const proofCompletenessScore =
     Object.values(proofSummary.completeness).filter(Boolean).length;
 
+  const evidenceLabel =
+    finding.evidenceSource === "AUTOMATED_AXE"
+      ? "Automated (axe)"
+      : finding.evidenceSource === "MANUAL_REVIEW"
+        ? "Manual review"
+        : finding.evidenceSource === "IMPORTED"
+          ? "Imported"
+          : finding.evidenceSource;
+
+  const extendedDescriptionParts = [
+    `Truth status: ${finding.truthStatus.toLowerCase().replaceAll("_", " ")}.`,
+    `Evidence source: ${evidenceLabel}.`,
+    freshness && freshness.freshness !== "current"
+      ? `Automation freshness: ${freshness.badgeLabel}. ${freshness.detail}`
+      : null,
+    finding.cluster ? `Cluster: ${finding.cluster.name}.` : null,
+    `Proof completeness score ${proofCompletenessScore} out of 5.`,
+    `Change vs last run: ${proofSummary.changedSinceLastRun.replaceAll("_", " ")}.`,
+    familySummary
+      ? `Rule family: ${familySummary.totalFindings} total findings, ${familySummary.activeFindings} active; ${familySummary.newlyDetectedFindings} newly detected, ${familySummary.persistentFindings} persistent${
+          familySummary.regressedFindings > 0
+            ? `; ${familySummary.regressedFindings} regressed`
+            : ""
+        }.`
+      : null,
+    `First seen ${finding.firstSeenAt.toLocaleDateString()}.`,
+    familySummary?.firstSeenAt
+      ? `Family first seen ${familySummary.firstSeenAt.toLocaleDateString()}.`
+      : null,
+    finding.lastVerifiedAt
+      ? `Last verified ${finding.lastVerifiedAt.toLocaleDateString()}.`
+      : null,
+    familySummary?.lastSeenAt
+      ? `Family last seen ${familySummary.lastSeenAt.toLocaleDateString()}.`
+      : null,
+    proofSummary.lineage.scanRunId
+      ? `Lineage scan run ${proofSummary.lineage.scanRunId}.`
+      : null,
+    finding.wcagTags.length > 0
+      ? `WCAG tags: ${finding.wcagTags.join(", ")}.`
+      : null,
+  ].filter(Boolean) as string[];
+
+  const metaId = `finding-${finding.id}-extended`;
+
   return (
     <article className="card hover:shadow-md transition-shadow">
       <Link
         href={`/findings/${finding.id}`}
         className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 rounded-lg"
+        aria-describedby={metaId}
       >
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <div className="flex flex-wrap items-center gap-2 mb-1">
-              <span
-                className={`badge ${
-                  finding.impact === "CRITICAL"
-                    ? "badge-critical"
-                    : finding.impact === "SERIOUS"
-                      ? "badge-serious"
-                      : finding.impact === "MODERATE"
-                        ? "badge-moderate"
-                        : "badge-minor"
-                }`}
-              >
-                {finding.impact.toLowerCase()}
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <SeverityChip severity={finding.impact} size="sm" />
+              <span className="font-mono text-xs text-slate-500 truncate max-w-[min(100%,12rem)]">
+                {finding.ruleId}
               </span>
-              <span className="text-xs text-slate-400">{finding.ruleId}</span>
-              <span className="badge bg-white text-slate-700 border border-slate-200">
-                {finding.truthStatus.toLowerCase().replaceAll("_", " ")}
-              </span>
-              <EvidenceSourceBadge source={finding.evidenceSource} />
-              {freshness && freshness.freshness !== "current" && (
-                <span
-                  className={`badge ${freshnessToneClass}`}
-                  title={freshness.detail}
-                  aria-label={`Automation evidence freshness: ${freshness.badgeLabel}. ${freshness.detail}`}
-                >
-                  {freshness.badgeLabel}
-                </span>
-              )}
-              {finding.cluster && (
-                <span className="badge bg-purple-100 text-purple-800">
+              {finding.cluster ? (
+                <span className="text-xs font-medium text-violet-800 truncate max-w-[10rem]">
                   {finding.cluster.name}
                 </span>
-              )}
-              <span
-                className={`badge ${
-                  proofCompletenessScore >= 4
-                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                    : "bg-amber-50 text-amber-700 border border-amber-200"
-                }`}
-                title="Compact proof completeness across summary, verification status, page URL, and lineage metadata."
-              >
-                Proof completeness {proofCompletenessScore}/5
-              </span>
-              <span className="badge bg-white text-slate-700 border border-slate-200">
-                {proofSummary.changedSinceLastRun.replaceAll("_", " ")}
-              </span>
+              ) : null}
             </div>
-            <p className="text-sm font-medium text-slate-900">
+            <p className="mt-2 text-sm font-medium text-slate-900">
               {finding.description}
             </p>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-slate-500">
-              <span>{finding._count.occurrences} occurrences</span>
-              {familySummary && (
-                <span>
-                  Family: {familySummary.totalFindings} total /{" "}
-                  {familySummary.activeFindings} active
-                </span>
-              )}
-              {familySummary && familySummary.regressedFindings > 0 && (
-                <span>Family regressed: {familySummary.regressedFindings}</span>
-              )}
-              {familySummary && (
-                <span>
-                  Family trend: {familySummary.newlyDetectedFindings} new /{" "}
-                  {familySummary.persistentFindings} persistent
-                </span>
-              )}
-              <span>Site: {finding.site.name}</span>
-              <span>
-                First seen: {finding.firstSeenAt.toLocaleDateString()}
-              </span>
-              {familySummary?.firstSeenAt && (
-                <span>
-                  Family first seen: {familySummary.firstSeenAt.toLocaleDateString()}
-                </span>
-              )}
-              {finding.lastVerifiedAt && (
-                <span>
-                  Last verified: {finding.lastVerifiedAt.toLocaleDateString()}
-                </span>
-              )}
-              {familySummary?.lastSeenAt && (
-                <span>
-                  Family last seen: {familySummary.lastSeenAt.toLocaleDateString()}
-                </span>
-              )}
-              {proofSummary.lineage.scanRunId && (
-                <span>Lineage scan: {proofSummary.lineage.scanRunId}</span>
-              )}
-              {finding.wcagTags.length > 0 && (
-                <span>WCAG: {finding.wcagTags.join(", ")}</span>
-              )}
-            </div>
+            <p className="mt-2 text-xs text-slate-500">
+              {finding.site.name} · {finding._count.occurrences} occurrence
+              {finding._count.occurrences === 1 ? "" : "s"}
+              {freshness && freshness.freshness !== "current"
+                ? ` · ${freshness.badgeLabel}`
+                : ""}
+            </p>
           </div>
-          <div className="ml-4 shrink-0">
+          <div className="shrink-0 pt-0.5">
             <StatusBadge status={finding.status} />
           </div>
         </div>
+        <p id={metaId} className="sr-only">
+          {extendedDescriptionParts.join(" ")}
+        </p>
       </Link>
     </article>
-  );
-}
-
-function EvidenceSourceBadge({ source }: { source: string }) {
-  const label =
-    source === "AUTOMATED_AXE"
-      ? "Automated"
-      : source === "MANUAL_REVIEW"
-        ? "Manual"
-        : source === "IMPORTED"
-          ? "Imported"
-          : source;
-  return (
-    <span
-      className="text-xs rounded px-1.5 py-0.5 bg-slate-100 text-slate-600"
-      aria-label={`Source: ${label}`}
-      title="How this finding entered the system"
-    >
-      {label}
-    </span>
   );
 }
