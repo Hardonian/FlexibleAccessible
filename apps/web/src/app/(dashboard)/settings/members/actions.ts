@@ -117,9 +117,24 @@ export async function inviteMemberAction(
     return { success: false, error: "Unable to validate current membership" };
   }
 
+  const pendingInviteCountResult = await runOrgScopedQuery(ctx, async (orgId) =>
+    prisma.auditLog.count({
+      where: {
+        organizationId: orgId,
+        action: "member:invite_pending",
+      },
+    }),
+  );
+  if (!pendingInviteCountResult.ok) {
+    return { success: false, error: "Unable to validate pending invitations" };
+  }
+
+  const seatsInUse =
+    memberCountResult.data + pendingInviteCountResult.data;
+
   if (
     subscriptionResult.data &&
-    memberCountResult.data >= subscriptionResult.data.maxSeats
+    seatsInUse >= subscriptionResult.data.maxSeats
   ) {
     return {
       success: false,
@@ -225,7 +240,7 @@ export async function inviteMemberAction(
     return {
       success: true,
       error: null,
-      info: "Invitation recorded. User will need to sign up to join.",
+      info: "Invite recorded. Ask them to sign up with this email, then add them from Members once their account exists.",
     } as InviteMemberState & { info?: string };
   } catch (error) {
     console.error("[members] invite error:", error);

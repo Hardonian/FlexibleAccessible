@@ -12,6 +12,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/signup",
     "/trust",
     "/security",
+    "/privacy",
+    "/support",
+    "/accessibility",
+    "/legal/terms",
+    "/legal/subprocessors",
   ] as const;
 
   return paths.map((path) => ({

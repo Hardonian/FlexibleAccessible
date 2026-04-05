@@ -12,6 +12,7 @@ const NAV_LINKS = [
   { href: "/#pricing", label: "Plans" },
   { href: "/trust", label: "Trust" },
   { href: "/docs/api", label: "Integrations" },
+  { href: "/support", label: "Support" },
   { href: "/login", label: "Sign in" },
 ] as const;
 

@@ -5,7 +5,7 @@
 import { PRODUCT_DISPLAY_NAME } from "@/lib/product-brand";
 
 export const developerFeatures = [
-  "MCP server with 20+ tools for IDE-native workflows",
+  "MCP server with a broad IDE tool surface (see package README for the current tool list)",
   "Scoped API keys with organization boundaries enforced server-side",
   "CLI for CI gates and diff-friendly scan output",
   "Webhooks when crawls complete—wire into your own runbooks",
