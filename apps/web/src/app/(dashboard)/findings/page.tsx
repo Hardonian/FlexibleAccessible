@@ -2,7 +2,7 @@ import { requireSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { AlertTriangle, Inbox } from "lucide-react";
-import type { Prisma, Severity, FindingStatus, EvidenceSource } from "@aros/db";
+import type { Severity, FindingStatus, EvidenceSource } from "@aros/db";
 import { getRoutePlatformTruth } from "@/lib/platform-truth-cache";
 import {
   resolveDashboardOrgMembership,
@@ -22,13 +22,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { FindingMetaDisclosure } from "./finding-meta-disclosure";
 import { pageTitle } from "@/lib/product-brand";
 
-type FindingListRow = Prisma.CanonicalFindingGetPayload<{
-  include: {
-    _count: { select: { occurrences: true } };
-    cluster: { select: { id: true; name: true } };
-    site: { select: { id: true; name: true; domain: true } };
-  };
-}>;
+type FindingListRow = Awaited<ReturnType<typeof prisma.canonicalFinding.findMany>>[number];
 
 export const metadata = { title: pageTitle("Findings") };
 
@@ -68,10 +62,21 @@ export default async function FindingsPage({
   const user = await requireSession();
   const params = await searchParams;
   const platformTruth = await getRoutePlatformTruth();
-  const canViewSystem = await prisma.membership
-    .findMany({ where: { userId: user.id }, select: { role: true } })
-    .then((rows) => rows.some((m) => hasPermission(m.role, "org:system:view")))
-    .catch(() => false);
+  let canViewSystem = false;
+  try {
+    const memberships = await prisma.membership.findMany({
+      where: { userId: user.id },
+      select: { role: true },
+    });
+    for (const membership of memberships) {
+      if (hasPermission(membership.role, "org:system:view")) {
+        canViewSystem = true;
+        break;
+      }
+    }
+  } catch {
+    canViewSystem = false;
+  }
 
   const orgRes = await resolveDashboardOrgMembership(user.id, platformTruth);
 
@@ -128,8 +133,8 @@ export default async function FindingsPage({
 
   const buildFindingsWhere = (
     organizationId: string,
-  ): Prisma.CanonicalFindingWhereInput => {
-    const where: Prisma.CanonicalFindingWhereInput = {
+  ): any => {
+    const where: any = {
       site: {
         workspace: { organizationId },
         ...(params.siteId ? { id: params.siteId } : {}),
