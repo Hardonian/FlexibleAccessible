@@ -92,7 +92,24 @@
   .badge-moderate {
     @apply badge bg-amber-100 text-amber-800;
   }
+  /* Minor severity: neutral chip so “low” does not read as “good / passing”. */
   .badge-minor {
-    @apply badge bg-green-100 text-green-800;
+    @apply badge bg-slate-100 text-slate-800 ring-1 ring-inset ring-slate-200;
+  }
+
+  .page-header {
+    @apply space-y-1;
+  }
+
+  .page-title {
+    @apply text-2xl font-semibold tracking-tight text-slate-900;
+  }
+
+  .page-description {
+    @apply text-sm text-slate-600 max-w-3xl;
+  }
+
+  .section-heading {
+    @apply text-base font-semibold text-slate-900;
   }
 }

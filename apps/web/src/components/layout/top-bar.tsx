@@ -27,7 +27,11 @@ export function TopBar({ user, platformTruth, canViewSystem = false }: TopBarPro
       <div className="flex min-w-0 flex-1 items-center gap-2">
         <MobileNavMenuButton />
         {degraded && (
-          <p className="min-w-0 truncate text-xs text-amber-800 md:max-w-none" role="status">
+          <p
+            className="min-w-0 truncate text-xs text-amber-800 md:max-w-none"
+            role="status"
+            aria-live="polite"
+          >
             Platform degraded
             {!platformTruth.flags.workerRunning && ' · Background jobs may not run'}
             {platformTruth.optionalSubsystemIssues.length > 0 && ' · Some integrations unavailable'}

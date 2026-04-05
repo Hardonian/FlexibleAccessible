@@ -9,10 +9,11 @@ import {
 } from "@/lib/route-data-boundary";
 import { RouteReliabilityNotice } from "@/components/reliability/route-reliability-notice";
 import { hasPermission } from "@aros/config";
-import { EmptyState } from "@aros/ui";
+import { EmptyState, ProcessBadge } from "@aros/ui";
 import { buildOnboardingStatus } from "@/lib/onboarding-status";
 import { getEntitlementState } from "@/lib/auth-guard";
 import { pageTitle } from "@/lib/product-brand";
+import { PageHeader } from "@/components/layout/page-header";
 
 export const metadata = { title: pageTitle("Dashboard") };
 
@@ -228,10 +229,10 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-8">
       {workerNote}
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
-        <p className="text-slate-500 mt-1">Overview for {orgName}</p>
-      </div>
+      <PageHeader
+        title="Dashboard"
+        description={`Operational overview for ${orgName}.`}
+      />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Sites" value={sitesCount} href="/sites" />
@@ -249,11 +250,11 @@ export default async function DashboardPage() {
       </div>
 
       <section className="card space-y-4" aria-labelledby="onboarding-status-heading">
-        <div className="flex items-center justify-between gap-2">
-          <h2 id="onboarding-status-heading" className="text-lg font-semibold text-slate-900">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <h2 id="onboarding-status-heading" className="section-heading">
             Workspace readiness
           </h2>
-          <span className="badge bg-slate-100 text-slate-700 border border-slate-200">
+          <span className="badge w-fit bg-slate-50 text-slate-800 ring-1 ring-inset ring-slate-200">
             {onboarding.stage.replaceAll("_", " ")}
           </span>
         </div>
@@ -292,26 +293,22 @@ export default async function DashboardPage() {
       </section>
 
       <div className="card">
-        <h2 className="text-lg font-semibold text-slate-900 mb-4">
-          Quick Actions
-        </h2>
+        <h2 className="section-heading mb-4">Next steps</h2>
         <div className="flex flex-wrap gap-3">
           <Link href="/sites/new" className="btn-primary">
-            Add Site
+            Add site
           </Link>
           <Link href="/findings" className="btn-secondary">
-            View Findings
+            Review findings
           </Link>
           <Link href="/reports" className="btn-secondary">
-            Generate Report
+            Export evidence report
           </Link>
         </div>
       </div>
 
       <div className="card">
-        <h2 className="text-lg font-semibold text-slate-900 mb-4">
-          Recent Crawls
-        </h2>
+        <h2 className="section-heading mb-4">Recent crawls</h2>
         {recentCrawls.length === 0 ? (
           <EmptyState
             icon={Globe}
@@ -365,7 +362,7 @@ export default async function DashboardPage() {
                       {crawl.site.name}
                     </td>
                     <td className="py-3">
-                      <CrawlStatusBadge status={crawl.status} />
+                      <ProcessBadge status={crawl.status} />
                     </td>
                     <td className="py-3 text-right text-slate-600">
                       {crawl.pagesCrawled}/{crawl.pagesFound}
@@ -398,32 +395,17 @@ function StatCard({
   return (
     <Link
       href={href as any}
-      className="card hover:shadow-md transition-shadow group block focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 rounded-xl"
+      className="card group block rounded-xl transition-shadow hover:shadow-[var(--shadow-card-hover)] motion-reduce:transition-none focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
+      aria-label={`${label}: ${value.toLocaleString()}. Open ${label}.`}
     >
       <p className="text-sm text-slate-500">{label}</p>
-      <p className="mt-1 text-3xl font-bold text-slate-900 group-hover:text-brand-600 transition-colors">
+      <p className="mt-1 text-3xl font-semibold tabular-nums tracking-tight text-slate-900 group-hover:text-brand-700 motion-reduce:transition-none">
         {value.toLocaleString()}
       </p>
-      <p className="mt-2 text-xs text-brand-600 opacity-0 group-hover:opacity-100 transition-opacity">
-        View details
+      <p className="mt-2 text-xs font-medium text-brand-700 underline-offset-2 group-hover:underline">
+        Open
       </p>
     </Link>
   );
 }
 
-function CrawlStatusBadge({ status }: { status: string }) {
-  const styles: Record<string, string> = {
-    COMPLETED: "bg-green-100 text-green-800",
-    RUNNING: "bg-blue-100 text-blue-800",
-    PENDING: "bg-slate-100 text-slate-800",
-    FAILED: "bg-red-100 text-red-800",
-    CANCELLED: "bg-slate-100 text-slate-500",
-  };
-  return (
-    <span
-      className={`badge ${styles[status] ?? "bg-slate-100 text-slate-800"}`}
-    >
-      {status.toLowerCase()}
-    </span>
-  );
-}
