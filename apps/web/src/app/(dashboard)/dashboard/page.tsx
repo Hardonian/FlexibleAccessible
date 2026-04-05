@@ -9,7 +9,7 @@ import {
 } from "@/lib/route-data-boundary";
 import { RouteReliabilityNotice } from "@/components/reliability/route-reliability-notice";
 import { hasPermission } from "@aros/config";
-import { EmptyState } from "@aros/ui";
+import { EmptyState, StatusBadge } from "@aros/ui";
 import { buildOnboardingStatus } from "@/lib/onboarding-status";
 import { getEntitlementState } from "@/lib/auth-guard";
 import { pageTitle } from "@/lib/product-brand";
@@ -233,21 +233,6 @@ export default async function DashboardPage() {
         <p className="text-slate-500 mt-1">Overview for {orgName}</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Sites" value={sitesCount} href="/sites" />
-        <StatCard label="Open Findings" value={openFindings} href="/findings" />
-        <StatCard
-          label="Issue Clusters"
-          value={clustersCount}
-          href="/clusters"
-        />
-        <StatCard
-          label="Pending Reviews"
-          value={pendingReviews}
-          href="/reviews"
-        />
-      </div>
-
       <section className="card space-y-4" aria-labelledby="onboarding-status-heading">
         <div className="flex items-center justify-between gap-2">
           <h2 id="onboarding-status-heading" className="text-lg font-semibold text-slate-900">
@@ -290,6 +275,21 @@ export default async function DashboardPage() {
           ))}
         </ol>
       </section>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Sites" value={sitesCount} href="/sites" />
+        <StatCard label="Open Findings" value={openFindings} href="/findings" />
+        <StatCard
+          label="Issue Clusters"
+          value={clustersCount}
+          href="/clusters"
+        />
+        <StatCard
+          label="Pending Reviews"
+          value={pendingReviews}
+          href="/reviews"
+        />
+      </div>
 
       <div className="card">
         <h2 className="text-lg font-semibold text-slate-900 mb-4">
@@ -365,7 +365,7 @@ export default async function DashboardPage() {
                       {crawl.site.name}
                     </td>
                     <td className="py-3">
-                      <CrawlStatusBadge status={crawl.status} />
+                      <StatusBadge status={crawl.status} />
                     </td>
                     <td className="py-3 text-right text-slate-600">
                       {crawl.pagesCrawled}/{crawl.pagesFound}
@@ -395,35 +395,17 @@ function StatCard({
   value: number;
   href: string;
 }) {
+  const destinationLabel = `${label}: ${value.toLocaleString()}. Open ${label} details.`;
   return (
     <Link
       href={href as any}
-      className="card hover:shadow-md transition-shadow group block focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 rounded-xl"
+      aria-label={destinationLabel}
+      className="card hover:shadow-md transition-shadow block focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 rounded-xl"
     >
       <p className="text-sm text-slate-500">{label}</p>
-      <p className="mt-1 text-3xl font-bold text-slate-900 group-hover:text-brand-600 transition-colors">
-        {value.toLocaleString()}
-      </p>
-      <p className="mt-2 text-xs text-brand-600 opacity-0 group-hover:opacity-100 transition-opacity">
-        View details
-      </p>
+      <p className="mt-1 text-3xl font-bold text-slate-900">{value.toLocaleString()}</p>
+      <p className="mt-2 text-xs font-medium text-brand-700">Open</p>
     </Link>
   );
 }
 
-function CrawlStatusBadge({ status }: { status: string }) {
-  const styles: Record<string, string> = {
-    COMPLETED: "bg-green-100 text-green-800",
-    RUNNING: "bg-blue-100 text-blue-800",
-    PENDING: "bg-slate-100 text-slate-800",
-    FAILED: "bg-red-100 text-red-800",
-    CANCELLED: "bg-slate-100 text-slate-500",
-  };
-  return (
-    <span
-      className={`badge ${styles[status] ?? "bg-slate-100 text-slate-800"}`}
-    >
-      {status.toLowerCase()}
-    </span>
-  );
-}

@@ -9,7 +9,7 @@ import {
   runOrgScopedQuery,
 } from "@/lib/route-data-boundary";
 import { RouteReliabilityNotice } from "@/components/reliability/route-reliability-notice";
-import { StatusBadge, EmptyState } from "@aros/ui";
+import { StatusBadge, EmptyState, SeverityChip, type SeverityLevel } from "@aros/ui";
 import { ScanNowButton } from "./scan-now-button";
 import { ScanSiteActionState, scanSiteInitialState } from "./scan-action-state";
 import { getAutomationEvidenceFreshnessDescriptor } from "@/lib/findings/evidence-freshness";
@@ -427,26 +427,26 @@ export default async function SiteDetailPage({
         <h2 className="text-lg font-semibold text-slate-900 mb-4">
           Findings by Severity
         </h2>
-        <div className="flex gap-6">
+        <div className="flex flex-wrap gap-6">
           <SeverityBlock
             label="Critical"
             count={findingsBySeverity.critical}
-            color="red"
+            severity="CRITICAL"
           />
           <SeverityBlock
             label="Serious"
             count={findingsBySeverity.serious}
-            color="orange"
+            severity="SERIOUS"
           />
           <SeverityBlock
             label="Moderate"
             count={findingsBySeverity.moderate}
-            color="amber"
+            severity="MODERATE"
           />
           <SeverityBlock
             label="Minor"
             count={findingsBySeverity.minor}
-            color="green"
+            severity="MINOR"
           />
         </div>
       </div>
@@ -690,18 +690,8 @@ export default async function SiteDetailPage({
                 className="flex items-center justify-between py-2 border-b border-slate-100"
               >
                 <div>
-                  <span
-                    className={`badge mr-2 ${
-                      finding.impact === "CRITICAL"
-                        ? "badge-critical"
-                        : finding.impact === "SERIOUS"
-                          ? "badge-serious"
-                          : finding.impact === "MODERATE"
-                            ? "badge-moderate"
-                            : "badge-minor"
-                    }`}
-                  >
-                    {finding.impact.toLowerCase()}
+                  <span className="mr-2 inline-block align-middle">
+                    <SeverityChip severity={finding.impact} size="sm" />
                   </span>
                   <span className="text-sm text-slate-900">
                     {finding.description}
@@ -722,22 +712,22 @@ export default async function SiteDetailPage({
 function SeverityBlock({
   label,
   count,
-  color,
+  severity,
 }: {
   label: string;
   count: number;
-  color: string;
+  severity: SeverityLevel;
 }) {
-  const colorMap: Record<string, string> = {
-    red: "text-red-600",
-    orange: "text-orange-600",
-    amber: "text-amber-600",
-    green: "text-green-600",
-  };
   return (
-    <div>
-      <p className={`text-2xl font-bold ${colorMap[color]}`}>{count}</p>
-      <p className="text-sm text-slate-500">{label}</p>
+    <div className="min-w-[5.5rem]">
+      <SeverityChip severity={severity} size="sm" />
+      <p
+        className="mt-2 text-2xl font-bold tabular-nums text-slate-900"
+        aria-label={`${label}: ${count} open`}
+      >
+        {count}
+      </p>
+      <p className="text-sm text-slate-500">{label} open</p>
     </div>
   );
 }

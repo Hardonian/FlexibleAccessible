@@ -149,6 +149,7 @@ export default async function DashboardLayout({
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <TopBar
             user={user}
+            organizationName={activeOrg?.name}
             platformTruth={platformTruth}
             canViewSystem={canViewSystem}
           />
