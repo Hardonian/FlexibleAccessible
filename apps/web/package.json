@@ -21,6 +21,7 @@
     "@aros/config": "*",
     "@aros/core-services": "*",
     "@aros/db": "*",
+    "@aros/ui": "*",
     "@aros/shared": "*",
     "@aros/stakeholders": "*",
     "@aros/ui": "*",

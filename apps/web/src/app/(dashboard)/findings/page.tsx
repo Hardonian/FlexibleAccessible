@@ -18,6 +18,9 @@ import {
 import { getAutomationEvidenceFreshnessDescriptor } from "@/lib/findings/evidence-freshness";
 import { buildFindingProofSummary } from "@/lib/findings/proof-summary";
 import { summarizeFindingFamilies } from "@/lib/findings/family-summary";
+import { PageHeader } from "@/components/layout/page-header";
+import { FindingMetaDisclosure } from "./finding-meta-disclosure";
+import { pageTitle } from "@/lib/product-brand";
 
 type FindingListRow = Prisma.CanonicalFindingGetPayload<{
   include: {
@@ -27,7 +30,7 @@ type FindingListRow = Prisma.CanonicalFindingGetPayload<{
   };
 }>;
 
-export const metadata = { title: "Findings" };
+export const metadata = { title: pageTitle("Findings") };
 
 interface SearchParams {
   page?: string;
@@ -36,6 +39,25 @@ interface SearchParams {
   siteId?: string;
   ruleId?: string;
   evidenceSource?: string;
+}
+
+function buildFindingsQueryString(p: {
+  page?: number;
+  severity?: string;
+  status?: string;
+  siteId?: string;
+  ruleId?: string;
+  evidenceSource?: string;
+}) {
+  const sp = new URLSearchParams();
+  if (p.page != null && p.page > 1) sp.set("page", String(p.page));
+  if (p.severity) sp.set("severity", p.severity);
+  if (p.status) sp.set("status", p.status);
+  if (p.siteId) sp.set("siteId", p.siteId);
+  if (p.ruleId) sp.set("ruleId", p.ruleId);
+  if (p.evidenceSource) sp.set("evidenceSource", p.evidenceSource);
+  const q = sp.toString();
+  return q ? `?${q}` : "";
 }
 
 export default async function FindingsPage({
@@ -312,7 +334,17 @@ export default async function FindingsPage({
           }
           action={
             total > 0 ? (
-              <Link href="/findings" className="btn-secondary text-sm">
+              <Link
+                href={
+                  (params.siteId || params.ruleId
+                    ? `/findings${buildFindingsQueryString({
+                        siteId: params.siteId,
+                        ruleId: params.ruleId,
+                      })}`
+                    : "/findings") as any
+                }
+                className="btn-secondary text-sm"
+              >
                 Clear filters
               </Link>
             ) : (
@@ -407,6 +439,8 @@ function FindingRow({
   });
   const proofCompletenessScore =
     Object.values(proofSummary.completeness).filter(Boolean).length;
+  const truthLabel = finding.truthStatus.toLowerCase().replaceAll("_", " ");
+  const changeLabel = proofSummary.changedSinceLastRun.replaceAll("_", " ");
 
   const evidenceLabel =
     finding.evidenceSource === "AUTOMATED_AXE"
@@ -454,7 +488,7 @@ function FindingRow({
   const metaId = `finding-${finding.id}-extended`;
 
   return (
-    <article className="card hover:shadow-md transition-shadow">
+    <article className="card p-0 overflow-hidden transition-shadow hover:shadow-[var(--shadow-card-hover)] motion-reduce:transition-none">
       <Link
         href={`/findings/${finding.id}`}
         className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 rounded-lg"
@@ -486,12 +520,90 @@ function FindingRow({
           </div>
           <div className="shrink-0 pt-0.5">
             <StatusBadge status={finding.status} />
+            <span
+              className={`badge ${
+                proofCompletenessScore >= 4
+                  ? "bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-200"
+                  : "bg-amber-50 text-amber-900 ring-1 ring-inset ring-amber-200"
+              }`}
+              title="Summary of whether key proof fields are present for this finding."
+            >
+              Proof {proofCompletenessScore}/5
+            </span>
+            <span className="badge bg-slate-50 text-slate-700 ring-1 ring-inset ring-slate-200">
+              {changeLabel}
+            </span>
           </div>
         </div>
         <p id={metaId} className="sr-only">
           {extendedDescriptionParts.join(" ")}
         </p>
       </Link>
+      <FindingMetaDisclosure>
+        <dl className="grid gap-2 sm:grid-cols-2">
+          <div>
+            <dt className="text-xs font-medium text-slate-500">First seen</dt>
+            <dd>{finding.firstSeenAt.toLocaleDateString()}</dd>
+          </div>
+          {finding.lastVerifiedAt ? (
+            <div>
+              <dt className="text-xs font-medium text-slate-500">
+                Last verified
+              </dt>
+              <dd>{finding.lastVerifiedAt.toLocaleDateString()}</dd>
+            </div>
+          ) : null}
+          {familySummary ? (
+            <>
+              <div>
+                <dt className="text-xs font-medium text-slate-500">Rule family</dt>
+                <dd>
+                  {familySummary.totalFindings} total ·{" "}
+                  {familySummary.activeFindings} active
+                  {familySummary.regressedFindings > 0
+                    ? ` · ${familySummary.regressedFindings} regressed`
+                    : ""}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs font-medium text-slate-500">Family trend</dt>
+                <dd>
+                  {familySummary.newlyDetectedFindings} new ·{" "}
+                  {familySummary.persistentFindings} persistent
+                </dd>
+              </div>
+              {familySummary.firstSeenAt ? (
+                <div>
+                  <dt className="text-xs font-medium text-slate-500">
+                    Family first seen
+                  </dt>
+                  <dd>{familySummary.firstSeenAt.toLocaleDateString()}</dd>
+                </div>
+              ) : null}
+              {familySummary.lastSeenAt ? (
+                <div>
+                  <dt className="text-xs font-medium text-slate-500">
+                    Family last seen
+                  </dt>
+                  <dd>{familySummary.lastSeenAt.toLocaleDateString()}</dd>
+                </div>
+              ) : null}
+            </>
+          ) : null}
+          {proofSummary.lineage.scanRunId ? (
+            <div className="sm:col-span-2">
+              <dt className="text-xs font-medium text-slate-500">Lineage scan</dt>
+              <dd className="font-mono text-xs">{proofSummary.lineage.scanRunId}</dd>
+            </div>
+          ) : null}
+          {finding.wcagTags.length > 0 ? (
+            <div className="sm:col-span-2">
+              <dt className="text-xs font-medium text-slate-500">WCAG tags</dt>
+              <dd>{finding.wcagTags.join(", ")}</dd>
+            </div>
+          ) : null}
+        </dl>
+      </FindingMetaDisclosure>
     </article>
   );
 }

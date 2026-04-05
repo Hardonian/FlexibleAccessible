@@ -9,8 +9,10 @@ import {
 import { RouteReliabilityNotice } from "@/components/reliability/route-reliability-notice";
 import { hasPermission } from "@aros/config";
 import { buildFindingsOperationalSummary } from "@/lib/findings/reporting-summary";
+import { PageHeader } from "@/components/layout/page-header";
+import { pageTitle } from "@/lib/product-brand";
 
-export const metadata = { title: "Reports" };
+export const metadata = { title: pageTitle("Reports") };
 
 export default async function ReportsPage({
   searchParams,
@@ -114,12 +116,10 @@ export default async function ReportsPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Evidence Reports</h1>
-        <p className="text-slate-500 mt-1">
-          Generate conformance evidence and status reports.
-        </p>
-      </div>
+      <PageHeader
+        title="Evidence reports"
+        description="Export structured findings data for audits, tickets, and stakeholder updates. This is evidence of testing activity—not a legal conformance certificate."
+      />
 
       {reportError && (
         <RouteReliabilityNotice

@@ -13,6 +13,7 @@ import { EmptyState, StatusBadge } from "@aros/ui";
 import { buildOnboardingStatus } from "@/lib/onboarding-status";
 import { getEntitlementState } from "@/lib/auth-guard";
 import { pageTitle } from "@/lib/product-brand";
+import { PageHeader } from "@/components/layout/page-header";
 
 export const metadata = { title: pageTitle("Dashboard") };
 
@@ -228,17 +229,17 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-8">
       {workerNote}
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
-        <p className="text-slate-500 mt-1">Overview for {orgName}</p>
-      </div>
+      <PageHeader
+        title="Dashboard"
+        description={`Operational overview for ${orgName}.`}
+      />
 
       <section className="card space-y-4" aria-labelledby="onboarding-status-heading">
-        <div className="flex items-center justify-between gap-2">
-          <h2 id="onboarding-status-heading" className="text-lg font-semibold text-slate-900">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <h2 id="onboarding-status-heading" className="section-heading">
             Workspace readiness
           </h2>
-          <span className="badge bg-slate-100 text-slate-700 border border-slate-200">
+          <span className="badge w-fit bg-slate-50 text-slate-800 ring-1 ring-inset ring-slate-200">
             {onboarding.stage.replaceAll("_", " ")}
           </span>
         </div>
@@ -292,26 +293,22 @@ export default async function DashboardPage() {
       </div>
 
       <div className="card">
-        <h2 className="text-lg font-semibold text-slate-900 mb-4">
-          Quick Actions
-        </h2>
+        <h2 className="section-heading mb-4">Next steps</h2>
         <div className="flex flex-wrap gap-3">
           <Link href="/sites/new" className="btn-primary">
-            Add Site
+            Add site
           </Link>
           <Link href="/findings" className="btn-secondary">
-            View Findings
+            Review findings
           </Link>
           <Link href="/reports" className="btn-secondary">
-            Generate Report
+            Export evidence report
           </Link>
         </div>
       </div>
 
       <div className="card">
-        <h2 className="text-lg font-semibold text-slate-900 mb-4">
-          Recent Crawls
-        </h2>
+        <h2 className="section-heading mb-4">Recent crawls</h2>
         {recentCrawls.length === 0 ? (
           <EmptyState
             icon={Globe}
