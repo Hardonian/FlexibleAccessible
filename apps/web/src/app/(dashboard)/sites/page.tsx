@@ -10,8 +10,10 @@ import {
 import { RouteReliabilityNotice } from "@/components/reliability/route-reliability-notice";
 import { hasPermission } from "@aros/config";
 import { EmptyState } from "@aros/ui";
+import { PageHeader } from "@/components/layout/page-header";
+import { pageTitle } from "@/lib/product-brand";
 
-export const metadata = { title: "Sites" };
+export const metadata = { title: pageTitle("Sites") };
 
 export default async function SitesPage() {
   const user = await requireSession();
@@ -104,15 +106,14 @@ export default async function SitesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Sites</h1>
-          <p className="text-slate-500 mt-1">Manage your monitored websites</p>
-        </div>
-        <Link href="/sites/new" className="btn-primary">
-          Add Site
+      <PageHeader
+        title="Sites"
+        description="Targets you crawl and verify. Add production and staging separately when they differ."
+      >
+        <Link href="/sites/new" className="btn-primary w-full sm:w-auto">
+          Add site
         </Link>
-      </div>
+      </PageHeader>
 
       {sites.length === 0 ? (
         <EmptyState
@@ -159,12 +160,15 @@ function EnvironmentBadge({ environment }: { environment: string }) {
   const config: Record<string, { label: string; className: string }> = {
     PRODUCTION: {
       label: "Production",
-      className: "bg-green-100 text-green-800",
+      className: "bg-emerald-50 text-emerald-900 ring-1 ring-inset ring-emerald-200",
     },
-    STAGING: { label: "Staging", className: "bg-amber-100 text-amber-800" },
+    STAGING: {
+      label: "Staging",
+      className: "bg-amber-50 text-amber-900 ring-1 ring-inset ring-amber-200",
+    },
     DEVELOPMENT: {
       label: "Development",
-      className: "bg-blue-100 text-blue-800",
+      className: "bg-sky-50 text-sky-900 ring-1 ring-inset ring-sky-200",
     },
   };
   const { label, className } = config[environment] ?? {

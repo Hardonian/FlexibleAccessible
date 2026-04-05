@@ -9,7 +9,7 @@ import {
   runOrgScopedQuery,
 } from "@/lib/route-data-boundary";
 import { RouteReliabilityNotice } from "@/components/reliability/route-reliability-notice";
-import { StatusBadge, EmptyState } from "@aros/ui";
+import { StatusBadge, ProcessBadge } from "@aros/ui";
 import { ScanNowButton } from "./scan-now-button";
 import { ScanSiteActionState, scanSiteInitialState } from "./scan-action-state";
 import { getAutomationEvidenceFreshnessDescriptor } from "@/lib/findings/evidence-freshness";
@@ -25,6 +25,7 @@ import {
   startSiteScanAction,
   retryPostCrawlScanKickoffAction,
 } from "./scan-actions";
+import { pageTitle } from "@/lib/product-brand";
 
 export async function generateMetadata({
   params,
@@ -36,7 +37,7 @@ export async function generateMetadata({
     where: { id: siteId },
     select: { name: true },
   });
-  return { title: site ? site.name : "Site" };
+  return { title: site ? pageTitle(site.name) : pageTitle("Site") };
 }
 
 export default async function SiteDetailPage({
@@ -356,41 +357,56 @@ export default async function SiteDetailPage({
           ) : null}
         </div>
       ) : null}
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-2 text-sm text-slate-500 mb-1">
-            <Link href="/sites" className="hover:text-brand-600">
-              Sites
-            </Link>
-            <span>/</span>
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900">{site.name}</h1>
-          <p className="text-slate-500 mt-0.5">{site.domain}</p>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <nav
+            className="mb-1 text-sm text-slate-500"
+            aria-label="Breadcrumb"
+          >
+            <ol className="flex flex-wrap items-center gap-1">
+              <li>
+                <Link href="/sites" className="hover:text-brand-700">
+                  Sites
+                </Link>
+              </li>
+              <li aria-hidden="true" className="text-slate-300">
+                /
+              </li>
+              <li className="truncate font-medium text-slate-700">{site.name}</li>
+            </ol>
+          </nav>
+          <h1 className="page-title">{site.name}</h1>
+          <p className="page-description mt-0.5">{site.domain}</p>
         </div>
-        <div className="flex flex-wrap items-start gap-3">
-          <form action={startCrawlAction}>
+        <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap lg:w-auto lg:justify-end">
+          <form action={startCrawlAction} className="w-full sm:w-auto">
             <input type="hidden" name="siteId" value={siteId} />
-            <button type="submit" className="btn-primary">
-              Start Crawl
+            <button type="submit" className="btn-primary w-full sm:w-auto">
+              Start crawl
             </button>
           </form>
           {canStartScan ? (
-            <ScanNowButton
-              action={startSiteScanAction}
-              initialState={scanSiteInitialState}
-              siteId={siteId}
-              disabled={pageCountForScan === 0 || Boolean(scanBlocked)}
-              blockedHint={
-                scanBlockedHint ??
-                (pageCountForScan === 0
-                  ? "Run a crawl first so there are pages to verify."
-                  : null)
-              }
-            />
+            <div className="w-full sm:w-auto [&_button]:w-full [&_button]:sm:w-auto">
+              <ScanNowButton
+                action={startSiteScanAction}
+                initialState={scanSiteInitialState}
+                siteId={siteId}
+                disabled={pageCountForScan === 0 || Boolean(scanBlocked)}
+                blockedHint={
+                  scanBlockedHint ??
+                  (pageCountForScan === 0
+                    ? "Run a crawl first so there are pages to verify."
+                    : null)
+                }
+              />
+            </div>
           ) : null}
           {canManageSite ? (
-            <Link href={`/sites/${siteId}/settings`} className="btn-secondary">
-              Settings
+            <Link
+              href={`/sites/${siteId}/settings`}
+              className="btn-secondary w-full text-center sm:w-auto"
+            >
+              Site settings
             </Link>
           ) : null}
         </div>
@@ -424,10 +440,8 @@ export default async function SiteDetailPage({
 
       {/* Severity Breakdown */}
       <div className="card">
-        <h2 className="text-lg font-semibold text-slate-900 mb-4">
-          Findings by Severity
-        </h2>
-        <div className="flex gap-6">
+        <h2 className="section-heading mb-4">Open findings by impact</h2>
+        <div className="flex flex-wrap gap-6">
           <SeverityBlock
             label="Critical"
             count={findingsBySeverity.critical}
@@ -453,9 +467,7 @@ export default async function SiteDetailPage({
 
       {/* Recent Crawls */}
       <div className="card">
-        <h2 className="text-lg font-semibold text-slate-900 mb-4">
-          Recent Crawls
-        </h2>
+        <h2 className="section-heading mb-4">Recent crawls</h2>
         {recentCrawls.length === 0 ? (
           <p className="text-sm text-slate-500" role="status">
             No crawls yet.
@@ -511,19 +523,7 @@ export default async function SiteDetailPage({
                   return (
                     <tr key={crawl.id} className="border-b border-slate-100">
                       <td className="py-2">
-                        <span
-                          className={`badge ${
-                            crawl.status === "COMPLETED"
-                              ? "bg-green-100 text-green-800"
-                              : crawl.status === "RUNNING"
-                                ? "bg-blue-100 text-blue-800"
-                                : crawl.status === "FAILED"
-                                  ? "bg-red-100 text-red-800"
-                                  : "bg-slate-100 text-slate-800"
-                          }`}
-                        >
-                          {crawl.status.toLowerCase()}
-                        </span>
+                        <ProcessBadge status={crawl.status} />
                       </td>
                       <td className="py-2 text-right text-slate-600">
                         {crawl.pagesCrawled}
@@ -550,9 +550,7 @@ export default async function SiteDetailPage({
 
       {/* Recent Scans */}
       <div className="card">
-        <h2 className="text-lg font-semibold text-slate-900 mb-4">
-          Recent Scans
-        </h2>
+        <h2 className="section-heading mb-4">Recent verification scans</h2>
         {recentScans.length === 0 ? (
           <p className="text-sm text-slate-500" role="status">
             No scans yet.
@@ -611,19 +609,7 @@ export default async function SiteDetailPage({
                   return (
                   <tr key={scan.id} className="border-b border-slate-100">
                     <td className="py-2">
-                      <span
-                        className={`badge ${
-                          scan.status === "COMPLETED"
-                            ? "bg-green-100 text-green-800"
-                            : scan.status === "RUNNING"
-                              ? "bg-blue-100 text-blue-800"
-                              : scan.status === "FAILED"
-                                ? "bg-red-100 text-red-800"
-                                : "bg-slate-100 text-slate-800"
-                        }`}
-                      >
-                        {scan.status.toLowerCase()}
-                      </span>
+                      <ProcessBadge status={scan.status} />
                     </td>
                     <td className="py-2 text-right text-slate-600">
                       {scan.pagesScanned}
@@ -668,15 +654,15 @@ export default async function SiteDetailPage({
 
       {/* Open Findings */}
       <div className="card">
-        <h2 className="text-lg font-semibold text-slate-900 mb-4">
-          Open Findings
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between">
+          <h2 className="section-heading">Open findings</h2>
           <Link
             href={`/findings?siteId=${siteId}`}
-            className="text-sm font-normal text-brand-600 ml-3"
+            className="text-sm font-medium text-brand-700 underline-offset-2 hover:underline"
           >
-            View all
+            View all for this site
           </Link>
-        </h2>
+        </div>
         {findings.length === 0 ? (
           <p className="text-sm text-slate-500">
             No open findings. Queue a verification scan (or wait for one after
