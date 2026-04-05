@@ -63,29 +63,6 @@ export const productFeatures = [
   },
 ] as const;
 
-export const beliefCards = [
-  {
-    title: "No magic compliance button",
-    description:
-      "Automation finds many failures; it cannot certify your product for every WCAG success criterion. We are explicit about scope.",
-  },
-  {
-    title: "Native HTML first",
-    description:
-      "Prefer semantic elements over ARIA sprawl. The best fix is often the smallest change that removes entire classes of bugs.",
-  },
-  {
-    title: "Human review is a feature",
-    description:
-      "AI-assisted drafts stay in review queues with rationale and confidence—exports and PRs reflect human decisions.",
-  },
-  {
-    title: "Evidence you can attach",
-    description:
-      "Reports and exports are designed for procurement and post-incident review—not vanity dashboards.",
-  },
-] as const;
-
 export const homeFaqs = [
   {
     question: "How is this different from another “AI accessibility” checker?",

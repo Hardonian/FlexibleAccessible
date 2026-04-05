@@ -16,6 +16,13 @@ export const PRODUCT_SHORT_NAME = "FlexAcc" as const;
 export const PRODUCT_LEGAL_LINE =
   "Ships on the AROS engine (@aros/* packages)—same scanning core the CLI and MCP use." as const;
 
+/**
+ * Procurement / managed-services contact. Set `NEXT_PUBLIC_PRODUCT_CONTACT_EMAIL`
+ * in production to your buyer-facing address (see `.env.example`).
+ */
+export const PRODUCT_CONTACT_EMAIL =
+  process.env.NEXT_PUBLIC_PRODUCT_CONTACT_EMAIL?.trim() || "sales@aros.dev";
+
 export function pageTitle(segment: string): string {
   return `${segment} · ${PRODUCT_DISPLAY_NAME}`;
 }

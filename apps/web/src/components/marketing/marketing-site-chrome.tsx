@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import {
+  PRODUCT_CONTACT_EMAIL,
   PRODUCT_DISPLAY_NAME,
   PRODUCT_LEGAL_LINE,
-  PRODUCT_TAGLINE,
 } from "@/lib/product-brand";
+import { MarketingSiteHeader } from "./marketing-site-header";
 
 export function MarketingSiteChrome({ children }: { children: ReactNode }) {
   return (
@@ -16,44 +17,7 @@ export function MarketingSiteChrome({ children }: { children: ReactNode }) {
         Skip to main content
       </a>
 
-      <header className="border-b border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface-elevated))]/90 backdrop-blur-sm supports-[backdrop-filter]:bg-[rgb(var(--color-surface-elevated))]/80">
-        <nav
-          className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 py-4"
-          aria-label="Main"
-        >
-          <Link
-            href="/"
-            className="group flex flex-col leading-tight focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 rounded-md"
-          >
-            <span className="text-lg font-semibold tracking-tight text-brand-800">
-              {PRODUCT_DISPLAY_NAME}
-            </span>
-            <span className="text-xs font-medium text-slate-500 group-hover:text-slate-700">
-              {PRODUCT_TAGLINE}
-            </span>
-          </Link>
-          <div className="flex flex-wrap items-center gap-6 text-sm font-medium text-slate-600">
-            <Link href="/#proof" className="hover:text-slate-900">
-              Proof &amp; workflow
-            </Link>
-            <Link href="/#pricing" className="hover:text-slate-900">
-              Plans
-            </Link>
-            <Link href="/trust" className="hover:text-slate-900">
-              Trust
-            </Link>
-            <Link href="/docs/api" className="hover:text-slate-900">
-              Integrations
-            </Link>
-            <Link href="/login" className="hover:text-slate-900">
-              Sign in
-            </Link>
-            <Link href="/signup" className="btn-primary text-sm">
-              Start workspace
-            </Link>
-          </div>
-        </nav>
-      </header>
+      <MarketingSiteHeader />
 
       <main id="main">{children}</main>
 
@@ -64,7 +28,14 @@ export function MarketingSiteChrome({ children }: { children: ReactNode }) {
               {PRODUCT_DISPLAY_NAME}
             </p>
             <p className="mt-1 max-w-md text-xs text-slate-500">
-              {PRODUCT_LEGAL_LINE}
+              {PRODUCT_LEGAL_LINE} Managed services and procurement:{" "}
+              <a
+                className="font-medium text-brand-800 hover:underline"
+                href={`mailto:${PRODUCT_CONTACT_EMAIL}`}
+              >
+                {PRODUCT_CONTACT_EMAIL}
+              </a>
+              .
             </p>
           </div>
           <div className="flex flex-wrap gap-6 text-sm text-slate-500">
