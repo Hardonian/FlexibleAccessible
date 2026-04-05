@@ -4,7 +4,8 @@ import {
   type PublicEvidenceState,
 } from "@/lib/public-scan/validity";
 import { Metadata } from "next";
-import { PublicScanResults } from "./public-scan-results";
+import { MarketingSiteChrome } from "@/components/marketing/marketing-site-chrome";
+import { PublicScanBody } from "./public-scan-body";
 import { getAppBaseUrl } from "@/lib/site-url";
 import { PRODUCT_DISPLAY_NAME } from "@/lib/product-brand";
 
@@ -71,29 +72,31 @@ export default async function PublicScanPage({ params }: PageProps) {
     : null;
 
   return (
-    <PublicScanResults
-      domain={decoded}
-      initialScan={
-        scan
-          ? {
-              id: scan.id,
-              domain: scan.domain,
-              status: scan.status,
-              evidenceState,
-              score: scan.score,
-              totalViolations: scan.totalViolations,
-              criticalCount: scan.criticalCount,
-              seriousCount: scan.seriousCount,
-              moderateCount: scan.moderateCount,
-              minorCount: scan.minorCount,
-              pagesScanned: scan.pagesScanned,
-              violations: scan.violations as Record<string, unknown>[] | null,
-              createdAt: scan.createdAt.toISOString(),
-              completedAt: scan.completedAt?.toISOString() ?? null,
-              expiresAt: scan.expiresAt?.toISOString() ?? null,
-            }
-          : null
-      }
-    />
+    <MarketingSiteChrome>
+      <PublicScanBody
+        domain={decoded}
+        initialScan={
+          scan
+            ? {
+                id: scan.id,
+                domain: scan.domain,
+                status: scan.status,
+                evidenceState,
+                score: scan.score,
+                totalViolations: scan.totalViolations,
+                criticalCount: scan.criticalCount,
+                seriousCount: scan.seriousCount,
+                moderateCount: scan.moderateCount,
+                minorCount: scan.minorCount,
+                pagesScanned: scan.pagesScanned,
+                violations: scan.violations as Record<string, unknown>[] | null,
+                createdAt: scan.createdAt.toISOString(),
+                completedAt: scan.completedAt?.toISOString() ?? null,
+                expiresAt: scan.expiresAt?.toISOString() ?? null,
+              }
+            : null
+        }
+      />
+    </MarketingSiteChrome>
   );
 }

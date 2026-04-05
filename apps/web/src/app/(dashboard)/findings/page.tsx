@@ -10,7 +10,11 @@ import {
 } from "@/lib/route-data-boundary";
 import { RouteReliabilityNotice } from "@/components/reliability/route-reliability-notice";
 import { hasPermission } from "@aros/config";
-import { StatusBadge, EmptyState, SeverityBadge } from "@aros/ui";
+import { StatusBadge, EmptyState, SeverityChip } from "@aros/ui";
+import {
+  findingsActiveFilterSummary,
+  findingsListQueryString,
+} from "@/lib/findings-list-query";
 import { getAutomationEvidenceFreshnessDescriptor } from "@/lib/findings/evidence-freshness";
 import { buildFindingProofSummary } from "@/lib/findings/proof-summary";
 import { summarizeFindingFamilies } from "@/lib/findings/family-summary";
@@ -214,21 +218,25 @@ export default async function FindingsPage({
   const { findings, total, latestCompletedScanCompletedAt, familySummaryByRuleId } =
     listResult.data;
   const totalPages = Math.ceil(total / limit);
+  const filterSummary = findingsActiveFilterSummary(params);
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Findings"
-        description={
-          <>
-            <span className="block">
-              {total.toLocaleString()} deduplicated issue
-              {total === 1 ? "" : "s"} in this workspace. Counts are operational
-              signals, not a legal WCAG verdict.
-            </span>
-          </>
-        }
-      />
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Findings</h1>
+          <p className="text-slate-500 mt-1">
+            {total} deduplicated finding{total === 1 ? "" : "s"} in your
+            organization (not a legal conformance score).
+          </p>
+          {filterSummary.hasFilters && (
+            <p className="text-sm text-slate-600 mt-2" aria-live="polite">
+              <span className="font-medium text-slate-700">Filtered by:</span>{" "}
+              {filterSummary.parts.join(" · ")}
+            </p>
+          )}
+        </div>
+      </div>
 
       {!platformTruth.flags.jobPipelinesHealthy && (
         <RouteReliabilityNotice
@@ -368,16 +376,7 @@ export default async function FindingsPage({
         >
           {page > 1 && (
             <Link
-              href={
-                `/findings${buildFindingsQueryString({
-                  page: page - 1,
-                  severity: params.severity,
-                  status: params.status,
-                  siteId: params.siteId,
-                  ruleId: params.ruleId,
-                  evidenceSource: params.evidenceSource,
-                })}` as any
-              }
+              href={`/findings${findingsListQueryString(params, page - 1)}` as any}
               className="btn-secondary text-sm min-h-[44px]"
               aria-label={`Go to previous page, currently on page ${page} of ${totalPages}`}
             >
@@ -392,16 +391,7 @@ export default async function FindingsPage({
           </span>
           {page < totalPages && (
             <Link
-              href={
-                `/findings${buildFindingsQueryString({
-                  page: page + 1,
-                  severity: params.severity,
-                  status: params.status,
-                  siteId: params.siteId,
-                  ruleId: params.ruleId,
-                  evidenceSource: params.evidenceSource,
-                })}` as any
-              }
+              href={`/findings${findingsListQueryString(params, page + 1)}` as any}
               className="btn-secondary text-sm min-h-[44px]"
               aria-label={`Go to next page, currently on page ${page} of ${totalPages}`}
             >
@@ -440,10 +430,6 @@ function FindingRow({
     jobPipelinesHealthy,
   });
 
-  const freshnessToneClass =
-    freshness?.tone === "warning"
-      ? "bg-amber-50 text-amber-700 border border-amber-200"
-      : "bg-slate-100 text-slate-700 border border-slate-200";
   const proofSummary = buildFindingProofSummary({
     evidenceSummary: finding.evidenceSummary,
     provenance: finding.provenance,
@@ -456,54 +442,83 @@ function FindingRow({
   const truthLabel = finding.truthStatus.toLowerCase().replaceAll("_", " ");
   const changeLabel = proofSummary.changedSinceLastRun.replaceAll("_", " ");
 
+  const evidenceLabel =
+    finding.evidenceSource === "AUTOMATED_AXE"
+      ? "Automated (axe)"
+      : finding.evidenceSource === "MANUAL_REVIEW"
+        ? "Manual review"
+        : finding.evidenceSource === "IMPORTED"
+          ? "Imported"
+          : finding.evidenceSource;
+
+  const extendedDescriptionParts = [
+    `Truth status: ${finding.truthStatus.toLowerCase().replaceAll("_", " ")}.`,
+    `Evidence source: ${evidenceLabel}.`,
+    freshness && freshness.freshness !== "current"
+      ? `Automation freshness: ${freshness.badgeLabel}. ${freshness.detail}`
+      : null,
+    finding.cluster ? `Cluster: ${finding.cluster.name}.` : null,
+    `Proof completeness score ${proofCompletenessScore} out of 5.`,
+    `Change vs last run: ${proofSummary.changedSinceLastRun.replaceAll("_", " ")}.`,
+    familySummary
+      ? `Rule family: ${familySummary.totalFindings} total findings, ${familySummary.activeFindings} active; ${familySummary.newlyDetectedFindings} newly detected, ${familySummary.persistentFindings} persistent${
+          familySummary.regressedFindings > 0
+            ? `; ${familySummary.regressedFindings} regressed`
+            : ""
+        }.`
+      : null,
+    `First seen ${finding.firstSeenAt.toLocaleDateString()}.`,
+    familySummary?.firstSeenAt
+      ? `Family first seen ${familySummary.firstSeenAt.toLocaleDateString()}.`
+      : null,
+    finding.lastVerifiedAt
+      ? `Last verified ${finding.lastVerifiedAt.toLocaleDateString()}.`
+      : null,
+    familySummary?.lastSeenAt
+      ? `Family last seen ${familySummary.lastSeenAt.toLocaleDateString()}.`
+      : null,
+    proofSummary.lineage.scanRunId
+      ? `Lineage scan run ${proofSummary.lineage.scanRunId}.`
+      : null,
+    finding.wcagTags.length > 0
+      ? `WCAG tags: ${finding.wcagTags.join(", ")}.`
+      : null,
+  ].filter(Boolean) as string[];
+
+  const metaId = `finding-${finding.id}-extended`;
+
   return (
     <article className="card p-0 overflow-hidden transition-shadow hover:shadow-[var(--shadow-card-hover)] motion-reduce:transition-none">
       <Link
         href={`/findings/${finding.id}`}
-        className="block px-6 pt-6 pb-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600"
+        className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 rounded-lg"
+        aria-describedby={metaId}
       >
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0 flex-1 space-y-2">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <SeverityBadge severity={finding.impact} />
-              <span className="badge bg-slate-50 text-slate-700 ring-1 ring-inset ring-slate-200">
-                {truthLabel}
+              <SeverityChip severity={finding.impact} size="sm" />
+              <span className="font-mono text-xs text-slate-500 truncate max-w-[min(100%,12rem)]">
+                {finding.ruleId}
               </span>
-              <EvidenceSourceBadge source={finding.evidenceSource} />
-              {freshness && freshness.freshness !== "current" && (
-                <span
-                  className={`badge ${freshnessToneClass}`}
-                  title={freshness.detail}
-                  aria-label={`Automation evidence freshness: ${freshness.badgeLabel}. ${freshness.detail}`}
-                >
-                  {freshness.badgeLabel}
-                </span>
-              )}
-              {finding.cluster && (
-                <span className="badge bg-violet-50 text-violet-900 ring-1 ring-inset ring-violet-200">
+              {finding.cluster ? (
+                <span className="text-xs font-medium text-violet-800 truncate max-w-[10rem]">
                   {finding.cluster.name}
                 </span>
-              )}
+              ) : null}
             </div>
-            <p className="text-sm font-medium leading-snug text-slate-900">
+            <p className="mt-2 text-sm font-medium text-slate-900">
               {finding.description}
             </p>
-            <p className="text-xs text-slate-500">
-              <span className="font-mono text-slate-600">{finding.ruleId}</span>
-              <span aria-hidden className="mx-2 text-slate-300">
-                ·
-              </span>
-              <span>{finding.site.name}</span>
-              <span aria-hidden className="mx-2 text-slate-300">
-                ·
-              </span>
-              <span>
-                {finding._count.occurrences} occurrence
-                {finding._count.occurrences === 1 ? "" : "s"}
-              </span>
+            <p className="mt-2 text-xs text-slate-500">
+              {finding.site.name} · {finding._count.occurrences} occurrence
+              {finding._count.occurrences === 1 ? "" : "s"}
+              {freshness && freshness.freshness !== "current"
+                ? ` · ${freshness.badgeLabel}`
+                : ""}
             </p>
           </div>
-          <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end sm:text-right">
+          <div className="shrink-0 pt-0.5">
             <StatusBadge status={finding.status} />
             <span
               className={`badge ${
@@ -520,6 +535,9 @@ function FindingRow({
             </span>
           </div>
         </div>
+        <p id={metaId} className="sr-only">
+          {extendedDescriptionParts.join(" ")}
+        </p>
       </Link>
       <FindingMetaDisclosure>
         <dl className="grid gap-2 sm:grid-cols-2">
@@ -587,25 +605,5 @@ function FindingRow({
         </dl>
       </FindingMetaDisclosure>
     </article>
-  );
-}
-
-function EvidenceSourceBadge({ source }: { source: string }) {
-  const label =
-    source === "AUTOMATED_AXE"
-      ? "Automated (axe)"
-      : source === "MANUAL_REVIEW"
-        ? "Manual review"
-        : source === "IMPORTED"
-          ? "Imported"
-          : source;
-  return (
-    <span
-      className="badge bg-slate-50 text-slate-700 ring-1 ring-inset ring-slate-200"
-      aria-label={`Evidence source: ${label}`}
-      title="How this finding entered the system"
-    >
-      {label}
-    </span>
   );
 }

@@ -130,15 +130,6 @@ export default async function ReportsPage({
         </RouteReliabilityNotice>
       )}
 
-      <div
-        className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950"
-        role="note"
-      >
-        Exports summarize what FlexibleAccessible recorded in your workspace.
-        They do not guarantee legal WCAG conformance. Criteria that require
-        human judgment still need expert review.
-      </div>
-
       {!platformTruth.flags.jobPipelinesHealthy && (
         <RouteReliabilityNotice
           variant="warning"
@@ -153,101 +144,127 @@ export default async function ReportsPage({
         </RouteReliabilityNotice>
       )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="card">
-          <p className="text-sm text-slate-500">Total findings (org)</p>
-          <p className="text-2xl font-bold text-slate-900">
-            {opSummary.totals.findings}
-          </p>
-        </div>
-        <div className="card">
-          <p className="text-sm text-slate-500">Open</p>
-          <p className="text-2xl font-bold text-red-600">
-            {opSummary.totals.open}
-          </p>
-        </div>
-        <div className="card">
-          <p className="text-sm text-slate-500">Resolved</p>
-          <p className="text-2xl font-bold text-green-600">
-            {opSummary.totals.resolved}
-          </p>
-        </div>
-        <div className="card">
-          <p className="text-sm text-slate-500">Critical open</p>
-          <p className="text-2xl font-bold text-red-700">
-            {opSummary.totals.criticalOpen}
-          </p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="card">
-          <p className="text-sm text-slate-500">Acknowledged</p>
-          <p className="text-2xl font-bold text-slate-900">
-            {opSummary.totals.acknowledged}
-          </p>
-        </div>
-        <div className="card">
-          <p className="text-sm text-slate-500">In progress</p>
-          <p className="text-2xl font-bold text-blue-600">
-            {opSummary.totals.inProgress}
-          </p>
-        </div>
-        <div className="card">
-          <p className="text-sm text-slate-500">Mitigated</p>
-          <p className="text-2xl font-bold text-emerald-700">
-            {opSummary.totals.mitigated}
-          </p>
-        </div>
-        <div className="card">
-          <p className="text-sm text-slate-500">Stale automated evidence</p>
-          <p className="text-2xl font-bold text-amber-700">
-            {opSummary.staleAutomationCount}
-          </p>
-        </div>
-      </div>
-
-      <div className="card text-sm text-slate-600 space-y-2">
-        <p className="font-medium text-slate-900">Evidence source mix</p>
-        <p>
-          Automated (axe): {opSummary.evidenceSourceMix.automatedAxe} · Manual
-          review: {opSummary.evidenceSourceMix.manualReview} · Imported:{" "}
-          {opSummary.evidenceSourceMix.imported}
-        </p>
-        <p className="text-slate-500">{opSummary.automationFreshnessNote}</p>
-      </div>
-
-      <div className="card">
-        <h2 className="text-base font-semibold text-slate-900 mb-4">
-          Generate export
-        </h2>
-        <form action={generateReportAction} className="space-y-4">
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="card space-y-4 lg:col-span-2">
           <div>
-            <label htmlFor="report-site" className="label">
-              Site
-            </label>
-            <select id="report-site" name="siteId" className="input">
-              <option value="">All sites</option>
-              {sites.map((site) => (
-                <option key={site.id} value={site.id}>
-                  {site.name} ({site.domain})
-                </option>
-              ))}
-            </select>
+            <h2 className="text-lg font-semibold text-slate-900">
+              Organization snapshot
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              {opSummary.automationFreshnessNote}
+            </p>
           </div>
-          <div>
-            <label htmlFor="report-format" className="label">
-              Format
-            </label>
-            <select id="report-format" name="format" className="input">
-              <option value="json">JSON</option>
-              <option value="csv">CSV</option>
-            </select>
+          <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-canvas))] p-3">
+              <dt className="text-xs font-medium text-slate-500">
+                Total findings
+              </dt>
+              <dd className="mt-1 text-xl font-bold tabular-nums text-slate-900">
+                {opSummary.totals.findings}
+              </dd>
+            </div>
+            <div className="rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-canvas))] p-3">
+              <dt className="text-xs font-medium text-slate-500">Open</dt>
+              <dd className="mt-1 text-xl font-bold tabular-nums text-slate-900">
+                {opSummary.totals.open}
+              </dd>
+            </div>
+            <div className="rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-canvas))] p-3">
+              <dt className="text-xs font-medium text-slate-500">Resolved</dt>
+              <dd className="mt-1 text-xl font-bold tabular-nums text-slate-900">
+                {opSummary.totals.resolved}
+              </dd>
+            </div>
+            <div className="rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-canvas))] p-3">
+              <dt className="text-xs font-medium text-slate-500">
+                Critical open
+              </dt>
+              <dd className="mt-1 text-xl font-bold tabular-nums text-slate-900">
+                {opSummary.totals.criticalOpen}
+              </dd>
+            </div>
+            <div className="rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-canvas))] p-3">
+              <dt className="text-xs font-medium text-slate-500">
+                Acknowledged
+              </dt>
+              <dd className="mt-1 text-xl font-bold tabular-nums text-slate-900">
+                {opSummary.totals.acknowledged}
+              </dd>
+            </div>
+            <div className="rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-canvas))] p-3">
+              <dt className="text-xs font-medium text-slate-500">
+                In progress
+              </dt>
+              <dd className="mt-1 text-xl font-bold tabular-nums text-slate-900">
+                {opSummary.totals.inProgress}
+              </dd>
+            </div>
+            <div className="rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-canvas))] p-3">
+              <dt className="text-xs font-medium text-slate-500">Mitigated</dt>
+              <dd className="mt-1 text-xl font-bold tabular-nums text-slate-900">
+                {opSummary.totals.mitigated}
+              </dd>
+            </div>
+            <div className="rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-canvas))] p-3">
+              <dt className="text-xs font-medium text-slate-500">
+                Stale automated
+              </dt>
+              <dd className="mt-1 text-xl font-bold tabular-nums text-slate-900">
+                {opSummary.staleAutomationCount}
+              </dd>
+            </div>
+          </dl>
+          <div className="border-t border-[rgb(var(--color-border))] pt-4 text-sm text-slate-600">
+            <p className="font-medium text-slate-900">Evidence source mix</p>
+            <p className="mt-1">
+              Automated (axe): {opSummary.evidenceSourceMix.automatedAxe} ·
+              Manual review: {opSummary.evidenceSourceMix.manualReview} ·
+              Imported: {opSummary.evidenceSourceMix.imported}
+            </p>
           </div>
-          <button type="submit" className="btn-primary">
-            Download export
-          </button>
-        </form>
+        </div>
+
+        <div className="card flex flex-col">
+          <h2 className="text-lg font-semibold text-slate-900">
+            Generate export
+          </h2>
+          <form
+            action={generateReportAction}
+            className="mt-4 flex flex-1 flex-col space-y-4"
+          >
+            <div>
+              <label htmlFor="report-site" className="label">
+                Site
+              </label>
+              <select id="report-site" name="siteId" className="input">
+                <option value="">All sites</option>
+                {sites.map((site) => (
+                  <option key={site.id} value={site.id}>
+                    {site.name} ({site.domain})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="report-format" className="label">
+                Format
+              </label>
+              <select id="report-format" name="format" className="input">
+                <option value="json">JSON</option>
+                <option value="csv">CSV</option>
+              </select>
+            </div>
+            <div className="flex-1" />
+            <button type="submit" className="btn-primary w-full">
+              Generate report
+            </button>
+          </form>
+          <p className="mt-4 text-xs leading-relaxed text-slate-500 border-t border-[rgb(var(--color-border))] pt-4">
+            Exports document testing and remediation activity. They are not a
+            legal guarantee of WCAG conformance; some success criteria require
+            expert manual review.
+          </p>
+        </div>
       </div>
     </div>
   );

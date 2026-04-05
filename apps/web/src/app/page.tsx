@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { HomePageClient } from "./home-page-client";
+import { MarketingSiteChrome } from "@/components/marketing/marketing-site-chrome";
 import {
   PRODUCT_DESCRIPTION,
   PRODUCT_DISPLAY_NAME,
@@ -99,7 +100,9 @@ export default function HomePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
       />
-      <HomePageClient />
+      <MarketingSiteChrome>
+        <HomePageClient />
+      </MarketingSiteChrome>
     </>
   );
 }

@@ -9,7 +9,7 @@ import {
 } from "@/lib/route-data-boundary";
 import { RouteReliabilityNotice } from "@/components/reliability/route-reliability-notice";
 import { hasPermission } from "@aros/config";
-import { EmptyState, ProcessBadge } from "@aros/ui";
+import { EmptyState, StatusBadge } from "@aros/ui";
 import { buildOnboardingStatus } from "@/lib/onboarding-status";
 import { getEntitlementState } from "@/lib/auth-guard";
 import { pageTitle } from "@/lib/product-brand";
@@ -234,21 +234,6 @@ export default async function DashboardPage() {
         description={`Operational overview for ${orgName}.`}
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Sites" value={sitesCount} href="/sites" />
-        <StatCard label="Open Findings" value={openFindings} href="/findings" />
-        <StatCard
-          label="Issue Clusters"
-          value={clustersCount}
-          href="/clusters"
-        />
-        <StatCard
-          label="Pending Reviews"
-          value={pendingReviews}
-          href="/reviews"
-        />
-      </div>
-
       <section className="card space-y-4" aria-labelledby="onboarding-status-heading">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h2 id="onboarding-status-heading" className="section-heading">
@@ -291,6 +276,21 @@ export default async function DashboardPage() {
           ))}
         </ol>
       </section>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Sites" value={sitesCount} href="/sites" />
+        <StatCard label="Open Findings" value={openFindings} href="/findings" />
+        <StatCard
+          label="Issue Clusters"
+          value={clustersCount}
+          href="/clusters"
+        />
+        <StatCard
+          label="Pending Reviews"
+          value={pendingReviews}
+          href="/reviews"
+        />
+      </div>
 
       <div className="card">
         <h2 className="section-heading mb-4">Next steps</h2>
@@ -362,7 +362,7 @@ export default async function DashboardPage() {
                       {crawl.site.name}
                     </td>
                     <td className="py-3">
-                      <ProcessBadge status={crawl.status} />
+                      <StatusBadge status={crawl.status} />
                     </td>
                     <td className="py-3 text-right text-slate-600">
                       {crawl.pagesCrawled}/{crawl.pagesFound}
@@ -392,19 +392,16 @@ function StatCard({
   value: number;
   href: string;
 }) {
+  const destinationLabel = `${label}: ${value.toLocaleString()}. Open ${label} details.`;
   return (
     <Link
       href={href as any}
-      className="card group block rounded-xl transition-shadow hover:shadow-[var(--shadow-card-hover)] motion-reduce:transition-none focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
-      aria-label={`${label}: ${value.toLocaleString()}. Open ${label}.`}
+      aria-label={destinationLabel}
+      className="card hover:shadow-md transition-shadow block focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 rounded-xl"
     >
       <p className="text-sm text-slate-500">{label}</p>
-      <p className="mt-1 text-3xl font-semibold tabular-nums tracking-tight text-slate-900 group-hover:text-brand-700 motion-reduce:transition-none">
-        {value.toLocaleString()}
-      </p>
-      <p className="mt-2 text-xs font-medium text-brand-700 underline-offset-2 group-hover:underline">
-        Open
-      </p>
+      <p className="mt-1 text-3xl font-bold text-slate-900">{value.toLocaleString()}</p>
+      <p className="mt-2 text-xs font-medium text-brand-700">Open</p>
     </Link>
   );
 }

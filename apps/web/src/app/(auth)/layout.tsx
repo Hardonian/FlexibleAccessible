@@ -22,6 +22,11 @@ export default function AuthLayout({
             {PRODUCT_DISPLAY_NAME}
           </h1>
           <p className="mt-1 text-sm text-slate-600">{PRODUCT_TAGLINE}</p>
+          <p className="mx-auto mt-4 max-w-sm text-left text-xs text-slate-500">
+            Private workspaces add monitored crawls, deduplicated findings,
+            review queues, and exports—bounded public scans only sample a few
+            pages.
+          </p>
         </div>
         <main id="auth-content">{children}</main>
       </div>
