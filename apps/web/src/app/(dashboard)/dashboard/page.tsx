@@ -20,10 +20,21 @@ export const metadata = { title: pageTitle("Dashboard") };
 export default async function DashboardPage() {
   const user = await requireSession();
   const platformTruth = await getRoutePlatformTruth();
-  const canViewSystem = await prisma.membership
-    .findMany({ where: { userId: user.id }, select: { role: true } })
-    .then((rows) => rows.some((m) => hasPermission(m.role, "org:system:view")))
-    .catch(() => false);
+  let canViewSystem = false;
+  try {
+    const memberships = await prisma.membership.findMany({
+      where: { userId: user.id },
+      select: { role: true },
+    });
+    for (const membership of memberships) {
+      if (hasPermission(membership.role, "org:system:view")) {
+        canViewSystem = true;
+        break;
+      }
+    }
+  } catch {
+    canViewSystem = false;
+  }
 
   const orgRes = await resolveDashboardOrgMembership(user.id, platformTruth);
 
