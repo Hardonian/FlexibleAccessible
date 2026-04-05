@@ -234,7 +234,10 @@ export default async function DashboardPage() {
         description={`Operational overview for ${orgName}.`}
       />
 
-      <section className="card space-y-4" aria-labelledby="onboarding-status-heading">
+      <section
+        className="card space-y-4"
+        aria-labelledby="onboarding-status-heading"
+      >
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h2 id="onboarding-status-heading" className="section-heading">
             Workspace readiness
@@ -245,7 +248,10 @@ export default async function DashboardPage() {
         </div>
         <p className="text-sm text-slate-600">
           Next step:{" "}
-          <Link href={onboarding.nextStep.href as any} className="font-medium text-brand-700 underline">
+          <Link
+            href={onboarding.nextStep.href as any}
+            className="font-medium text-brand-700 underline"
+          >
             {onboarding.nextStep.label}
           </Link>
           {onboarding.nextStep.blockerReason
@@ -254,11 +260,18 @@ export default async function DashboardPage() {
         </p>
         <ol className="space-y-2" aria-label="Onboarding checklist">
           {onboarding.stages.map((stage) => (
-            <li key={stage.id} className="flex items-start justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2">
+            <li
+              key={stage.id}
+              className="flex items-start justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2"
+            >
               <div>
-                <p className="text-sm font-medium text-slate-900">{stage.label}</p>
+                <p className="text-sm font-medium text-slate-900">
+                  {stage.label}
+                </p>
                 {stage.blockerReason && (
-                  <p className="text-xs text-amber-700">{stage.blockerReason}</p>
+                  <p className="text-xs text-amber-700">
+                    {stage.blockerReason}
+                  </p>
                 )}
               </div>
               <span
@@ -270,30 +283,47 @@ export default async function DashboardPage() {
                       : "bg-slate-100 text-slate-700 border border-slate-200"
                 }`}
               >
-                {stage.complete ? "Complete" : stage.blocked ? "Blocked" : "Pending"}
+                {stage.complete
+                  ? "Complete"
+                  : stage.blocked
+                    ? "Blocked"
+                    : "Pending"}
               </span>
             </li>
           ))}
         </ol>
       </section>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Sites" value={sitesCount} href="/sites" />
-        <StatCard label="Open Findings" value={openFindings} href="/findings" />
-        <StatCard
-          label="Issue Clusters"
-          value={clustersCount}
-          href="/clusters"
-        />
-        <StatCard
-          label="Pending Reviews"
-          value={pendingReviews}
-          href="/reviews"
-        />
-      </div>
+      <section className="space-y-4">
+        <h2 className="section-heading">Workspace overview</h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard label="Sites" value={sitesCount} href="/sites" />
+          <StatCard
+            label="Issue Clusters"
+            value={clustersCount}
+            href="/clusters"
+          />
+        </div>
+      </section>
 
-      <div className="card">
-        <h2 className="section-heading mb-4">Next steps</h2>
+      <section className="space-y-4">
+        <h2 className="section-heading">Action required</h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            label="Open Findings"
+            value={openFindings}
+            href="/findings"
+          />
+          <StatCard
+            label="Pending Reviews"
+            value={pendingReviews}
+            href="/reviews"
+          />
+        </div>
+      </section>
+
+      <section className="card">
+        <h2 className="section-heading mb-4">Quick actions</h2>
         <div className="flex flex-wrap gap-3">
           <Link href="/sites/new" className="btn-primary">
             Add site
@@ -302,10 +332,10 @@ export default async function DashboardPage() {
             Review findings
           </Link>
           <Link href="/reports" className="btn-secondary">
-            Export evidence report
+            Export report
           </Link>
         </div>
-      </div>
+      </section>
 
       <div className="card">
         <h2 className="section-heading mb-4">Recent crawls</h2>
@@ -400,9 +430,10 @@ function StatCard({
       className="card hover:shadow-md transition-shadow block focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 rounded-xl"
     >
       <p className="text-sm text-slate-500">{label}</p>
-      <p className="mt-1 text-3xl font-bold text-slate-900">{value.toLocaleString()}</p>
+      <p className="mt-1 text-3xl font-bold text-slate-900">
+        {value.toLocaleString()}
+      </p>
       <p className="mt-2 text-xs font-medium text-brand-700">Open</p>
     </Link>
   );
 }
-

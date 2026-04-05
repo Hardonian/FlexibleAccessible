@@ -215,8 +215,12 @@ export default async function FindingsPage({
     );
   }
 
-  const { findings, total, latestCompletedScanCompletedAt, familySummaryByRuleId } =
-    listResult.data;
+  const {
+    findings,
+    total,
+    latestCompletedScanCompletedAt,
+    familySummaryByRuleId,
+  } = listResult.data;
   const totalPages = Math.ceil(total / limit);
   const filterSummary = findingsActiveFilterSummary(params);
 
@@ -376,7 +380,9 @@ export default async function FindingsPage({
         >
           {page > 1 && (
             <Link
-              href={`/findings${findingsListQueryString(params, page - 1)}` as any}
+              href={
+                `/findings${findingsListQueryString(params, page - 1)}` as any
+              }
               className="btn-secondary text-sm min-h-[44px]"
               aria-label={`Go to previous page, currently on page ${page} of ${totalPages}`}
             >
@@ -391,7 +397,9 @@ export default async function FindingsPage({
           </span>
           {page < totalPages && (
             <Link
-              href={`/findings${findingsListQueryString(params, page + 1)}` as any}
+              href={
+                `/findings${findingsListQueryString(params, page + 1)}` as any
+              }
               className="btn-secondary text-sm min-h-[44px]"
               aria-label={`Go to next page, currently on page ${page} of ${totalPages}`}
             >
@@ -437,8 +445,9 @@ function FindingRow({
     lastSeenAt: finding.lastSeenAt,
     reopenedCount: finding.reopenedCount,
   });
-  const proofCompletenessScore =
-    Object.values(proofSummary.completeness).filter(Boolean).length;
+  const proofCompletenessScore = Object.values(
+    proofSummary.completeness,
+  ).filter(Boolean).length;
   const truthLabel = finding.truthStatus.toLowerCase().replaceAll("_", " ");
   const changeLabel = proofSummary.changedSinceLastRun.replaceAll("_", " ");
 
@@ -498,14 +507,6 @@ function FindingRow({
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <SeverityChip severity={finding.impact} size="sm" />
-              <span className="font-mono text-xs text-slate-500 truncate max-w-[min(100%,12rem)]">
-                {finding.ruleId}
-              </span>
-              {finding.cluster ? (
-                <span className="text-xs font-medium text-violet-800 truncate max-w-[10rem]">
-                  {finding.cluster.name}
-                </span>
-              ) : null}
             </div>
             <p className="mt-2 text-sm font-medium text-slate-900">
               {finding.description}
@@ -513,26 +514,10 @@ function FindingRow({
             <p className="mt-2 text-xs text-slate-500">
               {finding.site.name} · {finding._count.occurrences} occurrence
               {finding._count.occurrences === 1 ? "" : "s"}
-              {freshness && freshness.freshness !== "current"
-                ? ` · ${freshness.badgeLabel}`
-                : ""}
             </p>
           </div>
           <div className="shrink-0 pt-0.5">
             <StatusBadge status={finding.status} />
-            <span
-              className={`badge ${
-                proofCompletenessScore >= 4
-                  ? "bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-200"
-                  : "bg-amber-50 text-amber-900 ring-1 ring-inset ring-amber-200"
-              }`}
-              title="Summary of whether key proof fields are present for this finding."
-            >
-              Proof {proofCompletenessScore}/5
-            </span>
-            <span className="badge bg-slate-50 text-slate-700 ring-1 ring-inset ring-slate-200">
-              {changeLabel}
-            </span>
           </div>
         </div>
         <p id={metaId} className="sr-only">
@@ -556,7 +541,9 @@ function FindingRow({
           {familySummary ? (
             <>
               <div>
-                <dt className="text-xs font-medium text-slate-500">Rule family</dt>
+                <dt className="text-xs font-medium text-slate-500">
+                  Rule family
+                </dt>
                 <dd>
                   {familySummary.totalFindings} total ·{" "}
                   {familySummary.activeFindings} active
@@ -566,7 +553,9 @@ function FindingRow({
                 </dd>
               </div>
               <div>
-                <dt className="text-xs font-medium text-slate-500">Family trend</dt>
+                <dt className="text-xs font-medium text-slate-500">
+                  Family trend
+                </dt>
                 <dd>
                   {familySummary.newlyDetectedFindings} new ·{" "}
                   {familySummary.persistentFindings} persistent
@@ -589,12 +578,6 @@ function FindingRow({
                 </div>
               ) : null}
             </>
-          ) : null}
-          {proofSummary.lineage.scanRunId ? (
-            <div className="sm:col-span-2">
-              <dt className="text-xs font-medium text-slate-500">Lineage scan</dt>
-              <dd className="font-mono text-xs">{proofSummary.lineage.scanRunId}</dd>
-            </div>
           ) : null}
           {finding.wcagTags.length > 0 ? (
             <div className="sm:col-span-2">

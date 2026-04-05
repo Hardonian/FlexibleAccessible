@@ -148,17 +148,11 @@ export function HomePageClient() {
             </p>
           </form>
 
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-            <Link
-              href="/signup"
-              className="btn-secondary text-base px-6 py-3"
-            >
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
+            <Link href="/signup" className="btn-primary text-base px-6 py-3">
               Open private workspace
             </Link>
-            <Link
-              href="#pricing"
-              className="text-sm font-semibold text-brand-800 underline-offset-4 hover:underline"
-            >
+            <Link href="#pricing" className="btn-secondary text-base px-6 py-3">
               Compare plans
             </Link>
           </div>
@@ -181,19 +175,15 @@ export function HomePageClient() {
             <p className="mt-4 text-slate-600">
               Wire scans into how your team already works—IDE, CI, ticketing,
               and internal tools. Entitlements and org boundaries are enforced
-              on the server, not buried in client UI. Automation surfaces many
-              failures; it does not replace manual audit or legal judgment—we say
-              that everywhere it matters.
+              on the server, not buried in client UI.
             </p>
             <ul className="mt-8 space-y-3">
               {developerFeatures.map((feature) => (
                 <li key={feature} className="flex items-start gap-3">
                   <span
-                    className="mt-0.5 font-mono text-sm text-brand-700"
+                    className="mt-0.5 h-1.5 w-1.5 rounded-full bg-brand-600 shrink-0"
                     aria-hidden="true"
-                  >
-                    &gt;
-                  </span>
+                  />
                   <span className="text-slate-700">{feature}</span>
                 </li>
               ))}
@@ -211,20 +201,22 @@ export function HomePageClient() {
               </Link>
             </div>
           </div>
-          <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950 p-6 font-mono text-sm text-slate-300 shadow-lg">
-            <pre className="whitespace-pre text-[13px] leading-relaxed">{`# MCP (IDE-native)
-npx @aros/mcp-server
-
-# Authenticated API (org-scoped keys)
-curl -H "Authorization: Bearer $API_KEY" \\
-  $BASE_URL/api/...
-
-# CLI / CI
-npx @aros/cli scan --site example.com`}</pre>
-            <p className="mt-4 border-t border-slate-800 pt-4 text-xs text-slate-500">
-              Engine packages are @aros/*; the product experience is{" "}
-              {PRODUCT_DISPLAY_NAME}.
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-6">
+            <h3 className="text-lg font-semibold text-slate-900">
+              Developer-first integration
+            </h3>
+            <p className="mt-2 text-sm text-slate-600">
+              Use MCP-compatible tools, org-scoped API keys, or CLI for CI/CD
+              pipelines.
             </p>
+            <div className="mt-4 pt-4 border-t border-slate-200">
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                Packages
+              </p>
+              <p className="mt-1 font-mono text-sm text-slate-700">
+                @aros/mcp-server @aros/cli @aros/api-client
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -278,6 +270,33 @@ npx @aros/cli scan --site example.com`}</pre>
             <p className="mt-3 text-sm text-slate-500">
               Custom SOWs—procurement-friendly documentation on request
             </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-y border-[rgb(var(--color-border))] bg-slate-50 py-12">
+        <div className="mx-auto max-w-4xl px-6 text-center">
+          <h2 className="text-2xl font-bold text-slate-900">
+            Audit-ready from day one
+          </h2>
+          <p className="mt-4 max-w-2xl mx-auto text-slate-600">
+            Evidence exports are designed for procurement reviews, legal QA, and
+            compliance audits. Not a score—documented remediation activity with
+            timestamps, screenshots, and owner assignment.
+          </p>
+          <div className="mt-8 flex flex-wrap justify-center gap-8 text-sm">
+            <div className="text-center">
+              <p className="font-semibold text-slate-900">WCAG 2.1 AA</p>
+              <p className="text-slate-500">Engine baseline</p>
+            </div>
+            <div className="text-center">
+              <p className="font-semibold text-slate-900">Evidence-backed</p>
+              <p className="text-slate-500">No score-only exports</p>
+            </div>
+            <div className="text-center">
+              <p className="font-semibold text-slate-900">Tenant-isolated</p>
+              <p className="text-slate-500">Enterprise-grade boundaries</p>
+            </div>
           </div>
         </div>
       </section>
@@ -358,10 +377,7 @@ npx @aros/cli scan --site example.com`}</pre>
                     key={f}
                     className="flex items-start gap-2 text-sm text-slate-600"
                   >
-                    <span
-                      className="mt-0.5 text-brand-700"
-                      aria-hidden="true"
-                    >
+                    <span className="mt-0.5 text-brand-700" aria-hidden="true">
                       &#10003;
                     </span>
                     {f}
@@ -375,9 +391,7 @@ npx @aros/cli scan --site example.com`}</pre>
                 }`}
                 aria-label={`Get started with ${plan.name} plan`}
               >
-                {plan.tier === "FREE"
-                  ? "Create free workspace"
-                  : "Choose plan"}
+                {plan.tier === "FREE" ? "Create free workspace" : "Choose plan"}
               </Link>
             </div>
           ))}

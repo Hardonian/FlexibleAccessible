@@ -160,15 +160,15 @@ function EnvironmentBadge({ environment }: { environment: string }) {
   const config: Record<string, { label: string; className: string }> = {
     PRODUCTION: {
       label: "Production",
-      className: "bg-emerald-50 text-emerald-900 ring-1 ring-inset ring-emerald-200",
+      className: "bg-emerald-100 text-emerald-800",
     },
     STAGING: {
       label: "Staging",
-      className: "bg-amber-50 text-amber-900 ring-1 ring-inset ring-amber-200",
+      className: "bg-amber-100 text-amber-800",
     },
     DEVELOPMENT: {
-      label: "Development",
-      className: "bg-sky-50 text-sky-900 ring-1 ring-inset ring-sky-200",
+      label: "Dev",
+      className: "bg-slate-100 text-slate-600",
     },
   };
   const { label, className } = config[environment] ?? {
