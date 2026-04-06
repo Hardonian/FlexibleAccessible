@@ -58,6 +58,8 @@ export interface AgedFinding {
   siteDomain: string;
   daysOpen: number;
   occurrenceCount: number;
+  /** Distinct completed scan runs where this fingerprint was re-detected. */
+  distinctScanRunsObserved: number;
 }
 
 export interface HighImpactCluster {
@@ -215,7 +217,11 @@ export async function getOperatorHealthData(): Promise<OperatorHealthPayload> {
       include: {
         site: { select: { id: true, name: true, domain: true } },
       },
-      orderBy: { firstSeenAt: "asc" },
+      orderBy: [
+        { distinctScanRunsObserved: "desc" },
+        { reopenedCount: "desc" },
+        { firstSeenAt: "asc" },
+      ],
       take: 50,
     }),
 
@@ -306,6 +312,7 @@ export async function getOperatorHealthData(): Promise<OperatorHealthPayload> {
       (now.getTime() - f.firstSeenAt.getTime()) / (24 * 60 * 60 * 1000),
     ),
     occurrenceCount: f.occurrenceCount,
+    distinctScanRunsObserved: f.distinctScanRunsObserved,
   }));
 
   // Process subscriptions

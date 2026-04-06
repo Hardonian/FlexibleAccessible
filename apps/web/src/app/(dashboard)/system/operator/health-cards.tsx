@@ -342,6 +342,12 @@ export function CriticalFindingsList({
           <p className="mt-1 text-xs text-slate-600 line-clamp-2">
             {finding.description}
           </p>
+          {finding.distinctScanRunsObserved > 1 ? (
+            <p className="mt-1 text-xs text-amber-800">
+              Recurred across {finding.distinctScanRunsObserved} completed scan
+              runs (fingerprint-stable).
+            </p>
+          ) : null}
         </Link>
       ))}
       {findings.length > 10 && (

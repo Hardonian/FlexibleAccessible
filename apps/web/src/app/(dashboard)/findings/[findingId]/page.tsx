@@ -13,6 +13,8 @@ import { resolveDashboardOrgMembership } from "@/lib/route-data-boundary";
 import { RouteReliabilityNotice } from "@/components/reliability/route-reliability-notice";
 import { hasPermission } from "@aros/config";
 import { getAutomationEvidenceFreshnessDescriptor } from "@/lib/findings/evidence-freshness";
+import { buildFindingProofSummary } from "@/lib/findings/proof-summary";
+import { scoreFindingPriority } from "@/lib/findings/finding-priority";
 import {
   ArrowLeft,
   ExternalLink,
@@ -207,6 +209,35 @@ export default async function FindingDetailPage({
     latestCompletedScanCompletedAt: latestCompleted?.completedAt ?? null,
     jobPipelinesHealthy: platformTruth.flags.jobPipelinesHealthy,
   });
+  const proofSummary = buildFindingProofSummary({
+    evidenceSummary: finding.evidenceSummary,
+    provenance: finding.provenance,
+    firstSeenAt: finding.firstSeenAt,
+    lastSeenAt: finding.lastSeenAt,
+    reopenedCount: finding.reopenedCount,
+    distinctScanRunsObserved: finding.distinctScanRunsObserved,
+    distinctScanRunsAbsentWhenOpen: finding.distinctScanRunsAbsentWhenOpen,
+    evidenceSource: finding.evidenceSource,
+    sourceType: finding.sourceType,
+  });
+  const triagePriority = scoreFindingPriority({
+    impact: finding.impact,
+    truthStatus: finding.truthStatus,
+    distinctScanRunsObserved: finding.distinctScanRunsObserved,
+    occurrenceCount: finding.occurrenceCount,
+    reopenedCount: finding.reopenedCount,
+  });
+  const changeSignalLabel: Record<
+    (typeof proofSummary)["changedSinceLastRun"],
+    string
+  > = {
+    newly_detected: "New this lifecycle",
+    regressed: "Regressed after closure",
+    persistent: "Persistent across observations",
+    improved_open_backlog: "Absent in scans while still open",
+    not_comparable: "Cross-run comparison not asserted",
+    unknown: "Unknown",
+  };
   const latestVerificationRun = finding.verificationRuns[0] ?? null;
   const activeGovernanceDecision =
     finding.governanceDecisions.find(
@@ -491,6 +522,75 @@ export default async function FindingDetailPage({
                 </dd>
               </div>
             </dl>
+          </div>
+
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
+            <div className="flex items-center gap-2">
+              <History className="h-5 w-5 text-slate-500" />
+              <h2 className="text-lg font-bold text-slate-900">
+                Cross-run history & comparison
+              </h2>
+            </div>
+            <p className="text-sm text-slate-600">
+              Signals below are derived from stored scan verification rows and
+              timestamps. They describe recurrence of the same fingerprint within
+              this site, not manual audit equivalence across pages or tools.
+            </p>
+            <dl className="grid gap-3 sm:grid-cols-2 text-sm">
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Change signal
+                </dt>
+                <dd className="mt-1 font-medium text-slate-900">
+                  {changeSignalLabel[proofSummary.changedSinceLastRun]}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Comparison basis
+                </dt>
+                <dd className="mt-1 font-mono text-xs text-slate-800 break-all">
+                  {proofSummary.comparisonBasis}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Completed scan runs observed
+                </dt>
+                <dd className="mt-1 font-medium text-slate-900">
+                  {proofSummary.recurrence.distinctScanRunsObserved}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Absent while open (runs)
+                </dt>
+                <dd className="mt-1 font-medium text-slate-900">
+                  {proofSummary.recurrence.distinctScanRunsAbsentWhenOpen}
+                </dd>
+              </div>
+            </dl>
+            {proofSummary.comparisonLimitations.length > 0 ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-3 text-xs text-amber-950 space-y-1">
+                <p className="font-semibold">Explicit limits</p>
+                <ul className="list-disc pl-4 space-y-1">
+                  {proofSummary.comparisonLimitations.map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-800 space-y-2">
+              <p className="font-semibold text-slate-900">
+                Deterministic triage score: {triagePriority.score.toFixed(0)}{" "}
+                (lower = higher priority)
+              </p>
+              <ul className="list-disc pl-4 space-y-1">
+                {triagePriority.reasons.map((r) => (
+                  <li key={r}>{r}</li>
+                ))}
+              </ul>
+            </div>
           </div>
 
           {finding.cluster && (
