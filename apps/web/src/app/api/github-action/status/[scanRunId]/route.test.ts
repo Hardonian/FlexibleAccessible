@@ -30,7 +30,12 @@ import { GET } from "./route";
 describe("GET /api/github-action/status/[scanRunId]", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    requireSessionMock.mockResolvedValue({ id: "user_1" });
+    requireSessionMock.mockResolvedValue({
+      id: "user_1",
+      email: "u@test",
+      name: null,
+      emailVerified: true,
+    });
   });
 
   it("fails closed when organizationId is missing", async () => {

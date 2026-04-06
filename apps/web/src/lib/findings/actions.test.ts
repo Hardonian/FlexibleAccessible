@@ -32,7 +32,12 @@ describe('Server Action: getOrganizationMembers', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     // Set up default "happy path" mocks that can be overridden in specific tests
-    vi.mocked(requireSession).mockResolvedValue({ id: 'user-123', name: 'Test User' } as any);
+    vi.mocked(requireSession).mockResolvedValue({
+      id: 'user-123',
+      email: 'test@example.com',
+      name: 'Test User',
+      emailVerified: true,
+    } as any);
     vi.mocked(getRoutePlatformTruth).mockResolvedValue({ allowOrgScopedDbReads: true } as any);
   });
 
@@ -116,7 +121,12 @@ describe('Server Action: getOrganizationMembers', () => {
 describe('Server Action: removeOrganizationMember', () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    vi.mocked(requireSession).mockResolvedValue({ id: 'user-123', name: 'Test User' } as any);
+    vi.mocked(requireSession).mockResolvedValue({
+      id: 'user-123',
+      email: 'test@example.com',
+      name: 'Test User',
+      emailVerified: true,
+    } as any);
     vi.mocked(getRoutePlatformTruth).mockResolvedValue({ allowOrgScopedDbReads: true } as any);
   });
 

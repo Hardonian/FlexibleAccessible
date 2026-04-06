@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { requireSession } from "@/lib/session";
+import { requireAuthenticatedSession } from "@/lib/session";
 import { getAppBaseUrl, getStripePriceIdForPlan } from "@/lib/billing";
 import { requireOrgAccess } from "@/lib/auth-guard";
 import {
@@ -15,7 +15,7 @@ function redirectWithError(message: string) {
 }
 
 export async function startSubscriptionCheckoutAction(formData: FormData) {
-  const user = await requireSession();
+  const user = await requireAuthenticatedSession();
   const organizationId =
     (formData.get("organizationId") as string | null) ?? "";
   const requestedPlanRaw = (formData.get("plan") as string | null) ?? "";

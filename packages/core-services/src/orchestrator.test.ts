@@ -19,6 +19,7 @@ vi.mock('./checks', () => ({
 
 vi.mock('@aros/config', () => ({
   parseEnvDiagnostics: vi.fn().mockReturnValue({ valid: true, fieldErrors: {}, issues: [] }),
+  getEmailOutboundSummary: vi.fn().mockReturnValue({ configured: false, mode: 'none', hostSet: false, fromSet: false }),
 }));
 
 describe('collectPlatformHealth', () => {

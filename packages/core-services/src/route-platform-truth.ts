@@ -27,6 +27,7 @@ export interface RoutePlatformTruth {
     databaseOk: boolean;
     redisOk: boolean;
     sessionOk: boolean;
+    outboundEmailOk: boolean;
     envConfigOk: boolean;
     workerRunning: boolean;
     jobPipelinesHealthy: boolean;
@@ -58,6 +59,7 @@ export function buildRoutePlatformTruth(report: PlatformHealthReport): RoutePlat
         databaseOk: true,
         redisOk: true,
         sessionOk: true,
+        outboundEmailOk: true,
         envConfigOk: true,
         workerRunning: true,
         jobPipelinesHealthy: true,
@@ -75,6 +77,7 @@ export function buildRoutePlatformTruth(report: PlatformHealthReport): RoutePlat
   const databaseOk = report.dependencies.database.ok;
   const redisOk = report.dependencies.redis.ok;
   const sessionOk = report.dependencies.sessionStore.ok;
+  const outboundEmailOk = report.dependencies.outboundEmail.ok;
   const workerRunning = worker?.healthState === 'running';
   const jobPipelinesHealthy =
     pipelines?.healthState === 'running' || pipelines?.healthState === 'degraded';
@@ -97,6 +100,18 @@ export function buildRoutePlatformTruth(report: PlatformHealthReport): RoutePlat
   if (!sessionOk && databaseOk) {
     userImpactSummary.push('Sign-in and sessions may not work correctly until configuration is fixed.');
     operatorRemediationHints.push('Sessions require a healthy database and valid auth environment variables.');
+  }
+
+  if (databaseOk && !outboundEmailOk) {
+    operatorRemediationHints.push(
+      'Outbound email (SMTP_*, EMAIL_FROM) is not configured: production signups and password reset cannot send mail until it is set.'
+    );
+  }
+
+  if (databaseOk && !redisOk) {
+    operatorRemediationHints.push(
+      'Redis is down: job queues are unavailable and some auth rate limits fall back to per-process windows (not synchronized across instances).'
+    );
   }
 
   if (!report.bootstrap.installed && databaseOk) {
@@ -152,6 +167,7 @@ export function buildRoutePlatformTruth(report: PlatformHealthReport): RoutePlat
       databaseOk,
       redisOk,
       sessionOk,
+      outboundEmailOk,
       envConfigOk,
       workerRunning,
       jobPipelinesHealthy,

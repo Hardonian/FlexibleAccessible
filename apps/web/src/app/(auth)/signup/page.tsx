@@ -13,7 +13,8 @@ export const metadata: Metadata = {
 
 export default async function SignupPage() {
   const user = await getSession();
-  if (user) redirect('/dashboard');
+  if (user?.emailVerified) redirect('/dashboard');
+  if (user && !user.emailVerified) redirect('/verify-email');
 
   return (
     <div className="card">

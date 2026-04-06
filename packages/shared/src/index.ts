@@ -11,6 +11,11 @@ export type { PaginatedResult, PaginationParams } from "./pagination.js";
 export { paginationSchema, buildPaginationMeta } from "./pagination.js";
 export { wcagCriteriaMap, getWcagLevel } from "./wcag.js";
 export { bullmqConnectionOptions, getRedisClient } from "./redis-connection.js";
+export {
+  abuseRateLimit,
+  type AbuseRateLimitOutcome,
+  type AbuseRateLimitMode,
+} from "./abuse-rate-limit.js";
 export { SCAN_QUEUE_NAME, getSharedScanQueue } from "./scan-queue.js";
 export const VISUAL_REVIEW_QUEUE_NAME = "visual-review" as const;
 export {

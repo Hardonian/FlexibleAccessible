@@ -115,7 +115,11 @@ export function entitlementReasonMessage(state: EntitlementState): string {
 }
 
 export function isBillingAccessiblePath(pathname: string): boolean {
-  return pathname === '/settings' || pathname.startsWith('/settings/billing');
+  return (
+    pathname === '/settings' ||
+    pathname.startsWith('/settings/billing') ||
+    pathname === '/verify-email'
+  );
 }
 
 export async function requireOrgAccess(

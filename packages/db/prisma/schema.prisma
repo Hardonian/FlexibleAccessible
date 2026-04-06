@@ -31,8 +31,30 @@ model User {
   governanceDecisionsApproved FindingGovernanceDecision[] @relation("governanceApprovedBy")
   governanceDecisionsRevoked FindingGovernanceDecision[] @relation("governanceRevokedBy")
   findingComments FindingComment[]
+  securityTokens SecurityToken[]
 
   @@map("users")
+}
+
+enum SecurityTokenKind {
+  PASSWORD_RESET
+  EMAIL_VERIFICATION
+}
+
+model SecurityToken {
+  id         String            @id @default(cuid())
+  userId     String
+  kind       SecurityTokenKind
+  tokenHash  String            @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime          @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, kind])
+  @@index([expiresAt])
+  @@map("security_tokens")
 }
 
 model Session {

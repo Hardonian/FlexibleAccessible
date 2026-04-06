@@ -9,6 +9,7 @@ import { BiasAuditEngine } from "../services/bias-audit";
 import { FeedbackLoopManager } from "../services/feedback-loop";
 import { MetricsTracker } from "../services/metrics-tracker";
 import { EngagementScorer } from "../services/engagement-scorer";
+import type { BiasAuditResult } from "../types/bias-audit";
 
 export interface ComprehensiveAnalysis {
   timestamp: Date;
@@ -70,7 +71,7 @@ export async function buildStakeholderAnalysis(
   ]);
 
   // Run bias audit if stakeholder data is available
-  let biasResult = null;
+  let biasResult: BiasAuditResult | null = null;
   if (registrySummary.total > 0) {
     biasResult = await biasAudit.runAudit({
       organizationId,

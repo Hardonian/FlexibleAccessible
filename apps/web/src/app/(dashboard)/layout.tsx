@@ -12,6 +12,7 @@ import { getRoutePlatformTruth } from "@/lib/platform-truth-cache";
 import { PlatformShellBanner } from "@/components/reliability/platform-shell-banner";
 import { RouteReliabilityNotice } from "@/components/reliability/route-reliability-notice";
 import { getEntitlementState, isBillingAccessiblePath } from "@/lib/auth-guard";
+import { isEmailVerificationExemptPath } from "@/lib/email-verification-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +49,12 @@ export default async function DashboardLayout({
 }) {
   const user = await getSession();
   if (!user) redirect("/login");
+
+  const headerStore = await headers();
+  const pathname = headerStore.get("x-pathname") ?? "/dashboard";
+  if (!user.emailVerified && !isEmailVerificationExemptPath(pathname)) {
+    redirect("/verify-email");
+  }
 
   let memberships: LayoutMembership[] = [];
   let layoutDbError: string | null = null;
@@ -90,8 +97,6 @@ export default async function DashboardLayout({
   }
 
   const shellAudience = canViewSystem ? "operator" : "user";
-  const headerStore = await headers();
-  const pathname = headerStore.get("x-pathname") ?? "/dashboard";
 
   const activeOrg = orgs.find((o) => o.id === activeOrgId);
   const entitlement = getEntitlementState(activeOrg?.subscription);
@@ -108,7 +113,9 @@ export default async function DashboardLayout({
     );
   }
 
-  let aiUsage = undefined;
+  let aiUsage:
+    | { enabled: boolean; limit: number; used: number }
+    | undefined = undefined;
   if (activeOrg) {
     const usage = await prisma.aiUsageLog.aggregate({
       where: { organizationId: activeOrg.id },

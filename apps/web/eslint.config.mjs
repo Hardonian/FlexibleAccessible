@@ -66,7 +66,18 @@ const config = [
         }
       ]
     }
-  }
+  },
+  {
+    // Auth flows touch global user/session tables, not org-scoped rows — org boundary wrapper does not apply.
+    files: [
+      "src/app/(auth)/**/actions.ts",
+      "src/app/(dashboard)/verify-email/actions.ts",
+      "src/app/api/auth/**/*.ts",
+    ],
+    rules: {
+      "no-restricted-syntax": "off",
+    },
+  },
 ];
 
 export default config;

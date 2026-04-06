@@ -79,6 +79,8 @@ export interface PlatformHealthReport {
     database: DependencyCheckResult;
     redis: DependencyCheckResult;
     sessionStore: DependencyCheckResult;
+    /** True when SMTP_* + EMAIL_FROM are set for transactional mail (password reset, verification). */
+    outboundEmail: DependencyCheckResult;
   };
   services: CoreServiceRuntimeView[];
   /**

@@ -19,6 +19,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/badge",
   "/api/og",
   "/api/webhooks/stripe",
+  "/api/auth/verify-email",
 ];
 
 function isPrivatePage(pathname: string) {
@@ -38,8 +39,13 @@ function isPublicMarketingPath(pathname: string) {
     pathname === "/" ||
     pathname === "/login" ||
     pathname === "/signup" ||
+    pathname === "/forgot-password" ||
     pathname === "/offline"
   );
+}
+
+function isAuthRecoveryPath(pathname: string) {
+  return pathname.startsWith("/reset-password/") || pathname.startsWith("/verify-email/");
 }
 
 function isPublicScanPath(pathname: string) {
@@ -102,6 +108,14 @@ export function middleware(request: NextRequest) {
       "private, no-store, max-age=0, must-revalidate",
     );
     response.headers.set("Vary", "Cookie");
+    return response;
+  }
+
+  if (isAuthRecoveryPath(pathname)) {
+    response.headers.set(
+      "Cache-Control",
+      "private, no-store, max-age=0, must-revalidate",
+    );
     return response;
   }
 

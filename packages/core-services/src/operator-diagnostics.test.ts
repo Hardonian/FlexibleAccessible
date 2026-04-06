@@ -64,6 +64,7 @@ function baseReport(overrides: Partial<PlatformHealthReport> = {}): PlatformHeal
       database: { ok: true, checkedAt: 't' },
       redis: { ok: true, checkedAt: 't' },
       sessionStore: { ok: true, checkedAt: 't' },
+      outboundEmail: { ok: true, checkedAt: 't' },
       ...overrides.dependencies,
     },
     services,
@@ -89,6 +90,7 @@ describe('derivePlatformDiagnostics', () => {
         database: { ok: true, checkedAt: 't' },
         redis: { ok: false, checkedAt: 't', message: 'econnrefused' },
         sessionStore: { ok: true, checkedAt: 't' },
+        outboundEmail: { ok: true, checkedAt: 't' },
       },
       services: [
         minimalService('app-api', { healthState: 'ready' }),

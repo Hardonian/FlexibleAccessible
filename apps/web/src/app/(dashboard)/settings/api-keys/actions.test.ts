@@ -48,6 +48,7 @@ describe("createApiKeyAction", () => {
       id: "user_123",
       email: "admin@example.com",
       name: "Admin User",
+      emailVerified: true,
     });
   });
 
@@ -57,7 +58,7 @@ describe("createApiKeyAction", () => {
 
   it("creates API key with valid inputs", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_123", email: "admin@example.com", name: "Admin User" },
+      user: { id: "user_123", email: "admin@example.com", name: "Admin User", emailVerified: true },
       organizationId: "org_123",
       role: "ADMIN",
       subscription: null,
@@ -134,7 +135,7 @@ describe("createApiKeyAction", () => {
 
   it("rejects invalid rate limit", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_123", email: "admin@example.com", name: "Admin User" },
+      user: { id: "user_123", email: "admin@example.com", name: "Admin User", emailVerified: true },
       organizationId: "org_123",
       role: "ADMIN",
       subscription: null,
@@ -160,7 +161,7 @@ describe("createApiKeyAction", () => {
 
   it("rejects rate limit over 10000", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_123", email: "admin@example.com", name: "Admin User" },
+      user: { id: "user_123", email: "admin@example.com", name: "Admin User", emailVerified: true },
       organizationId: "org_123",
       role: "ADMIN",
       subscription: null,
@@ -186,7 +187,7 @@ describe("createApiKeyAction", () => {
 
   it("rejects empty scopes array", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_123", email: "admin@example.com", name: "Admin User" },
+      user: { id: "user_123", email: "admin@example.com", name: "Admin User", emailVerified: true },
       organizationId: "org_123",
       role: "ADMIN",
       subscription: null,
@@ -209,7 +210,7 @@ describe("createApiKeyAction", () => {
 
   it("rejects invalid scopes JSON", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_123", email: "admin@example.com", name: "Admin User" },
+      user: { id: "user_123", email: "admin@example.com", name: "Admin User", emailVerified: true },
       organizationId: "org_123",
       role: "ADMIN",
       subscription: null,
@@ -232,7 +233,7 @@ describe("createApiKeyAction", () => {
 
   it("rejects past expiration date", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_123", email: "admin@example.com", name: "Admin User" },
+      user: { id: "user_123", email: "admin@example.com", name: "Admin User", emailVerified: true },
       organizationId: "org_123",
       role: "ADMIN",
       subscription: null,
@@ -256,7 +257,7 @@ describe("createApiKeyAction", () => {
 
   it("rejects for DEVELOPER role (permission check)", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_123", email: "dev@example.com", name: "Dev User" },
+      user: { id: "user_123", email: "dev@example.com", name: "Dev User", emailVerified: true },
       organizationId: "org_123",
       role: "DEVELOPER",
       subscription: null,
@@ -280,7 +281,7 @@ describe("createApiKeyAction", () => {
 
   it("allows OWNER role to create keys", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_123", email: "owner@example.com", name: "Owner User" },
+      user: { id: "user_123", email: "owner@example.com", name: "Owner User", emailVerified: true },
       organizationId: "org_123",
       role: "OWNER",
       subscription: null,
@@ -335,7 +336,7 @@ describe("revokeApiKeyAction", () => {
 
   it("revokes active API key", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_123", email: "admin@example.com", name: "Admin User" },
+      user: { id: "user_123", email: "admin@example.com", name: "Admin User", emailVerified: true },
       organizationId: "org_123",
       role: "ADMIN",
       subscription: null,
@@ -366,7 +367,7 @@ describe("revokeApiKeyAction", () => {
 
   it("returns error when key not found", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_123", email: "admin@example.com", name: "Admin User" },
+      user: { id: "user_123", email: "admin@example.com", name: "Admin User", emailVerified: true },
       organizationId: "org_123",
       role: "ADMIN",
       subscription: null,
@@ -389,7 +390,7 @@ describe("revokeApiKeyAction", () => {
 
   it("rejects for DEVELOPER role", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_123", email: "dev@example.com", name: "Dev User" },
+      user: { id: "user_123", email: "dev@example.com", name: "Dev User", emailVerified: true },
       organizationId: "org_123",
       role: "DEVELOPER",
       subscription: null,
@@ -410,7 +411,7 @@ describe("revokeApiKeyAction", () => {
 
   it("requires keyId", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_123", email: "admin@example.com", name: "Admin User" },
+      user: { id: "user_123", email: "admin@example.com", name: "Admin User", emailVerified: true },
       organizationId: "org_123",
       role: "ADMIN",
       subscription: null,
@@ -437,12 +438,13 @@ describe("rotateApiKeyAction", () => {
       id: "user_123",
       email: "admin@example.com",
       name: "Admin User",
+      emailVerified: true,
     });
   });
 
   it("rotates API key successfully", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_123", email: "admin@example.com", name: "Admin User" },
+      user: { id: "user_123", email: "admin@example.com", name: "Admin User", emailVerified: true },
       organizationId: "org_123",
       role: "ADMIN",
       subscription: null,
@@ -457,13 +459,12 @@ describe("rotateApiKeyAction", () => {
       expiresAt: null,
     } as any);
 
-    vi.mocked(prisma.$transaction).mockImplementation(async (ops: any) => {
-      const results = [];
-      for (const op of ops) {
-        results.push(await op);
-      }
-      return results;
-    });
+    vi.mocked(prisma.$transaction).mockImplementation(
+      (async (arg: unknown) => {
+        const ops = arg as Promise<unknown>[];
+        return Promise.all(ops);
+      }) as typeof prisma.$transaction,
+    );
 
     vi.mocked(prisma.apiKey.create).mockResolvedValue({
       id: "key_new",
@@ -495,7 +496,7 @@ describe("rotateApiKeyAction", () => {
 
   it("rejects when key not found", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_123", email: "admin@example.com", name: "Admin User" },
+      user: { id: "user_123", email: "admin@example.com", name: "Admin User", emailVerified: true },
       organizationId: "org_123",
       role: "ADMIN",
       subscription: null,
@@ -519,7 +520,7 @@ describe("rotateApiKeyAction", () => {
 
   it("rejects for DEVELOPER role", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_123", email: "dev@example.com", name: "Dev User" },
+      user: { id: "user_123", email: "dev@example.com", name: "Dev User", emailVerified: true },
       organizationId: "org_123",
       role: "DEVELOPER",
       subscription: null,
@@ -547,7 +548,7 @@ describe("getApiKeyUsageStats", () => {
 
   it("returns usage stats for API keys", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_123", email: "admin@example.com", name: "Admin User" },
+      user: { id: "user_123", email: "admin@example.com", name: "Admin User", emailVerified: true },
       organizationId: "org_123",
       role: "ADMIN",
       subscription: null,
@@ -599,7 +600,7 @@ describe("getApiKeyUsageStats", () => {
 
   it("filters inactive keys", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_123", email: "admin@example.com", name: "Admin User" },
+      user: { id: "user_123", email: "admin@example.com", name: "Admin User", emailVerified: true },
       organizationId: "org_123",
       role: "ADMIN",
       subscription: null,
@@ -622,7 +623,7 @@ describe("getApiKeyUsageStats", () => {
 
   it("rejects for DEVELOPER role", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_123", email: "dev@example.com", name: "Dev User" },
+      user: { id: "user_123", email: "dev@example.com", name: "Dev User", emailVerified: true },
       organizationId: "org_123",
       role: "DEVELOPER",
       subscription: null,

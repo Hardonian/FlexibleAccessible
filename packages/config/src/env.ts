@@ -30,6 +30,13 @@ export const envSchema = z.object({
   S3_ACCESS_KEY: z.string().optional(),
   S3_SECRET_KEY: z.string().optional(),
 
+  // Transactional email (optional; required for password reset / verification delivery)
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().optional(),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  EMAIL_FROM: z.string().optional(),
+
   // Worker
   WORKER_CONCURRENCY: z.coerce.number().default(3),
   MAX_CRAWL_PAGES: z.coerce.number().default(500),

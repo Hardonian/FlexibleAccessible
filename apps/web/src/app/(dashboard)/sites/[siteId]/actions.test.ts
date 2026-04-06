@@ -95,7 +95,12 @@ describe("Server Actions Auth Tests", () => {
 
     it("should successfully start crawl when authorized", async () => {
       const mockCtx = {
-        user: { id: "user-1", email: "test@example.com", name: "Test User" },
+        user: {
+          id: "user-1",
+          email: "test@example.com",
+          name: "Test User",
+          emailVerified: true,
+        },
         organizationId: "org-1",
         role: "DEVELOPER" as const,
         subscription: null,

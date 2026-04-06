@@ -1,4 +1,4 @@
-import { requireSession } from "@/lib/session";
+import { requireAuthenticatedSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { hasPermission } from "@aros/config";
 import {
@@ -85,7 +85,7 @@ interface PageProps {
 }
 
 export default async function BillingPage({ searchParams }: PageProps) {
-  const user = await requireSession();
+  const user = await requireAuthenticatedSession();
   const platformTruth = await getRoutePlatformTruth();
   const params = await searchParams;
   let canViewSystem = false;

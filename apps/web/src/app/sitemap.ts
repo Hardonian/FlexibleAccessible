@@ -10,6 +10,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/docs/api",
     "/login",
     "/signup",
+    "/forgot-password",
     "/trust",
     "/security",
   ] as const;

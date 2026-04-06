@@ -89,5 +89,8 @@ export { EngagementScorer } from "./services/engagement-scorer";
 
 // Utilities
 export { buildStakeholderAnalysis } from "./utils/analysis-builder";
-export { generateGapAnalysis } from "./utils/gap-analysis";
+export {
+  generateGapAnalysis,
+  type GapAnalysisReport,
+} from "./utils/gap-analysis";
 export { createChecklist } from "./utils/checklist-generator";

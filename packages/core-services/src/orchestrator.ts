@@ -1,5 +1,5 @@
 import type { PrismaClient } from '@aros/db';
-import { parseEnvDiagnostics, type EnvDiagnostics } from '@aros/config';
+import { parseEnvDiagnostics, getEmailOutboundSummary, type EnvDiagnostics } from '@aros/config';
 import { CORE_SERVICES } from './registry';
 import { checkPostgres, checkRedisPing, getQueueDepths } from './checks';
 import { deriveReadinessFromServices, isWorkerHeartbeatStale, queueFailurePressure } from './state';
@@ -87,6 +87,7 @@ export async function collectPlatformHealth(prisma: PrismaClient): Promise<Platf
   if (skipLiveInfraProbes) {
     const sessionOk = envDiag.valid;
     const noopInfra = { ok: true as const, checkedAt, skipped: true as const };
+    const emailSkip = getEmailOutboundSummary(process.env);
     return {
       checkedAt,
       liveInfraProbes: 'skipped_build',
@@ -104,7 +105,12 @@ export async function collectPlatformHealth(prisma: PrismaClient): Promise<Platf
         sessionStore: {
           ok: sessionOk,
           checkedAt,
-          message: sessionOk ? undefined : 'Sessions require valid DB + NEXTAUTH_*',
+          message: sessionOk ? undefined : 'Sessions require valid DATABASE_URL and env validation.',
+        },
+        outboundEmail: {
+          ok: emailSkip.configured,
+          checkedAt,
+          message: emailSkip.configured ? undefined : 'SMTP not configured (build-time snapshot only).',
         },
       },
       services: [],
@@ -151,6 +157,12 @@ export async function collectPlatformHealth(prisma: PrismaClient): Promise<Platf
 
   const sessionOk = dbCheck.ok && envDiag.valid;
 
+  const emailSummary = getEmailOutboundSummary(process.env);
+  const outboundEmailOk = emailSummary.configured;
+  const outboundEmailMessage = outboundEmailOk
+    ? undefined
+    : 'Set SMTP_HOST, SMTP_PORT, EMAIL_FROM, and SMTP credentials (both SMTP_USER and SMTP_PASS, or neither) to enable password reset and signup email verification.';
+
   const services: CoreServiceRuntimeView[] = [];
 
   for (const def of CORE_SERVICES) {
@@ -193,19 +205,28 @@ export async function collectPlatformHealth(prisma: PrismaClient): Promise<Platf
         break;
       }
       case 'redis-queue': {
+        const abusePosture = redisCheck.ok
+          ? 'distributed_redis'
+          : 'degraded_per_process_fallback_for_some_paths';
         view = {
           ...def,
           enabled: true,
           configState: 'valid',
           configIssues: [],
-          configSummary: { reachable: redisCheck.ok, urlHost: redisUrl.split('@').pop()?.slice(0, 48) ?? 'default' },
+          configSummary: {
+            reachable: redisCheck.ok,
+            urlHost: redisUrl.split('@').pop()?.slice(0, 48) ?? 'default',
+            abuseRateLimiting: abusePosture,
+          },
           healthState: redisCheck.ok ? 'running' : 'unavailable',
           lastCheckAt: checkedAt,
           lastActivityAt: redisCheck.ok ? checkedAt : null,
-          failureReason: redisCheck.ok ? null : (redisCheck.message ?? 'Redis unreachable'),
+          failureReason: redisCheck.ok
+            ? null
+            : (redisCheck.message ?? 'Redis unreachable'),
           nextStep: redisCheck.ok
             ? 'No action required.'
-            : 'Start Redis and set REDIS_URL; docker compose up includes Redis.',
+            : 'Start Redis and set REDIS_URL; docker compose up includes Redis. Until then, some auth rate limits use per-process fallback (not synchronized across instances).',
           dependencies: { redis: redisCheck },
         };
         break;
@@ -301,19 +322,30 @@ export async function collectPlatformHealth(prisma: PrismaClient): Promise<Platf
           ...def,
           enabled: true,
           configState: envDiag.valid ? 'valid' : 'invalid',
-          configIssues: envDiag.valid ? [] : ['NEXTAUTH_SECRET and NEXTAUTH_URL must be valid for sessions.'],
+          configIssues: envDiag.valid ? [] : ['Environment validation failed (see config summary).'],
           configSummary: {
-            nextAuthUrlConfigured: Boolean(process.env.NEXTAUTH_URL?.trim()),
-            nextAuthSecretConfigured: Boolean(process.env.NEXTAUTH_SECRET && process.env.NEXTAUTH_SECRET.length >= 16),
+            cookieSession: true,
+            emailVerificationRequiresSmtp: true,
+            outboundEmailConfigured: outboundEmailOk,
           },
           healthState: sessionOk ? 'running' : dbCheck.ok ? 'misconfigured' : 'unavailable',
           lastCheckAt: checkedAt,
           lastActivityAt: null,
           failureReason: sessionOk ? null : !dbCheck.ok ? dbCheck.message ?? null : 'Session environment invalid',
           nextStep: sessionOk
-            ? 'No action required.'
-            : 'Fix NEXTAUTH_* and DATABASE_URL; see environment validation errors.',
-          dependencies: { postgres: dbCheck, env: { ok: envDiag.valid, checkedAt } },
+            ? outboundEmailOk
+              ? 'No action required.'
+              : 'Optional: configure SMTP_* and EMAIL_FROM for password reset and signup verification email.'
+            : 'Fix DATABASE_URL and required env vars; see environment validation errors.',
+          dependencies: {
+            postgres: dbCheck,
+            env: { ok: envDiag.valid, checkedAt },
+            outboundEmail: {
+              ok: outboundEmailOk,
+              checkedAt,
+              message: outboundEmailMessage,
+            },
+          },
         };
         break;
       }
@@ -426,13 +458,16 @@ export async function collectPlatformHealth(prisma: PrismaClient): Promise<Platf
           enabled: s3.enabled,
           configState: !s3.enabled ? 'partial' : misconfigured ? 'invalid' : 'valid',
           configIssues: s3.issues,
-          configSummary: s3.summary as Record<string, string | boolean>,
+          configSummary: {
+            ...(s3.summary as Record<string, string | boolean>),
+            scanScreenshotMode: s3.enabled && !misconfigured ? 's3_object_keys' : 'inline_data_uri_in_database',
+          },
           healthState: !s3.enabled ? 'disabled' : misconfigured ? 'misconfigured' : 'ready',
           lastCheckAt: checkedAt,
           lastActivityAt: null,
           failureReason: misconfigured ? s3.issues[0] : null,
           nextStep: !s3.enabled
-            ? 'Optional: configure S3_* variables for screenshot/evidence storage.'
+            ? 'Without S3, scan screenshots are stored as inline JPEG data URIs on PageSnapshot rows (larger DB footprint). Configure S3_* for object-key storage and easier retention.'
             : misconfigured
               ? s3.issues[0]
               : 'No action required.',
@@ -496,7 +531,12 @@ export async function collectPlatformHealth(prisma: PrismaClient): Promise<Platf
       sessionStore: {
         ok: sessionOk,
         checkedAt,
-        message: sessionOk ? undefined : 'Sessions require valid DB + NEXTAUTH_*',
+        message: sessionOk ? undefined : 'Sessions require valid DATABASE_URL and env validation.',
+      },
+      outboundEmail: {
+        ok: outboundEmailOk,
+        checkedAt,
+        message: outboundEmailMessage,
       },
     },
     services,
