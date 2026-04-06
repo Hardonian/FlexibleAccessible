@@ -9,6 +9,7 @@ import {
   getOrCreateBillingCustomer,
 } from "@/lib/billing/org-scoped-queries";
 import type { PlanTier } from "@aros/db";
+import { logProductEvent, PRODUCT_EVENT_ACTIONS } from "@/lib/product-events";
 
 function redirectWithError(message: string) {
   redirect(`/settings/billing?error=${encodeURIComponent(message)}`);
@@ -90,6 +91,13 @@ export async function startSubscriptionCheckoutAction(formData: FormData) {
   if (!session.url) {
     redirectWithError("Stripe did not return a checkout URL.");
   }
+
+  await logProductEvent({
+    organizationId: ctx.organizationId,
+    userId: user.id,
+    action: PRODUCT_EVENT_ACTIONS.checkout_started,
+    metadata: { plan: requestedPlan },
+  });
 
   redirect(session.url);
 }

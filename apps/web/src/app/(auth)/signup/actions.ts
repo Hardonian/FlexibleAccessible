@@ -14,6 +14,7 @@ import { issueSecurityToken, EMAIL_VERIFICATION_TTL_MS } from "@/lib/auth-tokens
 import { sendTransactionalMail } from "@/lib/mail";
 import { getAppBaseUrl } from "@/lib/site-url";
 import { rateLimitSafe } from "@/lib/rate-limit";
+import { logProductEvent, PRODUCT_EVENT_ACTIONS } from "@/lib/product-events";
 
 interface SignupState {
   error: string | null;
@@ -127,6 +128,13 @@ export async function signupAction(
     });
 
     return { user, organizationId: org.id };
+  });
+
+  await logProductEvent({
+    organizationId: result.organizationId,
+    userId: result.user.id,
+    action: PRODUCT_EVENT_ACTIONS.signup_completed,
+    metadata: { emailVerified: skipVerificationInDev },
   });
 
   async function rollbackSignup() {

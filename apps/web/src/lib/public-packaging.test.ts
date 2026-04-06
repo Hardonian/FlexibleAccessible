@@ -24,4 +24,14 @@ describe('getPublicPlanCards', () => {
       `Bounded AI draft assist: ${PLANS.PROFESSIONAL.aiTokenLimit.toLocaleString()} tokens/mo (review required)`,
     );
   });
+
+  it('surfaces deploy webhook automation only on Professional where the plan config says so', () => {
+    const cards = getPublicPlanCards();
+    const professional = cards.find((c) => c.tier === 'PROFESSIONAL');
+    const starter = cards.find((c) => c.tier === 'STARTER');
+    expect(
+      professional?.bullets.some((b) => /deploy webhook/i.test(b)),
+    ).toBe(true);
+    expect(starter?.bullets.some((b) => /deploy webhook/i.test(b))).toBe(false);
+  });
 });

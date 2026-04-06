@@ -201,6 +201,17 @@ test.describe("Paywall – authenticated billing flow (demo user)", () => {
   });
 });
 
+test.describe("Paywall – plan minimum on deploy webhook listing", () => {
+  test("GET /api/deploy-webhook without session returns 401/403", async ({
+    page,
+  }) => {
+    const response = await page.request.get(
+      "/api/deploy-webhook?organizationId=test-org",
+    );
+    expect([401, 403]).toContain(response.status());
+  });
+});
+
 test.describe("Paywall – subscription validation in POST endpoints", () => {
   test("AI copilot rejects requests with missing required fields", async ({
     page,

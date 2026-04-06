@@ -146,7 +146,8 @@ export default async function BillingPage({ searchParams }: PageProps) {
           0,
         ),
       );
-      const [membership, customer, scansUsedThisMonth] = await Promise.all([
+      const [membership, customer, scansUsedThisMonth, memberCount, pendingInviteCount] =
+        await Promise.all([
         prisma.membership.findUnique({
           where: {
             userId_organizationId: {
@@ -176,12 +177,18 @@ export default async function BillingPage({ searchParams }: PageProps) {
             },
           },
         }),
+        prisma.membership.count({ where: { organizationId } }),
+        prisma.auditLog.count({
+          where: { organizationId, action: "member:invite_pending" },
+        }),
       ]);
 
       return {
         membership,
         customer,
         scansUsedThisMonth,
+        memberCount,
+        pendingInviteCount,
       };
     },
   );
@@ -212,6 +219,10 @@ export default async function BillingPage({ searchParams }: PageProps) {
   const canManageBilling = hasPermission(membership.role, "org:billing");
   const plans = getBillingPlanCards();
   const scansUsedThisMonth = billingResult.data.scansUsedThisMonth;
+  const memberCount = billingResult.data.memberCount;
+  const pendingInviteCount = billingResult.data.pendingInviteCount;
+  const seatLimit = subscription?.maxSeats ?? 1;
+  const seatsReserved = memberCount + pendingInviteCount;
   const scanLimit = subscription?.maxScansPerMonth ?? 3;
   const scansRemaining = Math.max(scanLimit - scansUsedThisMonth, 0);
   const usagePercent = Math.min(
@@ -306,9 +317,33 @@ export default async function BillingPage({ searchParams }: PageProps) {
               value={String(subscription?.maxDomains ?? 1)}
             />
             <Stat
+              label="Pages / crawl"
+              value={String(subscription?.maxPagesPerCrawl ?? 50)}
+            />
+            <Stat
               label="AI access"
               value={subscription?.aiEnabled ? "Included" : "Locked"}
             />
+          </div>
+
+          <div
+            className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600"
+            role="status"
+          >
+            <p className="font-medium text-slate-900">Seats</p>
+            <p className="mt-1">
+              {memberCount} member{memberCount === 1 ? "" : "s"}
+              {pendingInviteCount > 0
+                ? `, ${pendingInviteCount} pending invite${pendingInviteCount === 1 ? "" : "s"}`
+                : ""}{" "}
+              · cap {seatLimit}
+              {seatsReserved >= seatLimit ? (
+                <span className="text-amber-800">
+                  {" "}
+                  (at seat cap — upgrade or remove pending invites to add people)
+                </span>
+              ) : null}
+            </p>
           </div>
 
           <div
@@ -336,6 +371,22 @@ export default async function BillingPage({ searchParams }: PageProps) {
                 This subscription is set to cancel at period end.
               </p>
             )}
+            {entitlement.reason === "past_due" && (
+              <p className="mt-2 text-amber-900">
+                Past due: private dashboard routes stay locked until billing is current. You can still use this billing
+                page and the public scan.
+              </p>
+            )}
+            {entitlement.reason === "cancelled" && (
+              <p className="mt-2 text-amber-900">
+                Cancelled: you keep read access to billing here; private product data stays locked until you subscribe
+                again.
+              </p>
+            )}
+            <p className="mt-3 text-xs text-slate-500">
+              Downgrade to Free (via Stripe or support) resets limits to the Free tier and removes paid automation such
+              as deploy webhooks (Professional+) and AI draft assist (Professional+ with AI enabled).
+            </p>
           </div>
 
           <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">

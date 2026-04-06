@@ -202,7 +202,7 @@ describe("inviteMemberAction", () => {
 
   it("counts pending invites toward seat limit", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_admin", email: "admin@example.com", name: "Admin" },
+      user: { id: "user_admin", email: "admin@example.com", name: "Admin", emailVerified: true },
       organizationId: "org_123",
       role: "ADMIN",
       subscription: null,

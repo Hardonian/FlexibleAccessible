@@ -9,6 +9,7 @@ import { requireOrgAccess } from "@/lib/auth-guard";
 import { ApiError } from "@aros/shared";
 import { hasPermission } from "@aros/config";
 import crypto from "node:crypto";
+import { logProductEvent, PRODUCT_EVENT_ACTIONS } from "@/lib/product-events";
 
 const API_KEY_PREFIX = "arsk_live_";
 const KEY_BYTES = 32; // 64 hex chars
@@ -168,6 +169,13 @@ export async function createApiKeyAction(
     });
 
     revalidatePath("/settings/api-keys");
+
+    await logProductEvent({
+      organizationId,
+      userId: user.id,
+      action: PRODUCT_EVENT_ACTIONS.api_key_created,
+      metadata: { keyId: apiKey.id, name: apiKey.name },
+    });
 
     return {
       success: true,
