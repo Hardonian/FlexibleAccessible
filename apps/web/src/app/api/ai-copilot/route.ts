@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     const ctx = await requireCanonicalOrgAccess(
       parsed.organizationId,
       "finding:manage",
-      { requirePaid: true },
+      { requirePaid: true, planMinimum: "PROFESSIONAL" },
     );
 
     // Load finding context for RAG
@@ -68,7 +68,8 @@ ${parsed.message}`;
           success: false,
           error: {
             code: "AI_NOT_ENABLED",
-            message: "AI features require a Starter plan or higher.",
+            message:
+              "AI draft assist requires Professional or Enterprise (AI-enabled plans on this product).",
           },
         },
         { status: 403 },

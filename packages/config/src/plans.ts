@@ -54,10 +54,10 @@ export const PLANS: Record<PlanTier, PlanConfig> = {
     maxScansPerMonth: 50,
     maxSeats: 10,
     features: [
-      "Scheduled / recurring scans",
+      "Deploy webhook triggers for post-deploy scans (this tier and up)",
       "Human review queues + sign-off trails",
       "Evidence-grade exports (VPAT-ready artifacts)",
-      "Jira + webhook automation",
+      "Integration automation where your operator configures connectors (e.g. Jira)",
       "Bounded AI assist for draft fixes (review required)",
     ],
     priceMonthly: 149,

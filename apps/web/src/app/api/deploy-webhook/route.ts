@@ -4,6 +4,7 @@ import { apiSuccess, apiError } from "@/lib/api-utils";
 import { ApiError } from "@aros/shared";
 import { createHmac, timingSafeEqual } from "crypto";
 import { createPendingScanRun, findActiveDeployWebhookByDomain, listDeployWebhooks } from "@/lib/integrations/org-scoped-queries";
+import { deployWebhookSubscriptionAllowed } from "@/lib/deploy-webhook-plan-gate";
 
 export const runtime = "nodejs";
 
@@ -156,15 +157,16 @@ export async function POST(request: Request) {
       });
     }
 
-    // Additional security: Verify organization has active subscription for webhooks
+    // Deploy-triggered scans are a Professional+ automation; require paid access in good standing.
     const subscription = deployWebhook.site.workspace.organization.subscription;
-    if (!subscription || subscription.status !== "ACTIVE") {
+    if (!deployWebhookSubscriptionAllowed(subscription)) {
       return NextResponse.json(
         {
           success: false,
           error: {
-            code: "SUBSCRIPTION_INACTIVE",
-            message: "Deploy webhooks require active subscription",
+            code: "PLAN_UPGRADE_REQUIRED",
+            message:
+              "Deploy webhooks require Professional (or Enterprise) with an active or trialing subscription.",
           },
         },
         { status: 403 },
@@ -226,6 +228,7 @@ export async function GET(request: Request) {
 
     const ctx = await requireCanonicalOrgAccess(organizationId, "integrations:view", {
       requirePaid: true,
+      planMinimum: "PROFESSIONAL",
     });
 
     const webhooks = await listDeployWebhooks(ctx);

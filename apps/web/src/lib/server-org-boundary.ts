@@ -1,10 +1,13 @@
 import { ApiError, AppError } from "@aros/shared";
 import { requireOrgAccess } from "@/lib/auth-guard";
 import { runOrgScopedQuery, type OrgMembershipCore } from "@/lib/route-data-boundary";
-import type { Permission } from "@aros/config";
+import type { Permission, PlanTier } from "@aros/config";
+import { planMeetsMinimum } from "@aros/config";
 
 interface OrgBoundaryOptions {
   requirePaid?: boolean;
+  /** Minimum self-serve tier on the plan ladder (FREE < STARTER < PROFESSIONAL < ENTERPRISE). */
+  planMinimum?: PlanTier;
 }
 
 export async function requireCanonicalOrgAccess(
@@ -17,6 +20,18 @@ export async function requireCanonicalOrgAccess(
   }
 
   const ctx = await requireOrgAccess(organizationId, permission, options);
+
+  if (options.planMinimum) {
+    const tier = ctx.subscription?.plan ?? "FREE";
+    if (!planMeetsMinimum(tier, options.planMinimum)) {
+      throw new ApiError(
+        `This capability requires ${options.planMinimum} or higher on this organization.`,
+        "PLAN_UPGRADE_REQUIRED",
+        403,
+      );
+    }
+  }
+
   return { organizationId: ctx.organizationId, role: ctx.role };
 }
 
