@@ -95,6 +95,7 @@ export function getEntitlementState(
     return { hasPaidAccess: false, reason: 'cancelled' };
   }
 
+  // TRIALING and ACTIVE both carry paid plan limits until Stripe moves the subscription.
   return { hasPaidAccess: true, reason: 'active_paid' };
 }
 
@@ -103,9 +104,9 @@ export function entitlementReasonMessage(state: EntitlementState): string {
     case 'free_plan':
       return 'This feature is available on paid plans only.';
     case 'past_due':
-      return 'Your subscription is past due. Update billing to restore access.';
+      return 'Your subscription is past due. Update billing to restore paid access.';
     case 'cancelled':
-      return 'Your subscription has been cancelled. Upgrade to restore access.';
+      return 'Your subscription has ended. Upgrade to restore paid access.';
     case 'missing_subscription':
       return 'No subscription was found for this organization.';
     case 'active_paid':

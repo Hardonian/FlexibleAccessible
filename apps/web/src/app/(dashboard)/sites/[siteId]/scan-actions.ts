@@ -8,6 +8,7 @@ import {
 import { ApiError } from '@aros/shared';
 import { prisma } from '@/lib/db';
 import { requireSiteAccess } from '@/lib/auth-guard';
+import { logProductEvent, PRODUCT_EVENT_ACTIONS } from '@/lib/product-events';
 import type { ScanSiteActionState } from './scan-action-state';
 
 export async function startSiteScanAction(
@@ -37,6 +38,17 @@ export async function startSiteScanAction(
 
     if (result.ok) {
       if (result.kind === 'queued') {
+        const priorCount = await prisma.scanRun.count({
+          where: { site: { workspace: { organizationId: ctx.organizationId } } },
+        });
+        if (priorCount <= 1) {
+          await logProductEvent({
+            organizationId: ctx.organizationId,
+            userId: ctx.user.id,
+            action: PRODUCT_EVENT_ACTIONS.first_private_scan_queued,
+            metadata: { siteId: ctx.siteId, scanRunId: result.scanRunId },
+          });
+        }
         return {
           status: 'queued',
           message: 'Queued for verification. Evidence refreshes when the worker finishes this scan.',

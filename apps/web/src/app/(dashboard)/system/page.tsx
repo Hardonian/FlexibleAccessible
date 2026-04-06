@@ -13,6 +13,8 @@ import {
 } from '@/components/system/operator-control-plane-client';
 import { type PlatformDiagnosticIssue } from '@aros/core-services';
 import { getQueueDiagnostics } from '@/lib/queue-diagnostics';
+import { getEntitlementState } from '@/lib/auth-guard';
+import { PRODUCT_EVENT_ACTIONS } from '@/lib/product-events';
 
 
 export const metadata = { title: 'System & services' };
@@ -85,7 +87,50 @@ export default async function SystemPage() {
     console.error('[system] platform health failed', e);
   }
 
-  const queueStats = await getQueueDiagnostics().catch(() => []);
+  const productDecisionActions = Object.values(PRODUCT_EVENT_ACTIONS);
+
+  const [queueStats, orgCommercialBrief, apiKeyCount, pendingInviteCount, recentProductEvents] =
+    await Promise.all([
+      getQueueDiagnostics().catch(() => []),
+      prisma.organization
+        .findUnique({
+          where: { id: orgId },
+          select: {
+            subscription: {
+              select: {
+                plan: true,
+                status: true,
+                maxDomains: true,
+                maxPagesPerCrawl: true,
+                maxScansPerMonth: true,
+                maxSeats: true,
+                aiEnabled: true,
+                aiTokenLimit: true,
+                currentPeriodEnd: true,
+                cancelAtPeriodEnd: true,
+              },
+            },
+            _count: { select: { memberships: true, workspaces: true } },
+          },
+        })
+        .catch(() => null),
+      prisma.apiKey
+        .count({ where: { organizationId: orgId, isActive: true } })
+        .catch(() => 0),
+      prisma.auditLog
+        .count({
+          where: { organizationId: orgId, action: 'member:invite_pending' },
+        })
+        .catch(() => 0),
+      prisma.auditLog
+        .findMany({
+          where: { organizationId: orgId, action: { in: productDecisionActions } },
+          orderBy: { createdAt: 'desc' },
+          take: 15,
+          select: { id: true, action: true, createdAt: true, userId: true },
+        })
+        .catch(() => []),
+    ]);
 
 
   const summary = payload?.diagnostics.summary ?? null;
@@ -95,6 +140,11 @@ export default async function SystemPage() {
   const optionalIssueCount = summary?.optionalUnavailable.length ?? 0;
   const unhealthyServiceCount =
     payload?.report.services.filter((svc) => !['running', 'ready', 'disabled'].includes(svc.healthState)).length ?? 0;
+
+  const commercialEntitlement = getEntitlementState(orgCommercialBrief?.subscription ?? null);
+  const seatsInUse = orgCommercialBrief?._count.memberships ?? 0;
+  const seatCap = orgCommercialBrief?.subscription?.maxSeats ?? 1;
+  const seatsAtCap = seatsInUse + pendingInviteCount >= seatCap;
 
   return (
     <div className="space-y-8">
@@ -121,6 +171,87 @@ export default async function SystemPage() {
           </p>
         </RouteReliabilityNotice>
       )}
+
+      <section className="card space-y-4" aria-labelledby="commercial-readiness-heading">
+        <div>
+          <h2 id="commercial-readiness-heading" className="text-lg font-semibold text-slate-900">
+            Customer org commercial readiness
+          </h2>
+          <p className="mt-1 text-sm text-slate-600">
+            Snapshot for operator triage: billing posture, seat pressure, and recent product-decision audit events (not a
+            CRM). Self-serve limits apply unless a written contract explicitly overrides them.
+          </p>
+        </div>
+        {orgCommercialBrief ? (
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+              <p className="font-medium text-slate-900">Entitlement</p>
+              <ul className="mt-2 space-y-1">
+                <li>
+                  Plan:{' '}
+                  <span className="font-mono text-xs">{orgCommercialBrief.subscription?.plan ?? 'FREE'}</span>
+                </li>
+                <li>
+                  Status:{' '}
+                  <span className="font-mono text-xs">
+                    {orgCommercialBrief.subscription?.status ?? 'UNKNOWN'}
+                  </span>
+                </li>
+                <li>
+                  Paid access (server model):{' '}
+                  <span className="font-medium">{commercialEntitlement.hasPaidAccess ? 'Yes' : 'No'}</span>
+                  {commercialEntitlement.reason !== 'active_paid' && (
+                    <span className="text-slate-500"> ({commercialEntitlement.reason})</span>
+                  )}
+                </li>
+                {orgCommercialBrief.subscription?.cancelAtPeriodEnd && (
+                  <li className="text-amber-800">Cancellation scheduled at period end.</li>
+                )}
+              </ul>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+              <p className="font-medium text-slate-900">Capacity</p>
+              <ul className="mt-2 space-y-1">
+                <li>
+                  Workspaces: {orgCommercialBrief._count.workspaces}
+                </li>
+                <li>
+                  Seats: {seatsInUse} members + {pendingInviteCount} pending invites / cap {seatCap}
+                  {seatsAtCap ? (
+                    <span className="ml-1 text-amber-800">(at or over seat cap)</span>
+                  ) : null}
+                </li>
+                <li>Active API keys: {apiKeyCount}</li>
+                <li>
+                  Monthly scan limit (plan): {orgCommercialBrief.subscription?.maxScansPerMonth ?? '—'}
+                </li>
+              </ul>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-slate-500">Commercial snapshot unavailable (database error).</p>
+        )}
+        <div>
+          <p className="text-sm font-medium text-slate-900">Recent product decision events</p>
+          <p className="text-xs text-slate-500 mt-1">
+            Logged to audit with actions {productDecisionActions.join(', ')}.
+          </p>
+          {recentProductEvents.length === 0 ? (
+            <p className="mt-2 text-sm text-slate-500">No product decision events recorded yet.</p>
+          ) : (
+            <ul className="mt-2 divide-y divide-slate-100 text-sm">
+              {recentProductEvents.map((row) => (
+                <li key={row.id} className="flex flex-wrap justify-between gap-2 py-2">
+                  <span className="font-mono text-xs text-slate-800">{row.action}</span>
+                  <time className="text-xs text-slate-500" dateTime={row.createdAt.toISOString()}>
+                    {formatIsoDateTime(row.createdAt.toISOString())}
+                  </time>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </section>
 
       {loadError && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-900" role="alert">

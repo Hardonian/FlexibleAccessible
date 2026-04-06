@@ -150,7 +150,7 @@ describeDb('Stripe webhook integration', () => {
   });
 
 
-  it('does not silently grant paid entitlements for unknown price ids', async () => {
+  it('does not promote FREE orgs when Stripe sends an unknown price id', async () => {
     const eventId = `evt_test_${Date.now()}_unknown_price`;
     const subId = `sub_test_unknown_${Date.now()}`;
 
@@ -184,6 +184,43 @@ describeDb('Stripe webhook integration', () => {
     expect(sub?.plan).toBe('FREE');
     expect(sub?.maxDomains).toBe(1);
     expect(sub?.aiEnabled).toBe(false);
+  });
+
+  it('preserves an existing paid tier when Stripe sends an unknown price id', async () => {
+    const eventId = `evt_test_${Date.now()}_unknown_preserve`;
+    const subId = `sub_test_preserve_${Date.now()}`;
+
+    await prisma.subscription.update({
+      where: { organizationId: orgId },
+      data: {
+        plan: 'ENTERPRISE',
+        status: 'ACTIVE',
+        maxDomains: 100,
+        maxPagesPerCrawl: 10000,
+        maxScansPerMonth: 500,
+        maxSeats: 100,
+        aiEnabled: true,
+        aiTokenLimit: 1_000_000,
+      },
+    });
+
+    const payload = subscriptionPayload({
+      id: subId,
+      eventId,
+      customerId: stripeCustomerId,
+      priceId: 'price_custom_contract',
+      status: 'active',
+    });
+    const raw = JSON.stringify(payload);
+    const sig = signStripePayload(raw, env.webhookSecret);
+
+    const r = await handleStripeWebhookRequest(raw, sig, env, prisma);
+    expect(r).toEqual({ ok: true, duplicate: false });
+
+    const sub = await prisma.subscription.findUnique({ where: { organizationId: orgId } });
+    expect(sub?.plan).toBe('ENTERPRISE');
+    expect(sub?.maxDomains).toBe(100);
+    expect(sub?.stripeSubscriptionId).toBe(subId);
   });
 
   it('downgrades on customer.subscription.deleted', async () => {

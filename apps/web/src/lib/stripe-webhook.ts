@@ -150,12 +150,24 @@ async function applySubscriptionUpsert(
 
   const priceId = subscription.items?.data?.[0]?.price?.id;
   const resolvedPlanTier = resolvePlanTierFromPriceId(priceId, env);
-  const planConfig = resolvedPlanTier ? PLANS[resolvedPlanTier] : null;
+
+  const existing = await tx.subscription.findUnique({
+    where: { organizationId: billingCustomer.organizationId },
+    select: { plan: true },
+  });
+
+  /** When Stripe sends an unmapped price id, keep the org on its current paid tier instead of snapping to FREE limits. */
+  const tierToApply: PlanTier =
+    resolvedPlanTier ?? (existing && existing.plan !== 'FREE' ? existing.plan : 'FREE');
+
+  const planConfig =
+    tierToApply !== 'FREE' ? PLANS[tierToApply as Exclude<PlanTier, 'FREE'>] : null;
 
   if (!resolvedPlanTier && priceId) {
     console.warn('[stripe-webhook] unknown price id received; preserving existing entitlement where possible', {
       stripeSubscriptionId: subscription.id,
       priceId,
+      preservedPlan: tierToApply,
     });
   }
 
@@ -164,7 +176,7 @@ async function applySubscriptionUpsert(
     create: {
       organizationId: billingCustomer.organizationId,
       stripeSubscriptionId: subscription.id,
-      plan: planConfig?.tier ?? 'FREE',
+      plan: tierToApply,
       status: subscriptionStatusFromStripe(subscription.status),
       maxDomains: planConfig?.maxDomains ?? PLANS.FREE.maxDomains,
       maxPagesPerCrawl: planConfig?.maxPagesPerCrawl ?? PLANS.FREE.maxPagesPerCrawl,
@@ -178,14 +190,14 @@ async function applySubscriptionUpsert(
     },
     update: {
       stripeSubscriptionId: subscription.id,
-      plan: planConfig?.tier ?? undefined,
+      plan: tierToApply,
       status: subscriptionStatusFromStripe(subscription.status),
-      maxDomains: planConfig?.maxDomains,
-      maxPagesPerCrawl: planConfig?.maxPagesPerCrawl,
-      maxScansPerMonth: planConfig?.maxScansPerMonth,
-      maxSeats: planConfig?.maxSeats,
-      aiEnabled: planConfig?.aiEnabled,
-      aiTokenLimit: planConfig?.aiTokenLimit,
+      maxDomains: planConfig?.maxDomains ?? PLANS.FREE.maxDomains,
+      maxPagesPerCrawl: planConfig?.maxPagesPerCrawl ?? PLANS.FREE.maxPagesPerCrawl,
+      maxScansPerMonth: planConfig?.maxScansPerMonth ?? PLANS.FREE.maxScansPerMonth,
+      maxSeats: planConfig?.maxSeats ?? PLANS.FREE.maxSeats,
+      aiEnabled: planConfig?.aiEnabled ?? PLANS.FREE.aiEnabled,
+      aiTokenLimit: planConfig?.aiTokenLimit ?? PLANS.FREE.aiTokenLimit,
       currentPeriodStart: new Date(subscription.current_period_start * 1000),
       currentPeriodEnd: new Date(subscription.current_period_end * 1000),
       cancelAtPeriodEnd: subscription.cancel_at_period_end ?? false,

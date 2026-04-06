@@ -40,6 +40,17 @@ export default function SupportPage() {
               . Include your organization name, approximate timezone, and what you
               were trying to do—we respond as capacity allows.
             </p>
+            <p className="mt-3 text-sm leading-relaxed text-slate-600">
+              Self-serve plans use the in-app billing page for upgrades, downgrades, and
+              payment updates. If private routes are locked, check billing status there
+              first (past due or cancelled subscriptions block paid surfaces even when
+              marketing pages still load).
+            </p>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600">
+              Enterprise or managed accessibility operations are contract-shaped: scope,
+              response expectations, and onboarding commitments apply only where agreed in
+              writing—not from marketing copy alone.
+            </p>
           </li>
           <li>
             <h2 className="text-lg font-semibold text-slate-900">

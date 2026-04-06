@@ -2,9 +2,13 @@ import { describe, it, expect, vi } from "vitest";
 import { POST } from "./route";
 import { ApiError } from "@aros/shared";
 
-vi.mock("@/lib/auth-guard", () => ({
-  requireOrgAccess: vi.fn(),
-}));
+vi.mock("@/lib/server-org-boundary", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/server-org-boundary")>();
+  return {
+    ...actual,
+    requireCanonicalOrgAccess: vi.fn(),
+  };
+});
 
 vi.mock("@/lib/session", () => ({
   requireSession: vi.fn(),
@@ -36,14 +40,23 @@ vi.mock("fetch", () => ({
   default: vi.fn(),
 }));
 
-import { requireOrgAccess } from "@/lib/auth-guard";
+import { requireCanonicalOrgAccess } from "@/lib/server-org-boundary";
 import { requireSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 
 describe("AI Copilot API", () => {
+  beforeEach(() => {
+    vi.mocked(requireSession).mockResolvedValue({
+      id: "user-1",
+      email: "user@example.com",
+      name: "Test User",
+      emailVerified: true,
+    });
+  });
+
   it("should reject unauthorized users", async () => {
-    const mockRequireOrgAccess = vi.mocked(requireOrgAccess);
-    mockRequireOrgAccess.mockRejectedValueOnce(
+    const mockRequire = vi.mocked(requireCanonicalOrgAccess);
+    mockRequire.mockRejectedValueOnce(
       ApiError.forbidden("Missing permission: finding:manage"),
     );
 
@@ -65,14 +78,11 @@ describe("AI Copilot API", () => {
   });
 
   it("should reject when finding not found or not in org", async () => {
-    const mockRequireOrgAccess = vi.mocked(requireOrgAccess);
-    mockRequireOrgAccess.mockResolvedValueOnce({
-      user: { id: "user-1", email: "user@example.com", name: "Test User" },
+    const mockRequire = vi.mocked(requireCanonicalOrgAccess);
+    mockRequire.mockResolvedValueOnce({
       organizationId: "org-1",
       role: "OWNER",
-      subscription: null,
-      entitlement: { hasPaidAccess: true, reason: "active_paid" },
-    } as any);
+    });
 
     const mockFindFirst = vi.mocked(prisma.canonicalFinding.findFirst);
     mockFindFirst.mockResolvedValueOnce(null);
@@ -95,25 +105,11 @@ describe("AI Copilot API", () => {
   });
 
   it("should reject when AI not enabled", async () => {
-    const mockRequireOrgAccess = vi.mocked(requireOrgAccess);
-    mockRequireOrgAccess.mockResolvedValueOnce({
-      user: { id: "user-1", email: "user@example.com", name: "Test User" },
+    const mockRequire = vi.mocked(requireCanonicalOrgAccess);
+    mockRequire.mockResolvedValueOnce({
       organizationId: "org-1",
       role: "OWNER",
-      subscription: {
-        plan: "STARTER",
-        status: "ACTIVE",
-        maxDomains: 5,
-        maxPagesPerCrawl: 100,
-        maxScansPerMonth: 10,
-        maxSeats: 5,
-        aiEnabled: false,
-        aiTokenLimit: 0,
-        currentPeriodEnd: null,
-        cancelAtPeriodEnd: false,
-      },
-      entitlement: { hasPaidAccess: true, reason: "active_paid" },
-    } as any);
+    });
 
     const mockFindFirst = vi.mocked(prisma.canonicalFinding.findFirst);
     mockFindFirst.mockResolvedValueOnce({

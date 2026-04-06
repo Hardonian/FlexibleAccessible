@@ -6,6 +6,7 @@ import { requireOrgAccess } from "@/lib/auth-guard";
 import { runOrgScopedQuery } from "@/lib/route-data-boundary";
 import { hasPermission } from "@aros/config";
 import type { MemberRole } from "@aros/db";
+import { logProductEvent, PRODUCT_EVENT_ACTIONS } from "@/lib/product-events";
 
 const INVITABLE_ROLES: MemberRole[] = [
   "DEVELOPER",
@@ -198,6 +199,13 @@ export async function inviteMemberAction(
             metadata: { invitedEmail: email, role },
           },
         });
+
+        await logProductEvent({
+          organizationId: orgId,
+          userId: ctx.user.id,
+          action: PRODUCT_EVENT_ACTIONS.invite_sent,
+          metadata: { role, path: "existing_user" },
+        });
       });
       if (!inviteResult.ok) {
         return {
@@ -218,8 +226,8 @@ export async function inviteMemberAction(
   }
 
   try {
-    const pendingInviteResult = await runOrgScopedQuery(ctx, async (orgId) =>
-      prisma.auditLog.create({
+    const pendingInviteResult = await runOrgScopedQuery(ctx, async (orgId) => {
+      await prisma.auditLog.create({
         data: {
           organizationId: orgId,
           userId: ctx.user.id,
@@ -227,8 +235,14 @@ export async function inviteMemberAction(
           entityType: "user",
           metadata: { invitedEmail: email, role },
         },
-      }),
-    );
+      });
+      await logProductEvent({
+        organizationId: orgId,
+        userId: ctx.user.id,
+        action: PRODUCT_EVENT_ACTIONS.invite_sent,
+        metadata: { role, path: "pending_signup" },
+      });
+    });
     if (!pendingInviteResult.ok) {
       return {
         success: false,
