@@ -48,8 +48,17 @@ export function MarketingSiteChrome({ children }: { children: ReactNode }) {
             <Link href="/security" className="hover:text-slate-800">
               Security
             </Link>
+            <Link href="/privacy" className="hover:text-slate-800">
+              Privacy
+            </Link>
+            <Link href="/support" className="hover:text-slate-800">
+              Support
+            </Link>
             <Link href="/docs/api" className="hover:text-slate-800">
               Docs
+            </Link>
+            <Link href="/legal/terms" className="hover:text-slate-800">
+              Terms
             </Link>
           </div>
         </div>

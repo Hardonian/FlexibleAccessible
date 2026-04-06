@@ -74,6 +74,14 @@ export default function SecurityPage() {
             Trust overview
           </Link>
           ·{" "}
+          <Link href="/privacy" className="font-medium text-brand-700 hover:underline">
+            Privacy
+          </Link>
+          ·{" "}
+          <Link href="/legal/terms" className="font-medium text-brand-700 hover:underline">
+            Terms
+          </Link>
+          ·{" "}
           <Link href="/" className="font-medium text-brand-700 hover:underline">
             Home
           </Link>

@@ -1,10 +1,13 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
+import { createHash } from "crypto";
 import { prisma } from "@/lib/db";
 import { createSession } from "@/lib/session";
 import { verifyPassword } from "@aros/shared";
-import { timingSafeEqual } from "crypto";
+import { rateLimitSafe } from "@/lib/rate-limit";
+import { getClientIpFromHeaders } from "@/lib/request-ip";
 
 interface LoginState {
   error: string | null;
@@ -43,8 +46,20 @@ export async function loginAction(
     return { error: "Email and password are required" };
   }
 
+  const headerList = await headers();
+  const ip = getClientIpFromHeaders(headerList);
+  const emailNorm = email.toLowerCase().trim();
+  const rlKey = `auth:login:${createHash("sha256").update(`${ip}:${emailNorm}`).digest("hex").slice(0, 32)}`;
+  const rl = await rateLimitSafe(rlKey, 20, 15 * 60 * 1000);
+  if (!rl.success) {
+    return {
+      error:
+        "Too many sign-in attempts. Please wait a few minutes and try again.",
+    };
+  }
+
   const user = await prisma.user.findUnique({
-    where: { email: email.toLowerCase() },
+    where: { email: emailNorm },
   });
   if (!user) {
     // Perform a dummy hash verification to prevent user enumeration via timing

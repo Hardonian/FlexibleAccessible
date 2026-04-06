@@ -75,7 +75,7 @@ export const PLANS: Record<PlanTier, PlanConfig> = {
       "Higher limits + procurement-friendly terms",
       "Custom integrations & migration support",
       "Managed accessibility operations (optional)",
-      "SLA and onboarding packages (scoped per contract)",
+      "Response-time and onboarding commitments only where agreed in writing",
     ],
     priceMonthly: 499,
     aiEnabled: true,

@@ -38,7 +38,11 @@ function isPublicMarketingPath(pathname: string) {
     pathname === "/" ||
     pathname === "/login" ||
     pathname === "/signup" ||
-    pathname === "/offline"
+    pathname === "/offline" ||
+    pathname === "/privacy" ||
+    pathname === "/support" ||
+    pathname === "/accessibility" ||
+    pathname.startsWith("/legal/")
   );
 }
 
