@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import { requireSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
-import type { Prisma } from "@aros/db";
 import Link from "next/link";
 import { FindingStatusForm } from "./finding-status-form";
 import {
@@ -45,10 +44,21 @@ export default async function FindingDetailPage({
   const sp = await searchParams;
   const user = await requireSession();
   const platformTruth = await getRoutePlatformTruth();
-  const canViewSystem = await prisma.membership
-    .findMany({ where: { userId: user.id }, select: { role: true } })
-    .then((rows) => rows.some((m) => hasPermission(m.role, "org:system:view")))
-    .catch(() => false);
+  let canViewSystem = false;
+  try {
+    const memberships = await prisma.membership.findMany({
+      where: { userId: user.id },
+      select: { role: true },
+    });
+    for (const membership of memberships) {
+      if (hasPermission(membership.role, "org:system:view")) {
+        canViewSystem = true;
+        break;
+      }
+    }
+  } catch {
+    canViewSystem = false;
+  }
 
   const orgRes = await resolveDashboardOrgMembership(user.id, platformTruth);
 
@@ -88,50 +98,7 @@ export default async function FindingDetailPage({
     );
   }
 
-  type FindingDetail = Prisma.CanonicalFindingGetPayload<{
-    include: {
-      site: { select: { id: true; name: true; domain: true } };
-      lastScanRun: {
-        select: {
-          id: true;
-          status: true;
-          completedAt: true;
-          createdAt: true;
-          errorMessage: true;
-        };
-      };
-      statusEvents: {
-        orderBy: { createdAt: "desc" };
-        take: 25;
-        include: { user: { select: { email: true; name: true } } };
-      };
-      occurrences: {
-        include: {
-          page: { select: { id: true; url: true; title: true } };
-          lastRawViolation: {
-            select: {
-              id: true;
-              createdAt: true;
-              elementContext: true;
-              scanRun: {
-                select: { id: true; status: true; completedAt: true };
-              };
-            };
-          };
-        };
-      };
-      cluster: true;
-      suggestions: { include: { recipe: true } };
-      evidenceRecords: true;
-      verificationRuns: true;
-      governanceDecisions: {
-        include: {
-          createdBy: { select: { email: true; name: true } };
-          revokedBy: { select: { email: true; name: true } };
-        };
-      };
-    };
-  }>;
+  type FindingDetail = NonNullable<Awaited<ReturnType<typeof prisma.canonicalFinding.findFirst>>>;
 
   let finding: FindingDetail | null = null;
 

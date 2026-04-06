@@ -8,13 +8,36 @@ import { hasPermission } from '@aros/config';
 
 export const metadata = { title: 'Issue Clusters' };
 
+
+type ClusterListItem = {
+  id: string;
+  severity: 'CRITICAL' | 'SERIOUS' | 'MODERATE' | 'MINOR';
+  name: string;
+  description: string | null;
+  selectorPattern: string | null;
+  pageCount: number;
+  site: { name: string; domain: string };
+  _count: { findings: number; suggestions: number };
+};
+
 export default async function ClustersPage() {
   const user = await requireSession();
   const platformTruth = await getRoutePlatformTruth();
-  const canViewSystem = await prisma.membership
-    .findMany({ where: { userId: user.id }, select: { role: true } })
-    .then((rows) => rows.some((m) => hasPermission(m.role, 'org:system:view')))
-    .catch(() => false);
+  let canViewSystem = false;
+  try {
+    const memberships = await prisma.membership.findMany({
+      where: { userId: user.id },
+      select: { role: true },
+    });
+    for (const membership of memberships) {
+      if (hasPermission(membership.role, 'org:system:view')) {
+        canViewSystem = true;
+        break;
+      }
+    }
+  } catch {
+    canViewSystem = false;
+  }
 
   const orgRes = await resolveDashboardOrgMembership(user.id, platformTruth);
 
@@ -73,7 +96,7 @@ export default async function ClustersPage() {
     );
   }
 
-  const clusters = clustersResult.data;
+  const clusters = clustersResult.data as ClusterListItem[];
 
   return (
     <div className="space-y-6">
@@ -93,7 +116,7 @@ export default async function ClustersPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {clusters.map((cluster) => (
+          {clusters.map((cluster: ClusterListItem) => (
             <Link
               key={cluster.id}
               href={`/clusters/${cluster.id}`}

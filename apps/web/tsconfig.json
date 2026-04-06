@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["dom", "dom.iterable", "ES2022"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "ES2022"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -14,14 +18,36 @@
     "jsx": "preserve",
     "incremental": true,
     "forceConsistentCasingInFileNames": true,
-    "plugins": [{ "name": "next" }],
-    "typeRoots": ["./node_modules/@types", "../../node_modules/@types", "../../node_modules"],
-    "types": ["node", "@playwright/test", "@playwright/experimental-ct-react", "@axe-core/playwright"],
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "typeRoots": [
+      "./node_modules/@types",
+      "../../node_modules/@types",
+      "../../node_modules"
+    ],
+    "types": [
+      "node",
+      "@playwright/test",
+      "@playwright/experimental-ct-react",
+      "@axe-core/playwright"
+    ],
     "paths": {
-      "@/*": ["./src/*"]
-    }
+      "@/*": [
+        "./src/*"
+      ]
+    },
+    "noImplicitAny": false
   },
-
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }
