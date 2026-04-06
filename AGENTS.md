@@ -4,6 +4,10 @@
 
 This is an npm **workspaces** monorepo (not pnpm). Core apps and packages live under `apps/` and `packages/`.
 
+### AI and accessibility governance
+
+Before changing AI-assisted remediation, recommendations, or compliance-facing copy, read [`docs/AI_ACCESSIBILITY_OPERATING_RULES.md`](docs/AI_ACCESSIBILITY_OPERATING_RULES.md). Evidence-backed workflow wins over impressive model output; raw LLM output must not reach users without schema validation and traceability.
+
 ### Prerequisites
 
 - Node.js >= 20
