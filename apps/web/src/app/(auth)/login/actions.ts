@@ -6,7 +6,6 @@ import { prisma } from "@/lib/db";
 import { createSession } from "@/lib/session";
 import { abuseRateLimit, verifyPassword } from "@aros/shared";
 import { getClientIpFromHeaders } from "@/lib/client-ip";
-import { timingSafeEqual } from "crypto";
 
 interface LoginState {
   error: string | null;
@@ -47,6 +46,8 @@ export async function loginAction(
   if (!email || !password) {
     return { error: "Email and password are required" };
   }
+
+  const emailNorm = email.trim().toLowerCase();
 
   const h = await headers();
   const ip = getClientIpFromHeaders(h);

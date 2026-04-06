@@ -1,5 +1,6 @@
 "use server";
 
+import { createHash } from "node:crypto";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/db";
@@ -12,6 +13,7 @@ import { getClientIpFromHeaders } from "@/lib/client-ip";
 import { issueSecurityToken, EMAIL_VERIFICATION_TTL_MS } from "@/lib/auth-tokens";
 import { sendTransactionalMail } from "@/lib/mail";
 import { getAppBaseUrl } from "@/lib/site-url";
+import { rateLimitSafe } from "@/lib/rate-limit";
 
 interface SignupState {
   error: string | null;
@@ -37,15 +39,13 @@ export async function signupAction(
     return { error: "Password must be at least 8 characters" };
   }
 
-  const h = await headers();
-  const ip = getClientIpFromHeaders(h);
+  const headerList = await headers();
+  const ip = getClientIpFromHeaders(headerList);
   const rl = await abuseRateLimit(`signup:${ip}`, SIGNUP_MAX_PER_WINDOW, SIGNUP_WINDOW_MS);
   if (!rl.allowed) {
     return { error: "Too many signup attempts from this network. Try again later." };
   }
 
-  const headerList = await headers();
-  const ip = getClientIpFromHeaders(headerList);
   const rlKeyIp = `auth:signup:ip:${createHash('sha256').update(ip).digest('hex').slice(0, 32)}`;
   const rlIp = await rateLimitSafe(rlKeyIp, 10, 60 * 60 * 1000);
   if (!rlIp.success) {
