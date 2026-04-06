@@ -31,6 +31,13 @@ const NO_FIX_WORKFLOW_STATUSES = new Set<FindingStatus>([
   "WONT_FIX",
 ]);
 
+/** Open backlog statuses: absent-from-scan counts as an improvement signal (not closed / no-fix). */
+function isAbsentWhenOpenStatus(status: FindingStatus): boolean {
+  return (
+    !CLOSED_WORKFLOW_STATUSES.has(status) && !NO_FIX_WORKFLOW_STATUSES.has(status)
+  );
+}
+
 export function deriveFindingTruthStatus(input: {
   workflowStatus: FindingStatus;
   latestVerificationStatus: VerificationStatus | null;
@@ -263,6 +270,7 @@ export async function recordAutomatedFindingObservation(
           status: "OPEN",
           truthStatus: "OPEN",
           occurrenceCount: 1,
+          distinctScanRunsObserved: 1,
           lastScanRunId: input.scanRunId,
           lastVerifiedAt: observedAt,
           provenance: {
@@ -294,12 +302,24 @@ export async function recordAutomatedFindingObservation(
         activeGovernanceKind,
       });
 
+      const priorFailedInScanRun = await tx.findingVerificationRun.count({
+        where: {
+          canonicalFindingId: existing.id,
+          scanRunId: input.scanRunId,
+          kind: "SCAN_RECHECK",
+          status: "FAILED",
+        },
+      });
+
       await tx.canonicalFinding.update({
         where: { id: existing.id },
         data: {
           lastSeenAt: observedAt,
           lastVerifiedAt: observedAt,
           occurrenceCount: { increment: 1 },
+          ...(priorFailedInScanRun === 0
+            ? { distinctScanRunsObserved: { increment: 1 } }
+            : {}),
           lastScanRunId: input.scanRunId,
           targetKind: input.violation.selector ? "SELECTOR" : "PAGE",
           targetLocator: {
@@ -522,6 +542,15 @@ export async function finalizeAutomatedScanVerification(
 
   for (const finding of findings) {
     await prisma.$transaction(async (tx) => {
+      const priorPassedInScanRun = await tx.findingVerificationRun.count({
+        where: {
+          canonicalFindingId: finding.id,
+          scanRunId: input.scanRunId,
+          kind: "SCAN_RECHECK",
+          status: "PASSED",
+        },
+      });
+
       const verificationRun = await tx.findingVerificationRun.create({
         data: {
           siteId: input.siteId,
@@ -551,12 +580,18 @@ export async function finalizeAutomatedScanVerification(
         activeGovernanceKind,
       });
 
+      const countAbsentWhenOpen =
+        isAbsentWhenOpenStatus(finding.status) && priorPassedInScanRun === 0;
+
       await tx.canonicalFinding.update({
         where: { id: finding.id },
         data: {
           lastScanRunId: input.scanRunId,
           lastVerifiedAt: completedAt,
           truthStatus,
+          ...(countAbsentWhenOpen
+            ? { distinctScanRunsAbsentWhenOpen: { increment: 1 } }
+            : {}),
           evidenceSummary: {
             latestObservationAt: completedAt.toISOString(),
             latestVerificationStatus: "PASSED",
