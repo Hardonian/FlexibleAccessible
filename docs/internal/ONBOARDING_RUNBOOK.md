@@ -1,4 +1,4 @@
-# FlexibleAccessible onboarding runbook (operator-first)
+# AccessibleMadeFlexible onboarding runbook (operator-first)
 
 Last updated: 2026-04-03.
 

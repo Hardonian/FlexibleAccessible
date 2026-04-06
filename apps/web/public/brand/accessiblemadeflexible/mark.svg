@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="AccessibleMadeFlexible brand mark">
+  <title>AccessibleMadeFlexible brand mark</title>
+  <defs>
+    <linearGradient id="copper-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#d4956a;stop-opacity:1" />
+      <stop offset="40%" style="stop-color:#b87333;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8b5a2b;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="copper-grad-light" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#e8b98a;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#c8843a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#9a6528;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!--
+    AccessibleMadeFlexible brand mark.
+    Two interlocked loops forming a figure-8 / infinity-inflected shape,
+    echoing accessibility (open loops) and flexibility (fluid motion).
+    The crossbar through the centre alludes to the letter A.
+  -->
+
+  <!-- Outer upper loop -->
+  <path
+    d="M 100,18
+       C 68,18 42,40 42,68
+       C 42,88 55,103 74,110
+       C 55,117 42,132 42,152
+       C 42,167 55,182 100,182
+       C 145,182 158,167 158,152
+       C 158,132 145,117 126,110
+       C 145,103 158,88 158,68
+       C 158,40 132,18 100,18 Z"
+    fill="none"
+    stroke="url(#copper-grad)"
+    stroke-width="9"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <!-- Inner upper loop fill shape (creates the figure-8 negative space) -->
+  <path
+    d="M 100,44
+       C 80,44 66,55 66,68
+       C 66,81 80,91 100,95
+       C 120,91 134,81 134,68
+       C 134,55 120,44 100,44 Z"
+    fill="url(#copper-grad)"
+    opacity="0.18"
+  />
+
+  <!-- Inner lower loop fill shape -->
+  <path
+    d="M 100,125
+       C 80,129 66,139 66,152
+       C 66,165 80,176 100,176
+       C 120,176 134,165 134,152
+       C 134,139 120,129 100,125 Z"
+    fill="url(#copper-grad)"
+    opacity="0.18"
+  />
+
+  <!-- Crossbar — the structural "A" stroke through the centre -->
+  <line
+    x1="64" y1="110"
+    x2="136" y2="110"
+    stroke="url(#copper-grad-light)"
+    stroke-width="6"
+    stroke-linecap="round"
+  />
+
+  <!-- Central convergence dot -->
+  <circle cx="100" cy="110" r="5" fill="url(#copper-grad)" />
+</svg>

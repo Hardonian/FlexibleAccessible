@@ -1,4 +1,4 @@
-# FlexibleAccessible pricing and packaging matrix (implementation-aligned)
+# AccessibleMadeFlexible pricing and packaging matrix (implementation-aligned)
 
 Last updated: 2026-04-03.
 

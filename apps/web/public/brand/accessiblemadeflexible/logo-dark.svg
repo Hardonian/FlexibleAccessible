@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 120" role="img" aria-label="AccessibleMadeFlexible — horizontal logo, dark background variant">
+  <title>AccessibleMadeFlexible</title>
+  <defs>
+    <linearGradient id="copper-dk" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#e8b98a;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#c8843a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#a06528;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Brand mark -->
+  <g transform="translate(10, 10) scale(0.5)">
+    <path
+      d="M 100,18 C 68,18 42,40 42,68 C 42,88 55,103 74,110 C 55,117 42,132 42,152 C 42,167 55,182 100,182 C 145,182 158,167 158,152 C 158,132 145,117 126,110 C 145,103 158,88 158,68 C 158,40 132,18 100,18 Z"
+      fill="none"
+      stroke="url(#copper-dk)"
+      stroke-width="9"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+    <line x1="64" y1="110" x2="136" y2="110" stroke="#e8b98a" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="100" cy="110" r="5" fill="url(#copper-dk)" />
+  </g>
+
+  <!-- ACCESSIBLE — light on dark -->
+  <text
+    x="120" y="46"
+    font-family="'Arial Black', 'Impact', system-ui, sans-serif"
+    font-size="28"
+    font-weight="900"
+    letter-spacing="3"
+    fill="#f1f5f9"
+  >ACCESSIBLE</text>
+
+  <!-- Teal decorative lines -->
+  <line x1="120" y1="58" x2="195" y2="58" stroke="#2dd4bf" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="280" y1="58" x2="355" y2="58" stroke="#2dd4bf" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- Made -->
+  <text
+    x="200" y="68"
+    font-family="'Georgia', 'Times New Roman', serif"
+    font-size="13"
+    font-weight="400"
+    font-style="italic"
+    letter-spacing="2"
+    fill="#94a3b8"
+  >Made</text>
+
+  <!-- FLEXIBLE — copper on dark -->
+  <text
+    x="120" y="96"
+    font-family="'Arial Black', 'Impact', system-ui, sans-serif"
+    font-size="28"
+    font-weight="900"
+    letter-spacing="3"
+    fill="url(#copper-dk)"
+  >FLEXIBLE</text>
+</svg>

@@ -5,7 +5,7 @@
 **Scope:** ICP, buyer/user/operator roles, why-now framing.
 
 ## Current Truth
-FlexibleAccessible is strongest where a team needs continuous accessibility remediation operations, not one-off scans.
+AccessibleMadeFlexible is strongest where a team needs continuous accessibility remediation operations, not one-off scans.
 
 ## Ideal Customer Profile (ICP)
 1. **Primary ICP (now):** Product teams, digital agencies, and accessibility-minded engineering leads managing 1–10 domains with ongoing release cadence.
