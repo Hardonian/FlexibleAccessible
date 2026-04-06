@@ -13,6 +13,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/forgot-password",
     "/trust",
     "/security",
+    "/privacy",
+    "/support",
+    "/accessibility",
+    "/legal/terms",
+    "/legal/subprocessors",
   ] as const;
 
   return paths.map((path) => ({

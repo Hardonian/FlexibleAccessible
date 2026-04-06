@@ -56,7 +56,7 @@ export async function loginAction(
   }
 
   const user = await prisma.user.findUnique({
-    where: { email: email.toLowerCase() },
+    where: { email: emailNorm },
   });
   if (!user) {
     // Perform a dummy hash verification to prevent user enumeration via timing

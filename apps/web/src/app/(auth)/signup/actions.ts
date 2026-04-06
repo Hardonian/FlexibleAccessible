@@ -44,6 +44,26 @@ export async function signupAction(
     return { error: "Too many signup attempts from this network. Try again later." };
   }
 
+  const headerList = await headers();
+  const ip = getClientIpFromHeaders(headerList);
+  const rlKeyIp = `auth:signup:ip:${createHash('sha256').update(ip).digest('hex').slice(0, 32)}`;
+  const rlIp = await rateLimitSafe(rlKeyIp, 10, 60 * 60 * 1000);
+  if (!rlIp.success) {
+    return {
+      error:
+        'Too many sign-up attempts from this network. Please try again later.',
+    };
+  }
+
+  const rlKeyEmail = `auth:signup:email:${createHash('sha256').update(email).digest('hex').slice(0, 32)}`;
+  const rlEmail = await rateLimitSafe(rlKeyEmail, 5, 24 * 60 * 60 * 1000);
+  if (!rlEmail.success) {
+    return {
+      error:
+        'Too many sign-up attempts for this email. Please try again tomorrow or contact support.',
+    };
+  }
+
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
     return { error: 'An account with this email already exists' };

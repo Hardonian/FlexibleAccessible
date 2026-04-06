@@ -1,10 +1,14 @@
-# AROS - Accessibility Remediation OS
+# AccessibleMadeFlexible
 
-A production-ready multi-tenant SaaS platform for continuous accessibility issue discovery, scanning, clustering, and source-level remediation.
+**Accessibility operations and evidence—not vanity scores.**
+
+A production-ready multi-tenant SaaS platform for continuous accessibility issue discovery, scanning, clustering, and source-level remediation. Built on the AROS engine (internal: *Accessibility Remediation OS*).
+
+> **Brand note:** The public product name is **AccessibleMadeFlexible**. Internal packages use the `@aros/*` scope (AROS engine). The repository directory name (`FlexibleAccessible`) reflects the original working title; the canonical brand is AccessibleMadeFlexible going forward.
 
 ## What This Is
 
-AROS is a browser-rendered accessibility remediation operating system that:
+AccessibleMadeFlexible is a browser-rendered accessibility operations platform that:
 
 - **Crawls** websites using real Playwright browser automation
 - **Scans** rendered pages with axe-core for accessibility violations
@@ -22,6 +26,32 @@ AROS is a browser-rendered accessibility remediation operating system that:
 - A "one-click compliance" tool
 - A score-only dashboard
 - A product that claims guaranteed WCAG conformance
+
+## Brand Assets
+
+The `AccessibleMadeFlexible` brand asset package lives at:
+
+```
+apps/web/public/brand/accessiblemadeflexible/
+  mark.svg                — standalone brand mark (transparent background)
+  logo-horizontal.svg     — horizontal logo: mark + wordmark
+  logo-stacked.svg        — stacked wordmark
+  logo-dark.svg           — dark-background horizontal variant
+  favicon.svg             — SVG favicon source
+  favicon-16.png          — 16×16 favicon
+  favicon-32.png          — 32×32 favicon (also /public/favicon.ico)
+  favicon-48.png          — 48×48 favicon
+  apple-touch-icon.png    — 180×180 iOS home screen icon
+  favicon-192.png         — 192×192 PWA icon
+  favicon-512.png         — 512×512 PWA icon
+  og-1200x630.svg         — social share / OG banner source
+  repo-header-1500x500.svg — GitHub / repo social header
+```
+
+Icons are regenerated from SVG source via:
+```bash
+npm run icons   # in apps/web
+```
 
 ## Quick Start
 

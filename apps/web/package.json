@@ -21,7 +21,6 @@
     "@aros/config": "*",
     "@aros/core-services": "*",
     "@aros/db": "*",
-    "@aros/ui": "*",
     "@aros/shared": "*",
     "@aros/stakeholders": "*",
     "autoprefixer": "^10.4.0",

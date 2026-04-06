@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 500" role="img" aria-label="AccessibleMadeFlexible repository header">
+  <title>AccessibleMadeFlexible</title>
+  <defs>
+    <linearGradient id="bg-rh" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1c1008;stop-opacity:1" />
+      <stop offset="60%" style="stop-color:#2d1a0a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1a1008;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="copper-rh" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#d4956a" />
+      <stop offset="50%" style="stop-color:#b87333" />
+      <stop offset="100%" style="stop-color:#8b5a2b" />
+    </linearGradient>
+    <!-- Geometric grid pattern -->
+    <pattern id="grid" x="0" y="0" width="60" height="60" patternUnits="userSpaceOnUse">
+      <path d="M 60 0 L 0 0 0 60" fill="none" stroke="#3d2010" stroke-width="0.8" opacity="0.5"/>
+    </pattern>
+  </defs>
+
+  <!-- Dark warm background -->
+  <rect width="1500" height="500" fill="url(#bg-rh)" />
+
+  <!-- Subtle geometric grid overlay -->
+  <rect width="1500" height="500" fill="url(#grid)" opacity="0.6"/>
+
+  <!-- Copper accent bar -->
+  <rect x="0" y="0" width="1500" height="5" fill="url(#copper-rh)" opacity="0.8"/>
+  <rect x="0" y="495" width="1500" height="5" fill="url(#copper-rh)" opacity="0.4"/>
+
+  <!-- Large decorative brand mark — right side -->
+  <g transform="translate(1060, 80) scale(1.65)" opacity="0.2">
+    <path
+      d="M 100,18 C 68,18 42,40 42,68 C 42,88 55,103 74,110 C 55,117 42,132 42,152 C 42,167 55,182 100,182 C 145,182 158,167 158,152 C 158,132 145,117 126,110 C 145,103 158,88 158,68 C 158,40 132,18 100,18 Z"
+      fill="none"
+      stroke="#b87333"
+      stroke-width="10"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+    <line x1="64" y1="110" x2="136" y2="110" stroke="#d4956a" stroke-width="7" stroke-linecap="round"/>
+    <circle cx="100" cy="110" r="6" fill="#b87333" />
+  </g>
+
+  <!-- Wordmark -->
+  <!-- AccessibleMadeFlexible — combined wordmark -->
+  <text
+    x="90" y="210"
+    font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
+    font-size="22"
+    font-weight="400"
+    letter-spacing="8"
+    fill="#94a3b8"
+    text-transform="uppercase"
+  >ACCESSIBLE · MADE · FLEXIBLE</text>
+
+  <!-- Large product name -->
+  <text
+    x="90" y="310"
+    font-family="'Arial Black', 'Impact', system-ui, sans-serif"
+    font-size="80"
+    font-weight="900"
+    letter-spacing="2"
+    fill="url(#copper-rh)"
+  >AccessibleMadeFlexible</text>
+
+  <!-- Tagline -->
+  <text
+    x="90" y="370"
+    font-family="system-ui, -apple-system, sans-serif"
+    font-size="24"
+    font-weight="300"
+    letter-spacing="1"
+    fill="#78716c"
+  >Accessibility operations and evidence — not vanity scores.</text>
+
+  <!-- Tech note -->
+  <text
+    x="90" y="430"
+    font-family="'Courier New', monospace"
+    font-size="16"
+    fill="#57534e"
+    letter-spacing="0.5"
+  >Built on the AROS engine · Next.js 15 · PostgreSQL · axe-core · Playwright</text>
+</svg>

@@ -6,7 +6,7 @@
 
 ## Messaging House
 ### Core narrative
-FlexibleAccessible turns accessibility from periodic audits into an operating workflow: discover, verify, prioritize, remediate, and re-check with tenant-safe controls.
+AccessibleMadeFlexible turns accessibility from periodic audits into an operating workflow: discover, verify, prioritize, remediate, and re-check with tenant-safe controls.
 
 ### Pillars
 1. **Operational continuity:** recurring workflow, not one-time scan theater.

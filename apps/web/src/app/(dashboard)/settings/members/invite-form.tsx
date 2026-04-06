@@ -103,7 +103,7 @@ export function InviteForm({
         className="btn-primary"
       >
         <UserPlus className="h-4 w-4 mr-2" />
-        Invite Member
+        Add member
       </button>
     );
   }
@@ -111,7 +111,7 @@ export function InviteForm({
   return (
     <div className="card border-brand-200">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-slate-900">Invite Member</h3>
+        <h3 className="text-lg font-semibold text-slate-900">Add member</h3>
         <button
           type="button"
           onClick={() => {
@@ -145,7 +145,10 @@ export function InviteForm({
             disabled={isPending}
           />
           <p className="mt-1 text-xs text-slate-500">
-            They will receive an invitation to join this organization.
+            If they already have an account, they are added immediately. If not,
+            we record the invite here—ask them to sign up with this email so you
+            can add them once they appear in your directory (no outbound email
+            is sent from this deployment yet).
           </p>
         </div>
 
@@ -190,7 +193,7 @@ export function InviteForm({
         {inviteState.success && (
           <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700 flex items-center gap-2">
             <Check className="h-4 w-4" />
-            {inviteState.info || "Invitation sent successfully!"}
+            {inviteState.info || "Member added or invite recorded."}
           </div>
         )}
 
@@ -201,9 +204,9 @@ export function InviteForm({
             disabled={isPending || !email}
           >
             {isPending ? (
-              <LoadingSpinner size="sm" label="Sending..." />
+              <LoadingSpinner size="sm" label="Working…" />
             ) : (
-              "Send Invitation"
+              "Add or record invite"
             )}
           </button>
           <button

@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="AccessibleMadeFlexible favicon">
+  <title>AccessibleMadeFlexible</title>
+  <defs>
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f766e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0d9488;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="mark-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f0c080;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#d4956a;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background rounded square -->
+  <rect width="32" height="32" rx="6" fill="url(#bg-grad)" />
+
+  <!--
+    Simplified brand mark at 32px: two-loop figure-8 in copper/gold on teal.
+    Reduced to readable strokes for favicon legibility.
+  -->
+  <path
+    d="M 16,4
+       C 10,4 6,8 6,13
+       C 6,17 9,19.5 13,20.5
+       C 9,21.5 6,24 6,28
+       C 6,28 8,31 16,31
+       C 24,31 26,28 26,28
+       C 26,24 23,21.5 19,20.5
+       C 23,19.5 26,17 26,13
+       C 26,8 22,4 16,4 Z"
+    fill="none"
+    stroke="url(#mark-grad)"
+    stroke-width="2.2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <!-- Crossbar -->
+  <line x1="9" y1="20.5" x2="23" y2="20.5" stroke="url(#mark-grad)" stroke-width="1.8" stroke-linecap="round"/>
+</svg>

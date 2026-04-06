@@ -24,6 +24,7 @@ vi.mock("@/lib/db", () => ({
     },
     auditLog: {
       create: vi.fn(),
+      count: vi.fn(),
     },
   },
 }));
@@ -46,6 +47,7 @@ import { requireOrgAccess } from "@/lib/auth-guard";
 describe("inviteMemberAction", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(prisma.auditLog.count).mockResolvedValue(0);
   });
 
   it("invites existing user successfully", async () => {
@@ -181,6 +183,37 @@ describe("inviteMemberAction", () => {
       maxSeats: 3,
     } as any);
     vi.mocked(prisma.membership.count).mockResolvedValue(3);
+
+    const formData = new FormData();
+    formData.set("organizationId", "org_123");
+    formData.set("email", "new@example.com");
+    formData.set("role", "DEVELOPER");
+
+    const result = await inviteMemberAction(
+      { success: false, error: null },
+      formData,
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe(
+      "Seat limit reached. Upgrade your plan to add more members.",
+    );
+  });
+
+  it("counts pending invites toward seat limit", async () => {
+    vi.mocked(requireOrgAccess).mockResolvedValue({
+      user: { id: "user_admin", email: "admin@example.com", name: "Admin" },
+      organizationId: "org_123",
+      role: "ADMIN",
+      subscription: null,
+      entitlement: { hasPaidAccess: false, reason: "free_plan" },
+    });
+
+    vi.mocked(prisma.subscription.findUnique).mockResolvedValue({
+      maxSeats: 3,
+    } as any);
+    vi.mocked(prisma.membership.count).mockResolvedValue(2);
+    vi.mocked(prisma.auditLog.count).mockResolvedValue(1);
 
     const formData = new FormData();
     formData.set("organizationId", "org_123");

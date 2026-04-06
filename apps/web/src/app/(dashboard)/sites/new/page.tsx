@@ -12,7 +12,7 @@ export default async function AddSitePage() {
     <div className="max-w-2xl mx-auto space-y-6">
       <PageHeader
         title="Add site"
-        description="Register a URL so FlexibleAccessible can crawl pages and queue verification scans against your plan limits."
+        description="Register a URL so AccessibleMadeFlexible can crawl pages and queue verification scans against your plan limits."
       />
       <div className="card">
         <AddSiteForm />

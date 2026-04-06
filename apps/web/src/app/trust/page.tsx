@@ -87,9 +87,21 @@ export default function TrustPage() {
           <Link href="/security" className="font-medium text-brand-700 hover:underline">
             Security &amp; privacy
           </Link>
+          ,{" "}
+          <Link href="/privacy" className="font-medium text-brand-700 hover:underline">
+            Privacy overview
+          </Link>
+          , and{" "}
+          <Link href="/legal/subprocessors" className="font-medium text-brand-700 hover:underline">
+            Subprocessors
+          </Link>
           . For integration paths, see{" "}
           <Link href="/docs/api" className="font-medium text-brand-700 hover:underline">
             API &amp; integrations
+          </Link>
+          . For contact, see{" "}
+          <Link href="/support" className="font-medium text-brand-700 hover:underline">
+            Support
           </Link>
           .
         </p>
