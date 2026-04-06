@@ -461,6 +461,10 @@ export default async function SystemPage() {
               <DependencyRow label="PostgreSQL" result={payload.report.dependencies.database} />
               <DependencyRow label="Redis" result={payload.report.dependencies.redis} />
               <DependencyRow label="Sessions" result={payload.report.dependencies.sessionStore} />
+              <DependencyRow
+                label="Outbound email (SMTP)"
+                result={payload.report.dependencies.outboundEmail}
+              />
             </ul>
           </section>
 

@@ -39,7 +39,12 @@ import { GET } from "./route";
 describe("GET /api/reports/vpat", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    requireSessionMock.mockResolvedValue({ id: "user_1" });
+    requireSessionMock.mockResolvedValue({
+      id: "user_1",
+      email: "u@test",
+      name: null,
+      emailVerified: true,
+    });
   });
 
   it("returns 400 for missing organization context", async () => {

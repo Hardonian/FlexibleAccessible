@@ -8,6 +8,7 @@ export interface SessionUser {
   id: string;
   email: string;
   name: string | null;
+  emailVerified: boolean;
 }
 
 export async function getSession(): Promise<SessionUser | null> {
@@ -17,7 +18,9 @@ export async function getSession(): Promise<SessionUser | null> {
 
   const session = await prisma.session.findUnique({
     where: { token },
-    include: { user: { select: { id: true, email: true, name: true } } },
+    include: {
+      user: { select: { id: true, email: true, name: true, emailVerified: true } },
+    },
   });
 
   if (!session || session.expiresAt < new Date()) {
@@ -57,11 +60,26 @@ export async function destroySession(): Promise<void> {
   cookieStore.delete(SESSION_COOKIE);
 }
 
-export async function requireSession(): Promise<SessionUser> {
+/** Cookie session only; does not enforce email verification (billing, verify-email flows). */
+export async function requireAuthenticatedSession(): Promise<SessionUser> {
   const user = await getSession();
   if (!user) {
     const { ApiError } = await import("@aros/shared");
     throw ApiError.unauthorized();
+  }
+  return user;
+}
+
+/** Full dashboard / API gate: signed in and email verified. */
+export async function requireSession(): Promise<SessionUser> {
+  const user = await requireAuthenticatedSession();
+  if (!user.emailVerified) {
+    const { ApiError } = await import("@aros/shared");
+    throw new ApiError(
+      "Confirm your email address to use this feature.",
+      "EMAIL_VERIFICATION_REQUIRED",
+      403,
+    );
   }
   return user;
 }

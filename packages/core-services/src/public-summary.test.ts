@@ -59,6 +59,7 @@ function baseReport(overrides: Partial<PlatformHealthReport> = {}): PlatformHeal
       database: { ok: true, checkedAt: 't' },
       redis: { ok: true, checkedAt: 't' },
       sessionStore: { ok: true, checkedAt: 't' },
+      outboundEmail: { ok: true, checkedAt: 't' },
     },
     services,
     operatorPlatformFlags: overrides.operatorPlatformFlags ?? {},

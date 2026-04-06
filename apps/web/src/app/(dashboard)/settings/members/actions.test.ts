@@ -52,7 +52,7 @@ describe("inviteMemberAction", () => {
 
   it("invites existing user successfully", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_admin", email: "admin@example.com", name: "Admin" },
+      user: { id: "user_admin", email: "admin@example.com", name: "Admin", emailVerified: true },
       organizationId: "org_123",
       role: "ADMIN",
       subscription: null,
@@ -103,7 +103,7 @@ describe("inviteMemberAction", () => {
 
   it("rejects invalid email format", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_admin", email: "admin@example.com", name: "Admin" },
+      user: { id: "user_admin", email: "admin@example.com", name: "Admin", emailVerified: true },
       organizationId: "org_123",
       role: "ADMIN",
       subscription: null,
@@ -126,7 +126,7 @@ describe("inviteMemberAction", () => {
 
   it("rejects empty email", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_admin", email: "admin@example.com", name: "Admin" },
+      user: { id: "user_admin", email: "admin@example.com", name: "Admin", emailVerified: true },
       organizationId: "org_123",
       role: "ADMIN",
       subscription: null,
@@ -149,7 +149,7 @@ describe("inviteMemberAction", () => {
 
   it("rejects invalid role", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_admin", email: "admin@example.com", name: "Admin" },
+      user: { id: "user_admin", email: "admin@example.com", name: "Admin", emailVerified: true },
       organizationId: "org_123",
       role: "ADMIN",
       subscription: null,
@@ -172,7 +172,7 @@ describe("inviteMemberAction", () => {
 
   it("enforces seat limit", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_admin", email: "admin@example.com", name: "Admin" },
+      user: { id: "user_admin", email: "admin@example.com", name: "Admin", emailVerified: true },
       organizationId: "org_123",
       role: "ADMIN",
       subscription: null,
@@ -233,7 +233,7 @@ describe("inviteMemberAction", () => {
 
   it("rejects inviting existing member", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_admin", email: "admin@example.com", name: "Admin" },
+      user: { id: "user_admin", email: "admin@example.com", name: "Admin", emailVerified: true },
       organizationId: "org_123",
       role: "ADMIN",
       subscription: null,
@@ -272,7 +272,7 @@ describe("inviteMemberAction", () => {
 
   it("records pending invitation for non-existent user", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_admin", email: "admin@example.com", name: "Admin" },
+      user: { id: "user_admin", email: "admin@example.com", name: "Admin", emailVerified: true },
       organizationId: "org_123",
       role: "ADMIN",
       subscription: null,
@@ -307,7 +307,7 @@ describe("inviteMemberAction", () => {
 
   it("rejects for DEVELOPER role", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_dev", email: "dev@example.com", name: "Dev" },
+      user: { id: "user_dev", email: "dev@example.com", name: "Dev", emailVerified: true },
       organizationId: "org_123",
       role: "DEVELOPER",
       subscription: null,
@@ -330,7 +330,7 @@ describe("inviteMemberAction", () => {
 
   it("OWNER can invite ADMIN", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_owner", email: "owner@example.com", name: "Owner" },
+      user: { id: "user_owner", email: "owner@example.com", name: "Owner", emailVerified: true },
       organizationId: "org_123",
       role: "OWNER",
       subscription: null,
@@ -364,7 +364,7 @@ describe("inviteMemberAction", () => {
 
   it("ADMIN cannot invite OWNER", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_admin", email: "admin@example.com", name: "Admin" },
+      user: { id: "user_admin", email: "admin@example.com", name: "Admin", emailVerified: true },
       organizationId: "org_123",
       role: "ADMIN",
       subscription: null,
@@ -393,7 +393,7 @@ describe("changeMemberRoleAction", () => {
 
   it("changes role successfully", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_admin", email: "admin@example.com", name: "Admin" },
+      user: { id: "user_admin", email: "admin@example.com", name: "Admin", emailVerified: true },
       organizationId: "org_123",
       role: "ADMIN",
       subscription: null,
@@ -437,7 +437,7 @@ describe("changeMemberRoleAction", () => {
 
   it("prevents self-role change", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_admin", email: "admin@example.com", name: "Admin" },
+      user: { id: "user_admin", email: "admin@example.com", name: "Admin", emailVerified: true },
       organizationId: "org_123",
       role: "ADMIN",
       subscription: null,
@@ -469,7 +469,7 @@ describe("changeMemberRoleAction", () => {
 
   it("prevents ADMIN from changing OWNER role", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_admin", email: "admin@example.com", name: "Admin" },
+      user: { id: "user_admin", email: "admin@example.com", name: "Admin", emailVerified: true },
       organizationId: "org_123",
       role: "ADMIN",
       subscription: null,
@@ -502,7 +502,7 @@ describe("changeMemberRoleAction", () => {
 
   it("prevents ADMIN from assigning OWNER role", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_admin", email: "admin@example.com", name: "Admin" },
+      user: { id: "user_admin", email: "admin@example.com", name: "Admin", emailVerified: true },
       organizationId: "org_123",
       role: "ADMIN",
       subscription: null,
@@ -533,7 +533,7 @@ describe("changeMemberRoleAction", () => {
 
   it("prevents ADMIN from modifying another ADMIN", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_admin1", email: "admin1@example.com", name: "Admin1" },
+      user: { id: "user_admin1", email: "admin1@example.com", name: "Admin1", emailVerified: true },
       organizationId: "org_123",
       role: "ADMIN",
       subscription: null,
@@ -565,7 +565,7 @@ describe("changeMemberRoleAction", () => {
 
   it("allows OWNER to modify ADMIN", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_owner", email: "owner@example.com", name: "Owner" },
+      user: { id: "user_owner", email: "owner@example.com", name: "Owner", emailVerified: true },
       organizationId: "org_123",
       role: "OWNER",
       subscription: null,
@@ -602,7 +602,7 @@ describe("removeMemberAction", () => {
 
   it("removes member successfully", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_admin", email: "admin@example.com", name: "Admin" },
+      user: { id: "user_admin", email: "admin@example.com", name: "Admin", emailVerified: true },
       organizationId: "org_123",
       role: "ADMIN",
       subscription: null,
@@ -645,7 +645,7 @@ describe("removeMemberAction", () => {
 
   it("prevents self-removal", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_admin", email: "admin@example.com", name: "Admin" },
+      user: { id: "user_admin", email: "admin@example.com", name: "Admin", emailVerified: true },
       organizationId: "org_123",
       role: "ADMIN",
       subscription: null,
@@ -676,7 +676,7 @@ describe("removeMemberAction", () => {
 
   it("prevents removing last OWNER", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_owner", email: "owner@example.com", name: "Owner" },
+      user: { id: "user_owner", email: "owner@example.com", name: "Owner", emailVerified: true },
       organizationId: "org_123",
       role: "OWNER",
       subscription: null,
@@ -708,7 +708,7 @@ describe("removeMemberAction", () => {
 
   it("allows removing non-last OWNER", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_owner1", email: "owner1@example.com", name: "Owner1" },
+      user: { id: "user_owner1", email: "owner1@example.com", name: "Owner1", emailVerified: true },
       organizationId: "org_123",
       role: "OWNER",
       subscription: null,
@@ -739,7 +739,7 @@ describe("removeMemberAction", () => {
 
   it("rejects for DEVELOPER role", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_dev", email: "dev@example.com", name: "Dev" },
+      user: { id: "user_dev", email: "dev@example.com", name: "Dev", emailVerified: true },
       organizationId: "org_123",
       role: "DEVELOPER",
       subscription: null,
@@ -761,7 +761,7 @@ describe("removeMemberAction", () => {
 
   it("prevents ADMIN from removing another ADMIN", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_admin1", email: "admin1@example.com", name: "Admin1" },
+      user: { id: "user_admin1", email: "admin1@example.com", name: "Admin1", emailVerified: true },
       organizationId: "org_123",
       role: "ADMIN",
       subscription: null,
@@ -792,7 +792,7 @@ describe("removeMemberAction", () => {
 
   it("returns error when member not found", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
-      user: { id: "user_admin", email: "admin@example.com", name: "Admin" },
+      user: { id: "user_admin", email: "admin@example.com", name: "Admin", emailVerified: true },
       organizationId: "org_123",
       role: "ADMIN",
       subscription: null,

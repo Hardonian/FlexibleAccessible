@@ -10,6 +10,7 @@ import {
   recordAutomatedFindingObservation,
 } from '@aros/core-services';
 import type { Page } from 'playwright';
+import { uploadScanScreenshot } from '../s3-upload.js';
 
 async function getAccessibilityTree(page: Page): Promise<unknown> {
   try {
@@ -95,17 +96,21 @@ export async function handleScanJob(job: Job<ScanJobData>) {
         const domSnapshot = await page.content();
         const accessibilityTree = await getAccessibilityTree(page);
         
-        // Take screenshot - using data URI for now as a production-grade placeholder 
-        // until a dedicated storage service (S3/GCS) is configured.
-        // This ensures the operator has visual context immediately.
         const screenshotBuffer = await page.screenshot({ fullPage: false, type: 'jpeg', quality: 80 });
-        const screenshotDataUri = `data:image/jpeg;base64,${screenshotBuffer.toString('base64')}`;
+        const s3Ref = await uploadScanScreenshot({
+          siteId,
+          scanRunId,
+          pageId: pageRecord.id,
+          buffer: screenshotBuffer,
+        });
+        const screenshotKey =
+          s3Ref ?? `data:image/jpeg;base64,${screenshotBuffer.toString('base64')}`;
 
         const snapshot = await prisma.pageSnapshot.create({
           data: {
             pageId: pageRecord.id,
             domSnapshot,
-            screenshotKey: screenshotDataUri, // Temporarily storing data URI for high-signal preview
+            screenshotKey,
             accessibilityTree: accessibilityTree as any,
             viewport: { width: 1280, height: 720 },
           },

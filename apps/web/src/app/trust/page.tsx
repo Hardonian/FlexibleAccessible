@@ -66,6 +66,20 @@ export default function TrustPage() {
               organization data.
             </p>
           </li>
+          <li>
+            <h2 className="text-lg font-semibold text-slate-900">
+              Accounts, email, and rate limits
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed">
+              Password reset and production signup verification require outbound SMTP configured by the operator.
+              Abuse-sensitive paths use Redis-backed limits when Redis is healthy; if Redis is down, the app falls back to
+              per-process windows (see{" "}
+              <Link href="/api/health?detailed=true" className="font-medium text-brand-700 hover:underline">
+                detailed health
+              </Link>{" "}
+              and the in-app System page for live posture).
+            </p>
+          </li>
         </ul>
 
         <p className="mt-12 text-sm text-slate-500">

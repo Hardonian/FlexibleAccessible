@@ -2,12 +2,11 @@
 
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
-import { createHash } from "crypto";
 import { prisma } from "@/lib/db";
 import { createSession } from "@/lib/session";
-import { verifyPassword } from "@aros/shared";
-import { rateLimitSafe } from "@/lib/rate-limit";
-import { getClientIpFromHeaders } from "@/lib/request-ip";
+import { abuseRateLimit, verifyPassword } from "@aros/shared";
+import { getClientIpFromHeaders } from "@/lib/client-ip";
+import { timingSafeEqual } from "crypto";
 
 interface LoginState {
   error: string | null;
@@ -35,6 +34,9 @@ async function constantTimeVerify(
   }
 }
 
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const LOGIN_MAX_PER_IP = 30;
+
 export async function loginAction(
   _prevState: LoginState,
   formData: FormData,
@@ -46,16 +48,11 @@ export async function loginAction(
     return { error: "Email and password are required" };
   }
 
-  const headerList = await headers();
-  const ip = getClientIpFromHeaders(headerList);
-  const emailNorm = email.toLowerCase().trim();
-  const rlKey = `auth:login:${createHash("sha256").update(`${ip}:${emailNorm}`).digest("hex").slice(0, 32)}`;
-  const rl = await rateLimitSafe(rlKey, 20, 15 * 60 * 1000);
-  if (!rl.success) {
-    return {
-      error:
-        "Too many sign-in attempts. Please wait a few minutes and try again.",
-    };
+  const h = await headers();
+  const ip = getClientIpFromHeaders(h);
+  const rl = await abuseRateLimit(`login:${ip}`, LOGIN_MAX_PER_IP, LOGIN_WINDOW_MS);
+  if (!rl.allowed) {
+    return { error: "Too many sign-in attempts. Try again in a few minutes." };
   }
 
   const user = await prisma.user.findUnique({
@@ -70,6 +67,11 @@ export async function loginAction(
   const valid = await constantTimeVerify(password, user.passwordHash);
   if (!valid) {
     return { error: "Invalid email or password" };
+  }
+
+  if (!user.emailVerified) {
+    await createSession(user.id);
+    redirect("/verify-email");
   }
 
   await createSession(user.id);

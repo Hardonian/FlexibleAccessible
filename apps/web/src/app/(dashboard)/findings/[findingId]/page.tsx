@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
+import { Prisma } from "@aros/db";
 import Link from "next/link";
 import { FindingStatusForm } from "./finding-status-form";
 import {
@@ -98,71 +99,75 @@ export default async function FindingDetailPage({
     );
   }
 
-  type FindingDetail = NonNullable<Awaited<ReturnType<typeof prisma.canonicalFinding.findFirst>>>;
+  const findingDetailArgs = Prisma.validator<Prisma.CanonicalFindingDefaultArgs>()({
+    include: {
+      site: { select: { id: true, name: true, domain: true } },
+      lastScanRun: {
+        select: {
+          id: true,
+          status: true,
+          completedAt: true,
+          createdAt: true,
+          errorMessage: true,
+        },
+      },
+      statusEvents: {
+        orderBy: { createdAt: "desc" },
+        take: 25,
+        include: { user: { select: { email: true, name: true } } },
+      },
+      occurrences: {
+        include: {
+          page: { select: { id: true, url: true, title: true } },
+          lastRawViolation: {
+            select: {
+              id: true,
+              createdAt: true,
+              elementContext: true,
+              scanRun: {
+                select: { id: true, status: true, completedAt: true },
+              },
+            },
+          },
+        },
+        take: 50,
+        orderBy: { lastSeenAt: "desc" },
+      },
+      cluster: true,
+      suggestions: {
+        include: { recipe: true },
+        orderBy: { confidence: "desc" },
+        take: 5,
+      },
+      evidenceRecords: {
+        orderBy: [{ capturedAt: "desc" }, { createdAt: "desc" }],
+        take: 12,
+      },
+      verificationRuns: {
+        orderBy: [{ completedAt: "desc" }, { createdAt: "desc" }],
+        take: 8,
+      },
+      governanceDecisions: {
+        orderBy: [{ createdAt: "desc" }],
+        take: 8,
+        include: {
+          createdBy: { select: { email: true, name: true } },
+          revokedBy: { select: { email: true, name: true } },
+        },
+      },
+    },
+  });
+
+  type FindingDetail = Prisma.CanonicalFindingGetPayload<typeof findingDetailArgs>;
 
   let finding: FindingDetail | null = null;
 
   try {
     finding = await prisma.canonicalFinding.findFirst({
+      ...findingDetailArgs,
       where: {
         id: findingId,
         site: { workspace: { organizationId: orgRes.organizationId } },
-      },
-      include: {
-        site: { select: { id: true, name: true, domain: true } },
-        lastScanRun: {
-          select: {
-            id: true,
-            status: true,
-            completedAt: true,
-            createdAt: true,
-            errorMessage: true,
-          },
-        },
-        statusEvents: {
-          orderBy: { createdAt: "desc" },
-          take: 25,
-          include: { user: { select: { email: true, name: true } } },
-        },
-        occurrences: {
-          include: {
-            page: { select: { id: true, url: true, title: true } },
-            lastRawViolation: {
-              select: {
-                id: true,
-                createdAt: true,
-                elementContext: true,
-                scanRun: {
-                  select: { id: true, status: true, completedAt: true },
-                },
-              },
-            },
-          },
-          take: 50,
-          orderBy: { lastSeenAt: "desc" },
-        },
-        cluster: true,
-        suggestions: {
-          include: { recipe: true },
-          orderBy: { confidence: "desc" },
-          take: 5,
-        },
-        evidenceRecords: {
-          orderBy: [{ capturedAt: "desc" }, { createdAt: "desc" }],
-          take: 12,
-        },
-        verificationRuns: {
-          orderBy: [{ completedAt: "desc" }, { createdAt: "desc" }],
-          take: 8,
-        },
-        governanceDecisions: {
-          orderBy: [{ createdAt: "desc" }],
-          take: 8,
-          include: {
-            createdBy: { select: { email: true, name: true } },
-            revokedBy: { select: { email: true, name: true } },
-          },
-        },
       },
     });
   } catch (e) {

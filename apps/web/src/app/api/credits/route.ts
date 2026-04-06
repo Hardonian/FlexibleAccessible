@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { requireSession } from "@/lib/session";
+import { requireAuthenticatedSession } from "@/lib/session";
 import { apiSuccess, apiError } from "@/lib/api-utils";
 import { getAppBaseUrl } from "@/lib/billing";
 import { ApiError } from "@aros/shared";
@@ -26,7 +26,7 @@ const CREDIT_PACKS: Record<
  */
 export async function GET(request: Request) {
   try {
-    await requireSession();
+    await requireAuthenticatedSession();
     const { searchParams } = new URL(request.url);
     const organizationId = searchParams.get("organizationId");
 
@@ -61,7 +61,7 @@ export async function GET(request: Request) {
  */
 export async function POST(request: Request) {
   try {
-    await requireSession();
+    await requireAuthenticatedSession();
     const body = await request.json();
     const parsed = purchaseSchema.parse(body);
 

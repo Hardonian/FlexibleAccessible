@@ -29,8 +29,10 @@ describe("API Route: GET /api/health", () => {
         database: true,
         redis: true,
         session: true,
+        outboundEmail: true,
         worker: true,
         jobPipelines: true,
+        abuseRateLimiting: "redis_distributed",
       },
     });
 
@@ -61,8 +63,10 @@ describe("API Route: GET /api/health", () => {
         database: false,
         redis: true,
         session: true,
+        outboundEmail: true,
         worker: true,
         jobPipelines: true,
+        abuseRateLimiting: "redis_distributed",
       },
     });
 

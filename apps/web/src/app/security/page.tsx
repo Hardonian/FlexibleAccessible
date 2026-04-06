@@ -40,8 +40,11 @@ export default function SecurityPage() {
             </h2>
             <p className="mt-2 text-sm leading-relaxed">
               Scans process publicly reachable content you configure (or submit
-              for instant scans). Retention and export behavior follow your plan
-              and in-app settings for this deployment.
+              for instant scans). When S3-compatible object storage is configured,
+              verification screenshots are stored as object keys; otherwise they are
+              kept as inline JPEG data on snapshot rows (larger database footprint).
+              Retention and export behavior follow your plan and in-app settings for
+              this deployment.
             </p>
           </li>
           <li>

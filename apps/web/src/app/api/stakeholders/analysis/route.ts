@@ -3,6 +3,7 @@ import { requireOrgAccess } from "@/lib/auth-guard";
 import {
   buildStakeholderAnalysis,
   generateGapAnalysis,
+  type GapAnalysisReport,
 } from "@aros/stakeholders";
 
 export async function GET(request: Request) {
@@ -34,7 +35,7 @@ export async function GET(request: Request) {
       hasGoalAlignment: true,
     });
 
-    let gapAnalysis = null;
+    let gapAnalysis: GapAnalysisReport | null = null;
     if (includeGapAnalysis) {
       gapAnalysis = await generateGapAnalysis(organizationId);
     }

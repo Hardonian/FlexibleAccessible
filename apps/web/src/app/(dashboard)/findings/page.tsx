@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { AlertTriangle, Inbox } from "lucide-react";
 import type { Severity, FindingStatus, EvidenceSource } from "@aros/db";
+import { Prisma } from "@aros/db";
 import { getRoutePlatformTruth } from "@/lib/platform-truth-cache";
 import {
   resolveDashboardOrgMembership,
@@ -22,7 +23,15 @@ import { PageHeader } from "@/components/layout/page-header";
 import { FindingMetaDisclosure } from "./finding-meta-disclosure";
 import { pageTitle } from "@/lib/product-brand";
 
-type FindingListRow = Awaited<ReturnType<typeof prisma.canonicalFinding.findMany>>[number];
+const findingListArgs = Prisma.validator<Prisma.CanonicalFindingDefaultArgs>()({
+  include: {
+    _count: { select: { occurrences: true } },
+    cluster: { select: { id: true, name: true } },
+    site: { select: { id: true, name: true, domain: true } },
+  },
+});
+
+type FindingListRow = Prisma.CanonicalFindingGetPayload<typeof findingListArgs>;
 
 export const metadata = { title: pageTitle("Findings") };
 
@@ -166,15 +175,11 @@ export default async function FindingsPage({
     const where = buildFindingsWhere(organizationId);
     const [findings, total, latestCompletedScan] = await Promise.all([
       prisma.canonicalFinding.findMany({
+        ...findingListArgs,
         where,
         orderBy: [{ impact: "asc" }, { occurrenceCount: "desc" }],
         skip,
         take: limit,
-        include: {
-          _count: { select: { occurrences: true } },
-          cluster: { select: { id: true, name: true } },
-          site: { select: { id: true, name: true, domain: true } },
-        },
       }),
       prisma.canonicalFinding.count({ where }),
       prisma.scanRun.findFirst({

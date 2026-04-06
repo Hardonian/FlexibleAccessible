@@ -20,6 +20,7 @@ function baseReport(overrides: Partial<PlatformHealthReport> = {}): PlatformHeal
       database: { ok: true, checkedAt: '2025-01-01T00:00:00.000Z' },
       redis: { ok: true, checkedAt: '2025-01-01T00:00:00.000Z' },
       sessionStore: { ok: true, checkedAt: '2025-01-01T00:00:00.000Z' },
+      outboundEmail: { ok: true, checkedAt: '2025-01-01T00:00:00.000Z' },
       ...overrides.dependencies,
     },
     operatorPlatformFlags: overrides.operatorPlatformFlags ?? {},
@@ -162,6 +163,7 @@ describe('buildRoutePlatformTruth', () => {
         database: { ok: true, checkedAt: 't', skipped: true },
         redis: { ok: true, checkedAt: 't', skipped: true },
         sessionStore: { ok: true, checkedAt: 't' },
+        outboundEmail: { ok: true, checkedAt: 't' },
       },
       services: [],
       operatorPlatformFlags: null,
@@ -178,6 +180,7 @@ describe('buildRoutePlatformTruth', () => {
           database: { ok: false, checkedAt: 'x', message: 'down' },
           redis: { ok: true, checkedAt: 'x' },
           sessionStore: { ok: false, checkedAt: 'x', message: 'needs db' },
+          outboundEmail: { ok: true, checkedAt: 'x' },
         },
       })
     );

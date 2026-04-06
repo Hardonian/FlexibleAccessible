@@ -27,8 +27,12 @@ export function toPublicHealthSummary(report: PlatformHealthReport) {
       database: report.dependencies.database.ok,
       redis: report.dependencies.redis.ok,
       session: report.dependencies.sessionStore.ok,
+      outboundEmail: report.dependencies.outboundEmail.ok,
       worker: workerOk,
       jobPipelines: pipelinesOk,
+      abuseRateLimiting: report.dependencies.redis.ok
+        ? 'redis_distributed'
+        : 'memory_fallback_per_process',
     },
   };
 }

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/session", () => ({
-  requireSession: vi.fn(),
+  requireAuthenticatedSession: vi.fn(),
 }));
 
 vi.mock("@/lib/auth-guard", () => ({
@@ -32,7 +32,7 @@ vi.mock("stripe", () => ({
 import { POST } from "./route";
 import { requireOrgAccess } from "@/lib/auth-guard";
 import { prisma } from "@/lib/db";
-import { requireSession } from "@/lib/session";
+import { requireAuthenticatedSession } from "@/lib/session";
 
 describe("POST /api/credits", () => {
   beforeEach(() => {
@@ -41,10 +41,11 @@ describe("POST /api/credits", () => {
     process.env.STRIPE_SECRET_KEY = "sk_test_123";
     process.env.NEXTAUTH_URL = "https://app.flexibleaccessible.test";
 
-    vi.mocked(requireSession).mockResolvedValue({
+    vi.mocked(requireAuthenticatedSession).mockResolvedValue({
       id: "user_123",
       email: "user_123@flexibleaccessible.test",
       name: "Route Test User",
+      emailVerified: false,
     });
 
     vi.mocked(requireOrgAccess).mockResolvedValue({
@@ -80,7 +81,7 @@ describe("POST /api/credits", () => {
 
     expect(response.status).toBe(200);
     expect(payload.success).toBe(true);
-    expect(requireSession).toHaveBeenCalledTimes(1);
+    expect(requireAuthenticatedSession).toHaveBeenCalledTimes(1);
 
     expect(mockStripeCreateSession).toHaveBeenCalledTimes(1);
     const createPayload = mockStripeCreateSession.mock.calls[0]?.[0];
