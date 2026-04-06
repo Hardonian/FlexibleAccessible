@@ -6,7 +6,7 @@ import { pageTitle } from '@/lib/product-brand';
 
 export const metadata: Metadata = {
   title: pageTitle('Sign in'),
-  description: 'Sign in to your FlexibleAccessible workspace.',
+  description: 'Sign in to your AccessibleMadeFlexible workspace.',
   robots: { index: false, follow: true },
 };
 

@@ -10,8 +10,10 @@ import { SITE_OG_BULLET_LINES, SITE_OG_IMAGE_SIZE } from "@/lib/site-metadata";
 
 export const runtime = "nodejs";
 
-const BRAND_HEX = "#0d9488";
+const BRAND_HEX = "#0d9488";       // teal — primary brand colour
+const COPPER_HEX = "#b87333";      // copper — FLEXIBLE wordmark accent
 const CANVAS_HEX = "#f8fafc";
+const DARK_BG = "#0f172a";
 const SLATE_900 = "#0f172a";
 const SLATE_600 = "#475569";
 const SLATE_500 = "#64748b";
@@ -37,61 +39,86 @@ function siteOgImageResponse() {
         flexDirection: "column",
         width: "100%",
         height: "100%",
-        backgroundColor: CANVAS_HEX,
-        padding: "56px 64px",
+        backgroundColor: DARK_BG,
+        padding: "56px 72px",
         fontFamily: "system-ui, sans-serif",
       }}
     >
+      {/* Teal left accent bar */}
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          width: "8px",
+          height: "100%",
+          backgroundColor: BRAND_HEX,
+        }}
+      />
+
+      {/* Wordmark — ACCESSIBLE */}
+      <div
+        style={{
+          display: "flex",
+          fontSize: "88px",
+          fontWeight: 900,
+          color: "#f1f5f9",
+          letterSpacing: "4px",
+          lineHeight: 1,
+          marginBottom: "4px",
+        }}
+      >
+        ACCESSIBLE
+      </div>
+
+      {/* Made — italic, muted */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
-          gap: "16px",
-          marginBottom: "36px",
+          gap: "20px",
+          marginBottom: "4px",
         }}
       >
-        <div
-          style={{
-            width: "14px",
-            height: "56px",
-            borderRadius: "8px",
-            backgroundColor: BRAND_HEX,
-          }}
-        />
-        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-          <div
-            style={{
-              fontSize: "38px",
-              fontWeight: 800,
-              color: SLATE_900,
-              letterSpacing: "-0.02em",
-            }}
-          >
-            {PRODUCT_DISPLAY_NAME}
-          </div>
-          <div
-            style={{
-              fontSize: "26px",
-              fontWeight: 600,
-              color: SLATE_600,
-              lineHeight: 1.35,
-              maxWidth: "980px",
-            }}
-          >
-            {PRODUCT_TAGLINE}
-          </div>
-        </div>
+        <div style={{ height: "2px", width: "220px", backgroundColor: BRAND_HEX, borderRadius: "2px" }} />
+        <div style={{ fontSize: "24px", color: "#94a3b8", fontStyle: "italic" }}>Made</div>
+        <div style={{ height: "2px", width: "220px", backgroundColor: BRAND_HEX, borderRadius: "2px" }} />
       </div>
 
+      {/* Wordmark — FLEXIBLE in copper */}
       <div
         style={{
           display: "flex",
-          flexDirection: "column",
-          gap: "18px",
-          flex: 1,
-          justifyContent: "center",
+          fontSize: "88px",
+          fontWeight: 900,
+          color: COPPER_HEX,
+          letterSpacing: "4px",
+          lineHeight: 1,
+          marginBottom: "32px",
         }}
       >
+        FLEXIBLE
+      </div>
+
+      {/* Divider */}
+      <div style={{ display: "flex", height: "1px", backgroundColor: "#1e293b", marginBottom: "28px" }} />
+
+      {/* Tagline */}
+      <div
+        style={{
+          display: "flex",
+          fontSize: "26px",
+          fontWeight: 400,
+          color: "#94a3b8",
+          letterSpacing: "0.3px",
+          marginBottom: "24px",
+        }}
+      >
+        {PRODUCT_TAGLINE}
+      </div>
+
+      {/* Feature bullets */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "12px", flex: 1 }}>
         {SITE_OG_BULLET_LINES.map((line) => (
           <div
             key={line}
@@ -99,7 +126,7 @@ function siteOgImageResponse() {
               display: "flex",
               alignItems: "flex-start",
               gap: "16px",
-              fontSize: "24px",
+              fontSize: "22px",
               color: SLATE_600,
               lineHeight: 1.4,
             }}
@@ -110,19 +137,18 @@ function siteOgImageResponse() {
         ))}
       </div>
 
+      {/* Footer note */}
       <div
         style={{
           display: "flex",
           marginTop: "auto",
-          paddingTop: "28px",
-          borderTop: `2px solid #e2e8f0`,
-          fontSize: "18px",
-          color: SLATE_500,
-          lineHeight: 1.45,
+          paddingTop: "24px",
+          borderTop: "1px solid #1e293b",
+          fontSize: "17px",
+          color: "#475569",
         }}
       >
-        Instant public scan on the home page · Private workspaces on paid plans ·
-        Automation is sampling, not legal conformance
+        Instant public scan · Private workspaces on paid plans · Automation is sampling, not legal conformance
       </div>
     </div>,
     {

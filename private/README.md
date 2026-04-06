@@ -1,4 +1,4 @@
-# FlexibleAccessible Internal Business Operating System
+# AccessibleMadeFlexible Internal Business Operating System
 
 **Status:** CURRENT STATE + RECOMMENDED (internal only)  
 **Purpose:** Provide truthful commercialization, pricing, finance, onboarding, GTM, and operator controls aligned to current repository implementation.  

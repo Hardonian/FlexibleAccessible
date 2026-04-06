@@ -7,7 +7,7 @@ import { pageTitle } from '@/lib/product-brand';
 export const metadata: Metadata = {
   title: pageTitle('Create workspace'),
   description:
-    'Create a FlexibleAccessible workspace for private scans, findings, exports, and plan-gated API access.',
+    'Create an AccessibleMadeFlexible workspace for private scans, findings, exports, and plan-gated API access.',
   robots: { index: false, follow: true },
 };
 

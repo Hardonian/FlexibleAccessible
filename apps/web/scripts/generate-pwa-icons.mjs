@@ -1,6 +1,12 @@
 /**
- * Generates PNG app icons for the PWA manifest (public/icons/).
- * Run via npm prebuild in apps/web.
+ * Generates PNG app icons for the PWA manifest (public/icons/) and brand
+ * asset directory (public/brand/accessiblemadeflexible/).
+ *
+ * Brand: AccessibleMadeFlexible
+ * Mark: two interlocked loops (figure-8 / infinity) with a crossbar,
+ *       copper/gold on teal — legible at all sizes.
+ *
+ * Run via `npm run icons` (also hooked to `npm run prebuild`) in apps/web.
  */
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -9,23 +15,100 @@ import sharp from 'sharp';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, '..', 'public', 'icons');
-
-const svg = Buffer.from(
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-    <rect width="512" height="512" rx="96" fill="#2563eb"/>
-    <text x="256" y="348" font-family="system-ui,-apple-system,sans-serif" font-size="300" font-weight="700" fill="#ffffff" text-anchor="middle">A</text>
-  </svg>`
-);
+const brandDir = path.join(__dirname, '..', 'public', 'brand', 'accessiblemadeflexible');
 
 await mkdir(publicDir, { recursive: true });
+await mkdir(brandDir, { recursive: true });
 
+// ---------------------------------------------------------------------------
+// Brand mark SVG — two-loop figure-8 with copper/gold on teal background.
+// Optimised for PWA icon legibility from 16px–512px.
+// ---------------------------------------------------------------------------
+function markSvg(size) {
+  // Scale stroke width so the mark stays sharp at tiny sizes
+  const strokeWidth = size <= 32 ? 2.2 : size <= 64 ? 3.5 : 9;
+  const crossWidth  = size <= 32 ? 1.8 : size <= 64 ? 2.8 : 6;
+  const dotR        = size <= 32 ? 5   : size <= 64 ? 6   : 5;
+
+  return Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f766e"/>
+      <stop offset="100%" stop-color="#0d9488"/>
+    </linearGradient>
+    <linearGradient id="copper" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f0c080"/>
+      <stop offset="50%" stop-color="#d4956a"/>
+      <stop offset="100%" stop-color="#b87333"/>
+    </linearGradient>
+  </defs>
+  <!-- Background rounded square -->
+  <rect width="200" height="200" rx="36" fill="url(#bg)"/>
+  <!-- Two-loop brand mark -->
+  <path
+    d="M 100,22 C 66,22 40,44 40,70 C 40,90 54,106 76,114 C 54,122 40,138 40,158 C 40,175 57,184 100,184 C 143,184 160,175 160,158 C 160,138 146,122 124,114 C 146,106 160,90 160,70 C 160,44 134,22 100,22 Z"
+    fill="none"
+    stroke="url(#copper)"
+    stroke-width="${strokeWidth}"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <!-- Crossbar -->
+  <line x1="62" y1="114" x2="138" y2="114" stroke="#f0c080" stroke-width="${crossWidth}" stroke-linecap="round"/>
+  <!-- Centre dot -->
+  <circle cx="100" cy="114" r="${dotR}" fill="url(#copper)"/>
+</svg>`);
+}
+
+// ---------------------------------------------------------------------------
+// Generate PWA icons
+// ---------------------------------------------------------------------------
 for (const size of [192, 512]) {
   const outPath = path.join(publicDir, `icon-${size}.png`);
-  await sharp(svg).resize(size, size).png().toFile(outPath);
+  await sharp(markSvg(size)).resize(size, size).png({ compressionLevel: 9 }).toFile(outPath);
   process.stdout.write(`Wrote ${outPath}\n`);
+}
+
+// ---------------------------------------------------------------------------
+// Generate favicon sizes into brand directory
+// ---------------------------------------------------------------------------
+const faviconSizes = [16, 32, 48, 180, 192, 512];
+for (const size of faviconSizes) {
+  const label = size === 180 ? 'apple-touch-icon' : `favicon-${size}`;
+  const outPath = path.join(brandDir, `${label}.png`);
+  await sharp(markSvg(size)).resize(size, size).png({ compressionLevel: 9 }).toFile(outPath);
+  process.stdout.write(`Wrote ${outPath}\n`);
+}
+
+// ---------------------------------------------------------------------------
+// Produce favicon.ico (32×32 PNG renamed; browsers accept PNG-in-ICO wrapper)
+// ---------------------------------------------------------------------------
+const icoSrc = path.join(brandDir, 'favicon-32.png');
+const icoDst = path.join(brandDir, 'favicon.ico');
+const icoData = await sharp(markSvg(32)).resize(32, 32).png().toBuffer();
+await writeFile(icoDst, icoData);
+process.stdout.write(`Wrote ${icoDst}\n`);
+
+// Copy the 32px PNG to the web root as /favicon.ico
+const webRootIco = path.join(__dirname, '..', 'public', 'favicon.ico');
+await writeFile(webRootIco, icoData);
+process.stdout.write(`Wrote ${webRootIco}\n`);
+
+// Copy SVG favicon to web root
+import { copyFile } from 'node:fs/promises';
+const svgFavSrc = path.join(brandDir, 'favicon.svg');
+try {
+  // Favicon SVG is already written by the brand asset pipeline; just copy to root
+  const svgDst = path.join(__dirname, '..', 'public', 'favicon.svg');
+  await copyFile(svgFavSrc, svgDst);
+  process.stdout.write(`Wrote ${svgDst}\n`);
+} catch {
+  // SVG may not exist yet; non-fatal
 }
 
 await writeFile(
   path.join(publicDir, 'README.txt'),
-  'Generated by scripts/generate-pwa-icons.mjs — do not edit PNGs by hand.\n'
+  'Generated by scripts/generate-pwa-icons.mjs — do not edit PNGs by hand.\nBrand: AccessibleMadeFlexible\n'
 );
+
+process.stdout.write('Done — AccessibleMadeFlexible icon set generated.\n');

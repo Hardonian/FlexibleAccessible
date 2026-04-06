@@ -1,7 +1,7 @@
 # Product Truth & Capability Envelope
 
 **Status:** CURRENT STATE  
-**Purpose:** Define what FlexibleAccessible can and cannot credibly claim today.  
+**Purpose:** Define what AccessibleMadeFlexible can and cannot credibly claim today.  
 **Scope:** Access model, billing, entitlements, onboarding readiness, trust boundaries.
 
 ## Current Truth
