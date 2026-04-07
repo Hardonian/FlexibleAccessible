@@ -252,6 +252,10 @@ export default async function SiteDetailPage({
         firstSeenAt: true,
         lastSeenAt: true,
         reopenedCount: true,
+        distinctScanRunsObserved: true,
+        distinctScanRunsAbsentWhenOpen: true,
+        evidenceSource: true,
+        sourceType: true,
       },
     }),
   ]);
@@ -267,6 +271,10 @@ export default async function SiteDetailPage({
       firstSeenAt: finding.firstSeenAt,
       lastSeenAt: finding.lastSeenAt,
       reopenedCount: finding.reopenedCount,
+      distinctScanRunsObserved: finding.distinctScanRunsObserved,
+      distinctScanRunsAbsentWhenOpen: finding.distinctScanRunsAbsentWhenOpen,
+      evidenceSource: finding.evidenceSource,
+      sourceType: finding.sourceType,
     });
     const completenessCount = Object.values(proof.completeness).filter(Boolean).length;
     const bucket = (proofByScanRunId[finding.lastScanRunId] ??= {

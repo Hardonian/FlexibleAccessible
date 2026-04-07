@@ -12,6 +12,8 @@ export interface FindingFamilyAggregateInput {
   lastSeenAt: Date;
   reopenedCount: number;
   status: FindingStatus;
+  /** From CanonicalFinding.distinctScanRunsObserved (automated scan fingerprint scope). */
+  distinctScanRunsObserved?: number;
 }
 
 export interface FindingFamilySummary {
@@ -20,6 +22,8 @@ export interface FindingFamilySummary {
   regressedFindings: number;
   newlyDetectedFindings: number;
   persistentFindings: number;
+  /** Findings with distinctScanRunsObserved > 1 (recurred across completed scan runs). */
+  recurringAcrossScanRunsFindings: number;
   firstSeenAt: Date | null;
   lastSeenAt: Date | null;
 }
@@ -36,6 +40,7 @@ export function summarizeFindingFamilies(
       regressedFindings: 0,
       newlyDetectedFindings: 0,
       persistentFindings: 0,
+      recurringAcrossScanRunsFindings: 0,
       firstSeenAt: null,
       lastSeenAt: null,
     });
@@ -48,6 +53,11 @@ export function summarizeFindingFamilies(
 
     if (finding.reopenedCount > 0) {
       summary.regressedFindings += 1;
+    }
+
+    const scanRunsObserved = finding.distinctScanRunsObserved ?? 0;
+    if (scanRunsObserved > 1) {
+      summary.recurringAcrossScanRunsFindings += 1;
     }
 
     if (finding.firstSeenAt.getTime() === finding.lastSeenAt.getTime()) {

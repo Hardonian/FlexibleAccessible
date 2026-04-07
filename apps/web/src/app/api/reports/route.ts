@@ -8,6 +8,7 @@ import {
 } from "@aros/core-services";
 import { buildFindingProofSummary } from "@/lib/findings/proof-summary";
 import { summarizeFindingFamilies } from "@/lib/findings/family-summary";
+import { scoreFindingPriority } from "@/lib/findings/finding-priority";
 import { listFindingsForReport } from "@/lib/reports/org-scoped-queries";
 
 export async function GET(request: Request) {
@@ -44,6 +45,7 @@ export async function GET(request: Request) {
         lastSeenAt: finding.lastSeenAt,
         reopenedCount: finding.reopenedCount,
         status: finding.status,
+        distinctScanRunsObserved: finding.distinctScanRunsObserved,
       })),
     );
 
@@ -83,6 +85,10 @@ export async function GET(request: Request) {
               firstSeenAt: f.firstSeenAt,
               lastSeenAt: f.lastSeenAt,
               reopenedCount: f.reopenedCount,
+              distinctScanRunsObserved: f.distinctScanRunsObserved,
+              distinctScanRunsAbsentWhenOpen: f.distinctScanRunsAbsentWhenOpen,
+              evidenceSource: f.evidenceSource,
+              sourceType: f.sourceType,
             });
             return Object.values(summary.completeness).filter(Boolean).length >= 4;
           }).length,
@@ -93,10 +99,17 @@ export async function GET(request: Request) {
               firstSeenAt: f.firstSeenAt,
               lastSeenAt: f.lastSeenAt,
               reopenedCount: f.reopenedCount,
+              distinctScanRunsObserved: f.distinctScanRunsObserved,
+              distinctScanRunsAbsentWhenOpen: f.distinctScanRunsAbsentWhenOpen,
+              evidenceSource: f.evidenceSource,
+              sourceType: f.sourceType,
             });
             return Object.values(summary.completeness).filter(Boolean).length < 4;
           }).length,
         },
+        recurringAcrossScanRuns: findings.filter(
+          (f: ReportFinding) => f.distinctScanRunsObserved > 1,
+        ).length,
       },
       findings: findings.map((f: ReportFinding) => ({
         id: f.id,
@@ -126,6 +139,17 @@ export async function GET(request: Request) {
           provenance: f.provenance,
           firstSeenAt: f.firstSeenAt,
           lastSeenAt: f.lastSeenAt,
+          reopenedCount: f.reopenedCount,
+          distinctScanRunsObserved: f.distinctScanRunsObserved,
+          distinctScanRunsAbsentWhenOpen: f.distinctScanRunsAbsentWhenOpen,
+          evidenceSource: f.evidenceSource,
+          sourceType: f.sourceType,
+        }),
+        triagePriority: scoreFindingPriority({
+          impact: f.impact,
+          truthStatus: f.truthStatus,
+          distinctScanRunsObserved: f.distinctScanRunsObserved,
+          occurrenceCount: f.occurrenceCount,
           reopenedCount: f.reopenedCount,
         }),
         evidenceCount: f.evidenceRecords.length,
@@ -157,12 +181,13 @@ export async function GET(request: Request) {
 
     if (format === "csv") {
       const lines = [
-        "Rule ID,Impact,Status,Truth Status,Changed Since Last Run,Proof Completeness,Family Active,Family Regressed,Description,Occurrences,WCAG Tags",
+        "Rule ID,Impact,Status,Truth Status,Change Signal,Comparison Basis,Scan Runs Observed,Absent While Open (runs),Triage Score,Triage Reasons,Proof Completeness,Family Active,Family Regressed,Family Multi-Run,Description,Occurrences,WCAG Tags",
       ];
       for (const f of report.findings) {
         const proofCompletenessScore = Object.values(f.proofSummary.completeness).filter(Boolean).length;
+        const reasons = f.triagePriority.reasons.join(" | ").replace(/"/g, '""');
         lines.push(
-          `"${f.ruleId}","${f.impact}","${f.status}","${f.truthStatus}","${f.proofSummary.changedSinceLastRun}",${proofCompletenessScore},${f.familySummary?.activeFindings ?? 0},${f.familySummary?.regressedFindings ?? 0},"${f.description.replace(/"/g, '""')}",${f.occurrenceCount},"${f.wcagTags.join("; ")}"`,
+          `"${f.ruleId}","${f.impact}","${f.status}","${f.truthStatus}","${f.proofSummary.changedSinceLastRun}","${f.proofSummary.comparisonBasis}",${f.proofSummary.recurrence.distinctScanRunsObserved},${f.proofSummary.recurrence.distinctScanRunsAbsentWhenOpen},${f.triagePriority.score.toFixed(0)},"${reasons}",${proofCompletenessScore},${f.familySummary?.activeFindings ?? 0},${f.familySummary?.regressedFindings ?? 0},${f.familySummary?.recurringAcrossScanRunsFindings ?? 0},"${f.description.replace(/"/g, '""')}",${f.occurrenceCount},"${f.wcagTags.join("; ")}"`,
         );
       }
       return new NextResponse(lines.join("\n"), {

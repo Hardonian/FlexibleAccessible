@@ -454,6 +454,13 @@ model CanonicalFinding {
   lastVerifiedAt  DateTime?
   lastScanRunId   String?
   occurrenceCount Int           @default(1)
+  /** Distinct completed scan runs where this fingerprint was re-detected (SCAN_RECHECK FAILED). */
+  distinctScanRunsObserved Int @default(0)
+  /**
+   * Distinct completed scan runs where automated verification passed because the fingerprint was absent,
+   * while workflow status was still open (not RESOLVED/MITIGATED/FALSE_POSITIVE/WONT_FIX).
+   */
+  distinctScanRunsAbsentWhenOpen Int @default(0)
   reopenedCount   Int           @default(0)
   statusChangedAt DateTime      @default(now())
   statusChangedById String?

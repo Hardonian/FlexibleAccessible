@@ -19,6 +19,7 @@ import {
 import { getAutomationEvidenceFreshnessDescriptor } from "@/lib/findings/evidence-freshness";
 import { buildFindingProofSummary } from "@/lib/findings/proof-summary";
 import { summarizeFindingFamilies } from "@/lib/findings/family-summary";
+import { scoreFindingPriority } from "@/lib/findings/finding-priority";
 import { PageHeader } from "@/components/layout/page-header";
 import { FindingMetaDisclosure } from "./finding-meta-disclosure";
 import { pageTitle } from "@/lib/product-brand";
@@ -177,7 +178,12 @@ export default async function FindingsPage({
       prisma.canonicalFinding.findMany({
         ...findingListArgs,
         where,
-        orderBy: [{ impact: "asc" }, { occurrenceCount: "desc" }],
+        orderBy: [
+          { impact: "asc" },
+          { reopenedCount: "desc" },
+          { distinctScanRunsObserved: "desc" },
+          { occurrenceCount: "desc" },
+        ],
         skip,
         take: limit,
       }),
@@ -198,6 +204,7 @@ export default async function FindingsPage({
       lastSeenAt: finding.lastSeenAt,
       reopenedCount: finding.reopenedCount,
       status: finding.status,
+      distinctScanRunsObserved: finding.distinctScanRunsObserved,
     }));
     const familySummaryByRuleId = summarizeFindingFamilies(familyInputs);
     return {
@@ -429,6 +436,7 @@ function FindingRow({
     regressedFindings: number;
     newlyDetectedFindings: number;
     persistentFindings: number;
+    recurringAcrossScanRunsFindings: number;
     firstSeenAt: Date | null;
     lastSeenAt: Date | null;
   };
@@ -446,11 +454,32 @@ function FindingRow({
     firstSeenAt: finding.firstSeenAt,
     lastSeenAt: finding.lastSeenAt,
     reopenedCount: finding.reopenedCount,
+    distinctScanRunsObserved: finding.distinctScanRunsObserved,
+    distinctScanRunsAbsentWhenOpen: finding.distinctScanRunsAbsentWhenOpen,
+    evidenceSource: finding.evidenceSource,
+    sourceType: finding.sourceType,
+  });
+  const priority = scoreFindingPriority({
+    impact: finding.impact,
+    truthStatus: finding.truthStatus,
+    distinctScanRunsObserved: finding.distinctScanRunsObserved,
+    occurrenceCount: finding.occurrenceCount,
+    reopenedCount: finding.reopenedCount,
   });
   const proofCompletenessScore =
     Object.values(proofSummary.completeness).filter(Boolean).length;
-  const truthLabel = finding.truthStatus.toLowerCase().replaceAll("_", " ");
-  const changeLabel = proofSummary.changedSinceLastRun.replaceAll("_", " ");
+  const changeLabelMap: Record<
+    (typeof proofSummary)["changedSinceLastRun"],
+    string
+  > = {
+    newly_detected: "New this lifecycle",
+    regressed: "Regressed",
+    persistent: "Persistent",
+    improved_open_backlog: "Absent in scans (open)",
+    not_comparable: "Cross-run not comparable",
+    unknown: "Unknown",
+  };
+  const changeLabel = changeLabelMap[proofSummary.changedSinceLastRun];
 
   const evidenceLabel =
     finding.evidenceSource === "AUTOMATED_AXE"
@@ -469,11 +498,20 @@ function FindingRow({
       : null,
     finding.cluster ? `Cluster: ${finding.cluster.name}.` : null,
     `Proof completeness score ${proofCompletenessScore} out of 5.`,
-    `Change vs last run: ${proofSummary.changedSinceLastRun.replaceAll("_", " ")}.`,
+    `Change signal: ${changeLabel}. Comparison basis: ${proofSummary.comparisonBasis.replaceAll("_", " ")}.`,
+    proofSummary.comparisonLimitations.length > 0
+      ? `Limits: ${proofSummary.comparisonLimitations.join(" ")}`
+      : null,
+    `Scan-run recurrence: observed in ${proofSummary.recurrence.distinctScanRunsObserved} completed run(s); absent while open backlog in ${proofSummary.recurrence.distinctScanRunsAbsentWhenOpen} run(s).`,
+    `Triage score ${priority.score.toFixed(0)}. ${priority.reasons.join(" ")}`,
     familySummary
       ? `Rule family: ${familySummary.totalFindings} total findings, ${familySummary.activeFindings} active; ${familySummary.newlyDetectedFindings} newly detected, ${familySummary.persistentFindings} persistent${
           familySummary.regressedFindings > 0
             ? `; ${familySummary.regressedFindings} regressed`
+            : ""
+        }${
+          familySummary.recurringAcrossScanRunsFindings > 0
+            ? `; ${familySummary.recurringAcrossScanRunsFindings} recurring across scan runs`
             : ""
         }.`
       : null,
@@ -580,6 +618,9 @@ function FindingRow({
                 <dd>
                   {familySummary.newlyDetectedFindings} new ·{" "}
                   {familySummary.persistentFindings} persistent
+                  {familySummary.recurringAcrossScanRunsFindings > 0
+                    ? ` · ${familySummary.recurringAcrossScanRunsFindings} multi-run`
+                    : ""}
                 </dd>
               </div>
               {familySummary.firstSeenAt ? (
