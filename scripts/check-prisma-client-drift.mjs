@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const repoRoot = process.cwd();
+const scriptDir = dirname(fileURLToPath(import.meta.url));
+const repoRoot = resolve(scriptDir, '..');
 const schemaPath = resolve(repoRoot, 'packages/db/prisma/schema.prisma');
 const generatedSchemaPath = resolve(repoRoot, 'node_modules/.prisma/client/schema.prisma');
 const generatedEntrypoint = resolve(repoRoot, 'node_modules/@prisma/client/index.d.ts');

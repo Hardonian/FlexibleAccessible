@@ -11,6 +11,7 @@ import {
   Layers,
   LineChart,
   Search,
+  ShieldCheck,
   Wrench,
 } from "lucide-react";
 import { getPublicPlanCards } from "@/lib/public-packaging";
@@ -24,6 +25,7 @@ import {
   managedServices,
   productFeatures,
 } from "@/lib/marketing-content";
+import { CONFIDENCE_LABELS } from "@/lib/assurance-ladder";
 
 const featureIcons = [
   Search,
@@ -282,6 +284,47 @@ npx @aros/cli scan --site example.com`}</pre>
         </div>
       </section>
 
+
+      <section
+        className="border-y border-[rgb(var(--color-border))] bg-slate-50/80 py-section-lg"
+        aria-labelledby="assurance-heading"
+      >
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="mx-auto max-w-3xl text-center">
+            <h2
+              id="assurance-heading"
+              className="text-3xl font-bold text-slate-900"
+            >
+              Assurance vocabulary, not vanity scoring
+            </h2>
+            <p className="mx-auto mt-4 max-w-2xl text-slate-600">
+              Every output is labeled so teams can see what is automated, what
+              has human review, and what is not safe to over-claim in external
+              proof. No silent confidence jumps.
+            </p>
+          </div>
+          <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {CONFIDENCE_LABELS.slice(0, 6).map((item) => (
+              <article
+                key={item.label}
+                className="rounded-xl border border-[rgb(var(--color-border))] bg-white p-5 shadow-sm"
+              >
+                <p className="inline-flex items-center gap-2 text-sm font-semibold text-slate-900">
+                  <ShieldCheck className="h-4 w-4 text-brand-700" aria-hidden="true" />
+                  {item.label}
+                </p>
+                <p className="mt-2 text-sm text-slate-600">{item.meaning}</p>
+                <p className="mt-3 text-xs text-slate-500">
+                  {item.safeForExternalProof
+                    ? "Public-safe proof label"
+                    : "Internal-only unless contract terms apply"}
+                </p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section
         id="features"
         className="mx-auto max-w-7xl px-6 py-section-lg"
@@ -333,7 +376,8 @@ npx @aros/cli scan --site example.com`}</pre>
         </h2>
         <p className="mx-auto mb-12 max-w-2xl text-center text-slate-600">
           Free public scans invite you in; paid tiers unlock private workspaces,
-          history, automation, and API access—enforced server-side.
+          evidence history, workflow state, commitments, and API access—enforced
+          server-side.
         </p>
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           {plans.map((plan) => (
@@ -368,6 +412,19 @@ npx @aros/cli scan --site example.com`}</pre>
                   </li>
                 ))}
               </ul>
+              <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-700">
+                  Commitment boundaries
+                </p>
+                <ul className="mt-2 space-y-1 text-xs text-slate-600">
+                  {plan.commitments.map((commitment) => (
+                    <li key={commitment.heading}>
+                      <span className="font-medium text-slate-700">{commitment.heading}:</span>{" "}
+                      {commitment.detail}
+                    </li>
+                  ))}
+                </ul>
+              </div>
               <Link
                 href="/signup"
                 className={`mt-6 inline-flex w-full justify-center ${
