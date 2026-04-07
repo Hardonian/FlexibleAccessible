@@ -12,6 +12,10 @@ import {
   loadReviewTaskForOrg,
   updateReviewTaskStatusForOrg,
 } from "@/lib/dashboard-org-scoped-prisma";
+import {
+  assertFormOrgMatchesActive,
+  parseExpectedOrgFromForm,
+} from "@/lib/dashboard-form-org";
 
 const VALID_REVIEW_STATUSES: ReviewStatus[] = [
   "PENDING",
@@ -40,6 +44,11 @@ export async function updateReviewAction(formData: FormData) {
   const orgRes = await resolveDashboardOrgMembership(user.id, platformTruth);
   if (orgRes.kind !== "ok") {
     redirect("/reviews?review_error=not_found");
+  }
+
+  const expectedOrg = parseExpectedOrgFromForm(formData);
+  if (!assertFormOrgMatchesActive(expectedOrg, orgRes.organizationId)) {
+    redirect("/reviews?review_error=stale_session");
   }
 
   await requireOrgAccess(orgRes.organizationId, "review:manage", {

@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/session";
-import { prisma } from "@/lib/db";
 import { hasPermission } from "@aros/config";
 import type { MemberRole } from "@aros/db";
+import { resolveOperatorDashboardPageContext } from "@/lib/operator-dashboard-org";
 import { getOperatorHealthData } from "./actions";
 import {
   AccountHealthCards,
@@ -22,13 +22,9 @@ export const metadata = { title: "Operator Dashboard" };
 export default async function OperatorDashboardPage() {
   const user = await requireSession();
 
-  // Get user's membership with organization
-  const membership = await prisma.membership.findFirst({
-    where: { userId: user.id },
-    include: { organization: { select: { id: true, name: true, slug: true } } },
-  });
+  const opCtx = await resolveOperatorDashboardPageContext(user.id);
 
-  if (!membership) {
+  if (opCtx.kind === "no_membership") {
     return (
       <div className="card text-center py-12">
         <h1 className="text-lg font-semibold text-slate-900">
@@ -41,13 +37,12 @@ export default async function OperatorDashboardPage() {
     );
   }
 
-  // Check permission
-  if (!hasPermission(membership.role as MemberRole, "org:system:view")) {
+  if (opCtx.kind === "no_operator_access") {
     redirect("/dashboard");
   }
 
   const canManage = hasPermission(
-    membership.role as MemberRole,
+    opCtx.role as MemberRole,
     "org:system:manage",
   );
 
@@ -112,7 +107,8 @@ export default async function OperatorDashboardPage() {
           </h1>
           <p className="text-slate-500 mt-1">
             Real-time account health, work queues, and exception routing for{" "}
-            {membership.organization.name}.
+            {opCtx.organizationName}. Data is scoped to your selected operator
+            organization (same as the active org cookie when you have access).
           </p>
         </div>
         <div className="flex items-center gap-3">

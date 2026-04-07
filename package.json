@@ -28,6 +28,7 @@
     "prisma:check": "node scripts/check-prisma-client-drift.mjs",
     "prisma:imports": "node scripts/check-prisma-import-boundaries.mjs",
     "test:integration": "npm run test:integration --workspace=apps/web",
+    "audit:high": "npm audit --audit-level=high",
     "test:release": "npm run test && npm run test:integration",
     "verify:core": "npm run prisma:check && npm run prisma:imports && npm run lint && npm run typecheck && npm run test && npm run build",
     "verify:release": "npm run verify:core && npm run verify:tenant-boundary && npm run test:launch-critical && npm run test:integration",

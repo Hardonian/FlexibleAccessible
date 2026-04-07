@@ -30,6 +30,8 @@ Dashboard routes should not duplicate ad hoc `try/catch` around membership and o
 
 - Never skip org scoping in degraded paths. Use `runOrgScopedQuery` with queries filtered by `organizationId`.
 - Finding detail and similar routes must scope by org (e.g. `findFirst` with `occurrences.some.site.workspace.organizationId`).
+- For server actions that resolve the active org at submit time, include a hidden `expectedOrganizationId` matching the page’s org and validate with `assertFormOrgMatchesActive` (`dashboard-form-org.ts`) so stale tabs after an org switch get a clear error instead of silent mismatch.
+- Operator console (`/system/operator`) scopes health data to the same org as `getOperatorHealthData` (active-org cookie when permitted, else oldest eligible membership with `org:system:view`). It is not a cross-tenant super-admin view.
 - Operator-only detail stays on `/system` and `org:system:view` APIs; shell banners use `audience: 'operator' | 'user'` for extra hints.
 
 ## Testing

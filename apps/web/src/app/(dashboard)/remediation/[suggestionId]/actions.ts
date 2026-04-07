@@ -12,6 +12,10 @@ import {
   updateRemediationSuggestionExported,
   updateRemediationSuggestionRejected,
 } from "@/lib/dashboard-org-scoped-prisma";
+import {
+  assertFormOrgMatchesActive,
+  parseExpectedOrgFromForm,
+} from "@/lib/dashboard-form-org";
 
 export async function approveSuggestionAction(formData: FormData) {
   const user = await requireSession();
@@ -25,6 +29,11 @@ export async function approveSuggestionAction(formData: FormData) {
   const orgRes = await resolveDashboardOrgMembership(user.id, platformTruth);
   if (orgRes.kind !== "ok") {
     redirect("/remediation?error=not_found");
+  }
+
+  const expectedOrg = parseExpectedOrgFromForm(formData);
+  if (!assertFormOrgMatchesActive(expectedOrg, orgRes.organizationId)) {
+    redirect(`/remediation/${suggestionId}?error=stale_session`);
   }
 
   const { role, entitlement } = await requireOrgAccess(
@@ -79,6 +88,11 @@ export async function rejectSuggestionAction(formData: FormData) {
     redirect("/remediation?error=not_found");
   }
 
+  const expectedOrgReject = parseExpectedOrgFromForm(formData);
+  if (!assertFormOrgMatchesActive(expectedOrgReject, orgRes.organizationId)) {
+    redirect(`/remediation/${suggestionId}?error=stale_session`);
+  }
+
   const { role, entitlement } = await requireOrgAccess(
     orgRes.organizationId,
     "suggestion:approve",
@@ -128,6 +142,11 @@ export async function exportSnippetAction(formData: FormData) {
   const orgRes = await resolveDashboardOrgMembership(user.id, platformTruth);
   if (orgRes.kind !== "ok") {
     redirect("/remediation?error=not_found");
+  }
+
+  const expectedOrgExport = parseExpectedOrgFromForm(formData);
+  if (!assertFormOrgMatchesActive(expectedOrgExport, orgRes.organizationId)) {
+    redirect(`/remediation/${suggestionId}?error=stale_session`);
   }
 
   const { role, entitlement } = await requireOrgAccess(
