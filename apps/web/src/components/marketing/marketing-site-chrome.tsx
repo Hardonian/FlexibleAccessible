@@ -5,6 +5,7 @@ import {
   PRODUCT_DISPLAY_NAME,
   PRODUCT_LEGAL_LINE,
 } from "@/lib/product-brand";
+import { FOOTER_MARKETING_NAV } from "@/lib/marketing-routes";
 import { MarketingSiteHeader } from "./marketing-site-header";
 
 export function MarketingSiteChrome({ children }: { children: ReactNode }) {
@@ -39,27 +40,15 @@ export function MarketingSiteChrome({ children }: { children: ReactNode }) {
             </p>
           </div>
           <div className="flex flex-wrap gap-6 text-sm text-slate-500">
-            <Link href="/" className="hover:text-slate-800">
-              Home
-            </Link>
-            <Link href="/trust" className="hover:text-slate-800">
-              Trust
-            </Link>
-            <Link href="/security" className="hover:text-slate-800">
-              Security
-            </Link>
-            <Link href="/privacy" className="hover:text-slate-800">
-              Privacy
-            </Link>
-            <Link href="/support" className="hover:text-slate-800">
-              Support
-            </Link>
-            <Link href="/docs/api" className="hover:text-slate-800">
-              Docs
-            </Link>
-            <Link href="/legal/terms" className="hover:text-slate-800">
-              Terms
-            </Link>
+            {FOOTER_MARKETING_NAV.map((route) => (
+              <Link
+                key={route.href}
+                href={route.href}
+                className="hover:text-slate-800"
+              >
+                {route.label}
+              </Link>
+            ))}
           </div>
         </div>
       </footer>
