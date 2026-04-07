@@ -1,4 +1,9 @@
-import type { CoreServiceRuntimeView, PlatformBootstrapStatus, PlatformReadiness } from './types';
+import type {
+  CoreServiceRuntimeView,
+  JobQueueDepthSnapshot,
+  PlatformBootstrapStatus,
+  PlatformReadiness,
+} from './types';
 
 const WORKER_STALE_MS = 120_000;
 const FAILED_JOBS_WARNING = 25;
@@ -8,14 +13,17 @@ export function isWorkerHeartbeatStale(lastHeartbeatAt: Date | null | undefined)
   return Date.now() - lastHeartbeatAt.getTime() > WORKER_STALE_MS;
 }
 
-export function queueFailurePressure(snapshot: {
-  crawl: { failed: number };
-  scan: { failed: number };
-  cluster: { failed: number };
-  remediation: { failed: number };
-}): { degraded: boolean; totalFailed: number } {
+export function queueFailurePressure(snapshot: JobQueueDepthSnapshot): {
+  degraded: boolean;
+  totalFailed: number;
+} {
   const totalFailed =
-    snapshot.crawl.failed + snapshot.scan.failed + snapshot.cluster.failed + snapshot.remediation.failed;
+    snapshot.crawl.failed +
+    snapshot.scan.failed +
+    snapshot.cluster.failed +
+    snapshot.remediation.failed +
+    snapshot.publicScan.failed +
+    snapshot.visualReview.failed;
   return { degraded: totalFailed >= FAILED_JOBS_WARNING, totalFailed };
 }
 

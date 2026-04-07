@@ -20,10 +20,12 @@ describe('isWorkerHeartbeatStale', () => {
 describe('queueFailurePressure', () => {
   it('flags degraded when many failures', () => {
     const r = queueFailurePressure({
-      crawl: { failed: 30 },
-      scan: { failed: 0 },
-      cluster: { failed: 0 },
-      remediation: { failed: 0 },
+      crawl: { waiting: 0, active: 0, failed: 30 },
+      scan: { waiting: 0, active: 0, failed: 0 },
+      cluster: { waiting: 0, active: 0, failed: 0 },
+      remediation: { waiting: 0, active: 0, failed: 0 },
+      publicScan: { waiting: 0, active: 0, failed: 0 },
+      visualReview: { waiting: 0, active: 0, failed: 0 },
     });
     expect(r.degraded).toBe(true);
     expect(r.totalFailed).toBe(30);

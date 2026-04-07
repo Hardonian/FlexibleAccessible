@@ -13,6 +13,8 @@ vi.mock('./checks', () => ({
       scan: { waiting: 0, active: 0, failed: 0 },
       cluster: { waiting: 0, active: 0, failed: 0 },
       remediation: { waiting: 0, active: 0, failed: 0 },
+      publicScan: { waiting: 0, active: 0, failed: 0 },
+      visualReview: { waiting: 0, active: 0, failed: 0 },
     },
   }),
 }));

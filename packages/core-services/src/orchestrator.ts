@@ -115,6 +115,7 @@ export async function collectPlatformHealth(prisma: PrismaClient): Promise<Platf
       },
       services: [],
       operatorPlatformFlags: null,
+      jobQueueDepths: null,
     };
   }
 
@@ -306,6 +307,13 @@ export async function collectPlatformHealth(prisma: PrismaClient): Promise<Platf
               ? {
                   queuesReadable: true,
                   failedJobsTotal: qPressure.totalFailed,
+                  waitingTotal:
+                    queueResult.snapshot.crawl.waiting +
+                    queueResult.snapshot.scan.waiting +
+                    queueResult.snapshot.cluster.waiting +
+                    queueResult.snapshot.remediation.waiting +
+                    queueResult.snapshot.publicScan.waiting +
+                    queueResult.snapshot.visualReview.waiting,
                 }
               : { queuesReadable: false },
           healthState: health,
@@ -521,6 +529,11 @@ export async function collectPlatformHealth(prisma: PrismaClient): Promise<Platf
       ? (rawFlags as Record<string, unknown>)
       : null;
 
+  const jobQueueDepths =
+    queueResult?.ok === true
+      ? { checkedAt: queueResult.checkedAt, snapshot: queueResult.snapshot }
+      : null;
+
   return {
     checkedAt,
     liveInfraProbes: 'live',
@@ -541,5 +554,6 @@ export async function collectPlatformHealth(prisma: PrismaClient): Promise<Platf
     },
     services,
     operatorPlatformFlags,
+    jobQueueDepths,
   };
 }

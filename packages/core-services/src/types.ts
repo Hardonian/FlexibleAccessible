@@ -70,6 +70,22 @@ export interface PlatformBootstrapStatus {
 
 export type LiveInfraProbesMode = 'live' | 'skipped_build';
 
+/** BullMQ queue depth snapshot (waiting / active / failed) when Redis is reachable. */
+export interface JobQueueDepthRow {
+  waiting: number;
+  active: number;
+  failed: number;
+}
+
+export interface JobQueueDepthSnapshot {
+  crawl: JobQueueDepthRow;
+  scan: JobQueueDepthRow;
+  cluster: JobQueueDepthRow;
+  remediation: JobQueueDepthRow;
+  publicScan: JobQueueDepthRow;
+  visualReview: JobQueueDepthRow;
+}
+
 export interface PlatformHealthReport {
   checkedAt: string;
   /** When `skipped_build`, Postgres/Redis/queue were not probed (Next.js production build). */
@@ -88,4 +104,12 @@ export interface PlatformHealthReport {
    * Null when platform row missing or database unreachable.
    */
   operatorPlatformFlags: Record<string, unknown> | null;
+  /**
+   * Live BullMQ depths when infra probes ran and Redis accepted connections.
+   * Omitted during `skipped_build` or when Redis was down / unreadable.
+   */
+  jobQueueDepths?: {
+    checkedAt: string;
+    snapshot: JobQueueDepthSnapshot;
+  } | null;
 }
