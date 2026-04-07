@@ -55,9 +55,12 @@ export default function TrustPage() {
               AI is optional and review-gated
             </h2>
             <p className="mt-2 text-sm leading-relaxed">
-              Where draft assist is enabled, it is bounded by plan limits and
-              requires human review before it affects exports or remediation
-              workflows. There is no “autopilot compliance” story.
+              Draft assist and the in-app copilot call configured LLM providers
+              (Anthropic or OpenAI) when keys are present and your plan allows it;
+              otherwise remediation falls back to rule-based suggestions and
+              copilot returns an explicit unavailable state. Usage is bounded by
+              plan limits and requires human review before exports or remediation
+              workflows advance. There is no “autopilot compliance” story.
             </p>
           </li>
           <li>

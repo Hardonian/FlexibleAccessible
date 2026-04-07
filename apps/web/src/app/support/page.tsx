@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import type { Route } from "next";
 import { MarketingSiteChrome } from "@/components/marketing/marketing-site-chrome";
 import { PRODUCT_CONTACT_EMAIL, PRODUCT_DISPLAY_NAME } from "@/lib/product-brand";
 import { marketingSurfaceMetadata } from "@/lib/site-metadata";
@@ -67,12 +68,24 @@ export default function SupportPage() {
               Status and incidents
             </h2>
             <p className="mt-2 text-sm leading-relaxed">
-              Health for this instance is exposed at{" "}
+              A human-readable summary lives at{" "}
+              <Link href={"/status" as Route} className="font-medium text-brand-700 hover:underline">
+                /status
+              </Link>
+              . Raw checks:{" "}
               <Link href="/api/health" className="font-medium text-brand-700 hover:underline">
                 /api/health
               </Link>{" "}
-              where enabled. There is no separate status page unless your
-              operator configures one.
+              and{" "}
+              <Link href="/api/health?detailed=true" className="font-medium text-brand-700 hover:underline">
+                /api/health?detailed=true
+              </Link>{" "}
+              (readiness + Redis-backed rate-limit posture). Operators can still publish an external status page;
+              adapt the incident template in the repository under{" "}
+              <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-800">
+                docs/internal/INCIDENT_COMMUNICATION_TEMPLATE.md
+              </code>
+              .
             </p>
           </li>
         </ul>

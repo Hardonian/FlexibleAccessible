@@ -25,6 +25,8 @@ export {
 export type {
   CoreServiceDefinition,
   CoreServiceRuntimeView,
+  JobQueueDepthRow,
+  JobQueueDepthSnapshot,
   LiveInfraProbesMode,
   PlatformHealthReport,
   PlatformBootstrapStatus,

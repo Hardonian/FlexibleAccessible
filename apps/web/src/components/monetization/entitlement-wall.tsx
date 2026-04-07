@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import {
   entitlementReasonMessage,
+  entitlementRecoveryHints,
   type EntitlementState,
   type OrgSubscriptionSnapshot,
 } from '@/lib/auth-guard';
@@ -15,12 +16,17 @@ export function EntitlementWall({
   description,
   subscription,
   entitlement,
+  recoveryHints,
 }: {
   title?: string;
   description?: string;
   subscription: OrgSubscriptionSnapshot | null | undefined;
   entitlement: EntitlementState;
+  /** Optional; defaults to entitlementRecoveryHints(entitlement, subscription) */
+  recoveryHints?: string[];
 }) {
+  const hints = recoveryHints ?? entitlementRecoveryHints(entitlement, subscription);
+
   return (
     <section
       className="overflow-hidden rounded-3xl border border-brand-200 bg-gradient-to-br from-white via-brand-50/60 to-amber-50/60 shadow-sm"
@@ -41,6 +47,13 @@ export function EntitlementWall({
             <p className="max-w-2xl text-sm leading-6 text-slate-700">
               {description ?? entitlementReasonMessage(entitlement)}
             </p>
+            {hints.length > 0 && (
+              <ul className="mt-3 max-w-2xl list-inside list-disc space-y-1 text-sm text-slate-600">
+                {hints.map((h) => (
+                  <li key={h}>{h}</li>
+                ))}
+              </ul>
+            )}
           </div>
           <div
             className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600"

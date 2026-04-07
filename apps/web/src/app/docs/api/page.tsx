@@ -66,6 +66,26 @@ export default function DocsApiPage() {
           </li>
 
           <li>
+            <h2 className="font-semibold text-slate-900">Reports and audit export (session auth)</h2>
+            <p className="mt-1 text-sm">
+              Signed-in users with the right permissions can download findings reports (
+              <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-800">
+                GET /api/reports
+              </code>
+              ), VPAT payloads (
+              <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-800">
+                GET /api/reports/vpat
+              </code>
+              ), and a bounded audit trail (
+              <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-800">
+                GET /api/org/…/audit-log
+              </code>
+              , requires <code className="text-xs">audit:view</code>
+              ). All are paid-gated on the server except where explicitly documented otherwise.
+            </p>
+          </li>
+
+          <li>
             <h2 className="font-semibold text-slate-900">Webhooks and CI</h2>
             <p className="mt-1 text-sm">
               Deploy hooks and GitHub Actions integrations are configured in-app

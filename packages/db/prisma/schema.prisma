@@ -13,8 +13,14 @@ model User {
   id             String   @id @default(cuid())
   email          String   @unique
   name           String?
-  passwordHash   String
+  /// Local password accounts only; null when the user signs in exclusively via OIDC (enterprise SSO).
+  passwordHash   String?
   emailVerified  Boolean  @default(false)
+  /// OIDC issuer URL (normalized, no trailing slash) when linked to an enterprise IdP.
+  oidcIssuer     String?
+  /// Stable subject (`sub`) from the IdP id_token.
+  oidcSubject    String?
+
   avatarUrl      String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -33,6 +39,7 @@ model User {
   findingComments FindingComment[]
   securityTokens SecurityToken[]
 
+  @@unique([oidcIssuer, oidcSubject], name: "users_oidc_issuer_subject_key")
   @@map("users")
 }
 
