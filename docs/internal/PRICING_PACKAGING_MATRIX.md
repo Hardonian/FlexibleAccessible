@@ -31,6 +31,9 @@ This file merges code-aligned limits with enforcement posture. **Do not maintain
 ## Feature-to-entitlement mapping
 
 - **Reports export API** (`/api/reports`) is paid-only and fail-closed.
+- **VPAT export** (`/api/reports/vpat`) is paid-only; each successful response records `UsageRecord` metric `report.vpat_export` (quantity 1) when the org subscription has Stripe period bounds.
+- **Findings report export** records `UsageRecord` metric `report.export` (quantity 1 per download). **Billing UI** surfaces the sum for the current period on `/settings/billing` (operator visibility for margin; not a customer-facing hard cap unless product adds enforcement).
+- **Audit log export** (`GET /api/org/{organizationId}/audit-log`) requires `audit:view` + paid org; JSON or `format=csv`.
 - **AI copilot** (`/api/ai-copilot`) requires Professional+ and `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`; returns `503` with `AI_UNAVAILABLE` if neither is set.
 - **Remediation worker AI path** uses the same keys; without them the worker continues with **rule-based** suggestions only (`apps/worker/src/jobs/remediation.ts`).
 - **Billing visibility** shows active status, cancellation window, and limits so downgrade risk is operator-visible.

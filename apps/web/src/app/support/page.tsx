@@ -71,8 +71,16 @@ export default function SupportPage() {
               <Link href="/api/health" className="font-medium text-brand-700 hover:underline">
                 /api/health
               </Link>{" "}
-              where enabled. There is no separate status page unless your
-              operator configures one.
+              and{" "}
+              <Link href="/api/health?detailed=true" className="font-medium text-brand-700 hover:underline">
+                /api/health?detailed=true
+              </Link>{" "}
+              (readiness + Redis-backed rate-limit posture). There is no separate status page unless your operator
+              configures one; operators can adapt the incident template in the repository under{" "}
+              <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-800">
+                docs/internal/INCIDENT_COMMUNICATION_TEMPLATE.md
+              </code>
+              .
             </p>
           </li>
         </ul>

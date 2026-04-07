@@ -115,6 +115,52 @@ export function entitlementReasonMessage(state: EntitlementState): string {
   }
 }
 
+/**
+ * Extra context for paywalls and billing (Stripe state semantics, grace expectations).
+ * Safe to show next to EntitlementWall; does not replace entitlementReasonMessage.
+ */
+export function entitlementRecoveryHints(
+  state: EntitlementState,
+  subscription: OrgSubscriptionSnapshot | null | undefined,
+): string[] {
+  const hints: string[] = [];
+
+  if (state.reason === 'past_due') {
+    hints.push(
+      'While past due, Stripe may still retry the payment on its schedule. Private routes stay locked until the subscription status returns to active or trialing.',
+    );
+    hints.push(
+      'Use “Manage billing in Stripe” below (or your portal link) to update the payment method.',
+    );
+  }
+
+  if (state.reason === 'cancelled') {
+    hints.push(
+      'Cancelled subscriptions keep this billing page readable so you can re-subscribe; historical private data stays locked until you are on an active paid status again.',
+    );
+  }
+
+  if (state.reason === 'free_plan') {
+    hints.push(
+      'The free tier includes the public instant scan only. Private workspaces, exports, automation, and collaboration require an active paid subscription.',
+    );
+  }
+
+  if (state.reason === 'missing_subscription') {
+    hints.push(
+      'If you recently completed checkout, wait for the Stripe webhook to confirm—then refresh. If this persists, contact support with your organization name.',
+    );
+  }
+
+  if (state.hasPaidAccess && subscription?.status === 'TRIALING') {
+    hints.push(
+      'Trial (trialing) status carries the same paid workspace routes as an active subscription until Stripe moves the subscription.',
+    );
+  }
+
+  return hints;
+}
+
 export function isBillingAccessiblePath(pathname: string): boolean {
   return (
     pathname === '/settings' ||

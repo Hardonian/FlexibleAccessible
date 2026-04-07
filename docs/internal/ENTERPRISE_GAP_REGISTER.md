@@ -5,7 +5,7 @@
 | Ask | Status in current codebase | Path to close |
 |-----|----------------------------|---------------|
 | SSO (SAML / OIDC) | Not documented as shipped in public docs reviewed here | Product initiative + identity provider work |
-| Fine-grained audit log export | `AuditLog` model exists per README; confirm buyer-grade export and retention policy | Spec + API + retention |
+| Fine-grained audit log export | **Shipped:** `GET /api/org/{id}/audit-log` (paid + `audit:view`), JSON/CSV; retention is DB-defined | Policy + customer comms |
 | Data residency choice | Single-tenant DB implied by deployment model; not a UI toggle | Contract + infra per region |
 | Custom MSA / DPA | Legal process outside repo | Legal |
 | 24/7 support with SLA | Not implied by app | Written add-on (see offers doc) |

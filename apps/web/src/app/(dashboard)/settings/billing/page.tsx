@@ -14,6 +14,10 @@ import {
   openBillingPortalAction,
   startSubscriptionCheckoutAction,
 } from "./actions";
+import {
+  USAGE_METRIC_REPORT_EXPORT,
+  USAGE_METRIC_VPAT_EXPORT,
+} from "@/lib/usage/report-export-usage";
 
 export const metadata = { title: "Billing" };
 
@@ -183,12 +187,30 @@ export default async function BillingPage({ searchParams }: PageProps) {
         }),
       ]);
 
+      const sub = membership?.organization.subscription;
+      let exportEventsThisPeriod = 0;
+      if (sub?.id && sub.currentPeriodStart && sub.currentPeriodEnd) {
+        const agg = await prisma.usageRecord.aggregate({
+          where: {
+            subscriptionId: sub.id,
+            metric: {
+              in: [USAGE_METRIC_REPORT_EXPORT, USAGE_METRIC_VPAT_EXPORT],
+            },
+            periodStart: sub.currentPeriodStart,
+            periodEnd: sub.currentPeriodEnd,
+          },
+          _sum: { quantity: true },
+        });
+        exportEventsThisPeriod = agg._sum.quantity ?? 0;
+      }
+
       return {
         membership,
         customer,
         scansUsedThisMonth,
         memberCount,
         pendingInviteCount,
+        exportEventsThisPeriod,
       };
     },
   );
@@ -229,6 +251,7 @@ export default async function BillingPage({ searchParams }: PageProps) {
     100,
     Math.round((scansUsedThisMonth / Math.max(scanLimit, 1)) * 100),
   );
+  const exportEventsThisPeriod = billingResult.data.exportEventsThisPeriod ?? 0;
 
   return (
     <div className="space-y-8 max-w-6xl">
@@ -417,6 +440,28 @@ export default async function BillingPage({ searchParams }: PageProps) {
                 : "You have reached this month’s scan limit. Upgrade to keep running private verification scans."}
             </p>
           </div>
+
+          {subscription?.currentPeriodStart && subscription?.currentPeriodEnd && (
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+              <p className="text-sm font-medium text-slate-900">
+                Evidence export events (this Stripe period)
+              </p>
+              <p className="mt-1 text-2xl font-semibold text-slate-950 tabular-nums">
+                {exportEventsThisPeriod}
+              </p>
+              <p className="mt-2 text-xs text-slate-600">
+                Counts successful downloads of findings reports and VPAT exports (
+                <code className="rounded bg-slate-100 px-1 text-[10px]">
+                  {USAGE_METRIC_REPORT_EXPORT}
+                </code>
+                ,{" "}
+                <code className="rounded bg-slate-100 px-1 text-[10px]">
+                  {USAGE_METRIC_VPAT_EXPORT}
+                </code>
+                ). For margin and pricing, aggregate here—not a hard cap in this build.
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="rounded-3xl border border-slate-200 bg-slate-950 p-6 text-slate-50 shadow-sm">

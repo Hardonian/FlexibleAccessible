@@ -9,6 +9,11 @@ import {
   findVpatSite,
   getOrganizationName,
 } from "@/lib/reports/org-scoped-queries";
+import { prisma } from "@/lib/db";
+import {
+  recordReportExportUsage,
+  USAGE_METRIC_VPAT_EXPORT,
+} from "@/lib/usage/report-export-usage";
 
 /**
  * GET /api/reports/vpat?organizationId=xxx&siteId=yyy&format=json
@@ -38,6 +43,13 @@ export async function GET(request: Request) {
 
     const org = await getOrganizationName(ctx);
     const report = await generateVpatReport(siteId, organizationId, org?.name);
+
+    await recordReportExportUsage(
+      prisma,
+      ctx.organizationId,
+      USAGE_METRIC_VPAT_EXPORT,
+      1,
+    );
 
     if (format === "csv") {
       const header =

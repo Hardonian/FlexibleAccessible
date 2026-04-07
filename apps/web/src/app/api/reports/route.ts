@@ -10,6 +10,10 @@ import { buildFindingProofSummary } from "@/lib/findings/proof-summary";
 import { summarizeFindingFamilies } from "@/lib/findings/family-summary";
 import { scoreFindingPriority } from "@/lib/findings/finding-priority";
 import { listFindingsForReport } from "@/lib/reports/org-scoped-queries";
+import {
+  recordReportExportUsage,
+  USAGE_METRIC_REPORT_EXPORT,
+} from "@/lib/usage/report-export-usage";
 
 export async function GET(request: Request) {
   try {
@@ -178,6 +182,13 @@ export async function GET(request: Request) {
         })),
       })),
     };
+
+    await recordReportExportUsage(
+      prisma,
+      ctx.organizationId,
+      USAGE_METRIC_REPORT_EXPORT,
+      1,
+    );
 
     if (format === "csv") {
       const lines = [

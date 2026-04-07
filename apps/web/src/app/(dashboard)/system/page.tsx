@@ -11,8 +11,7 @@ import {
   IssueAcknowledgeButton,
   OperatorControlPlaneClient,
 } from '@/components/system/operator-control-plane-client';
-import { type PlatformDiagnosticIssue } from '@aros/core-services';
-import { getQueueDiagnostics } from '@/lib/queue-diagnostics';
+import { type JobQueueDepthSnapshot, type PlatformDiagnosticIssue } from '@aros/core-services';
 import { getEntitlementState } from '@/lib/auth-guard';
 import { PRODUCT_EVENT_ACTIONS } from '@/lib/product-events';
 
@@ -89,9 +88,8 @@ export default async function SystemPage() {
 
   const productDecisionActions = Object.values(PRODUCT_EVENT_ACTIONS);
 
-  const [queueStats, orgCommercialBrief, apiKeyCount, pendingInviteCount, recentProductEvents] =
+  const [orgCommercialBrief, apiKeyCount, pendingInviteCount, recentProductEvents] =
     await Promise.all([
-      getQueueDiagnostics().catch(() => []),
       prisma.organization
         .findUnique({
           where: { id: orgId },
@@ -601,26 +599,50 @@ export default async function SystemPage() {
 
           <section className="card space-y-4" aria-labelledby="queues-heading">
             <h2 id="queues-heading" className="text-lg font-semibold text-slate-900">
-              Worker Queue Metrics
+              BullMQ queue depths
             </h2>
-            <div className="grid gap-4 sm:grid-cols-3">
-              {queueStats.map((q) => (
-                <div key={q.name} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    {q.name}
-                  </p>
-                  <div className="mt-2 flex items-baseline gap-2">
-                    <span className="text-xl font-bold text-slate-900">{q.waiting + q.active}</span>
-                    <span className="text-xs text-slate-500">active/wait</span>
-                  </div>
-                  <div className="mt-3 flex gap-2 text-[10px] font-medium">
-                    <span className="text-emerald-600">{q.completed} done</span>
-                    <span className="text-red-600">{q.failed} fail</span>
-                    <span className="text-sky-600">{q.delayed} delay</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <p className="text-sm text-slate-600">
+              Live <span className="font-mono text-xs">waiting</span>,{" "}
+              <span className="font-mono text-xs">active</span>, and{" "}
+              <span className="font-mono text-xs">failed</span> counts from Redis (same source as job-pipelines health).
+              When Redis is down, depths are unavailable—see Dependencies above.
+            </p>
+            {payload.report.jobQueueDepths ? (
+              <div className="overflow-x-auto rounded-xl border border-slate-200">
+                <table className="min-w-full text-left text-sm">
+                  <thead className="border-b border-slate-200 bg-slate-50 text-slate-700">
+                    <tr>
+                      <th className="px-3 py-2 font-semibold">Queue</th>
+                      <th className="px-3 py-2 font-semibold">Waiting</th>
+                      <th className="px-3 py-2 font-semibold">Active</th>
+                      <th className="px-3 py-2 font-semibold">Failed</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {queueDepthRows(payload.report.jobQueueDepths.snapshot).map((row) => (
+                      <tr key={row.name} className="border-b border-slate-100">
+                        <td className="px-3 py-2 font-mono text-xs text-slate-800">{row.name}</td>
+                        <td className="px-3 py-2 tabular-nums">{row.waiting}</td>
+                        <td className="px-3 py-2 tabular-nums">{row.active}</td>
+                        <td className="px-3 py-2 tabular-nums text-red-800">{row.failed}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p className="px-3 py-2 text-xs text-slate-500">
+                  Checked {formatIsoDateTime(payload.report.jobQueueDepths.checkedAt)} · Abuse-sensitive API rate limits
+                  use Redis when healthy; otherwise the app falls back to per-process windows (
+                  <Link href="/api/health?detailed=true" className="font-medium text-brand-700 hover:underline">
+                    detailed health
+                  </Link>
+                  ).
+                </p>
+              </div>
+            ) : (
+              <p className="text-sm text-slate-500">
+                Queue depths not available (Redis unreachable, build-time snapshot, or probes skipped).
+              </p>
+            )}
           </section>
 
 
@@ -964,4 +986,15 @@ function formatIsoDateTime(value: string) {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(parsed);
+}
+
+function queueDepthRows(snapshot: JobQueueDepthSnapshot) {
+  return [
+    { name: 'crawl', ...snapshot.crawl },
+    { name: 'scan', ...snapshot.scan },
+    { name: 'cluster', ...snapshot.cluster },
+    { name: 'remediation', ...snapshot.remediation },
+    { name: 'public-scan', ...snapshot.publicScan },
+    { name: 'visual-review', ...snapshot.visualReview },
+  ];
 }

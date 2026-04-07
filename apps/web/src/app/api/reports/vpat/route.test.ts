@@ -34,6 +34,17 @@ vi.mock("@/lib/vpat/generator", () => ({
   generateVpatReport: generateVpatReportMock,
 }));
 
+vi.mock("@/lib/db", () => ({
+  prisma: {
+    subscription: {
+      findUnique: vi.fn().mockResolvedValue(null),
+    },
+    usageRecord: {
+      create: vi.fn(),
+    },
+  },
+}));
+
 import { GET } from "./route";
 
 describe("GET /api/reports/vpat", () => {
