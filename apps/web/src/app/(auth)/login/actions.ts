@@ -65,6 +65,14 @@ export async function loginAction(
     return { error: "Invalid email or password" };
   }
 
+  if (!user.passwordHash) {
+    await constantTimeVerify(password, DUMMY_HASH);
+    return {
+      error:
+        "This account uses single sign-on. Use the “Continue with SSO” option on the sign-in page.",
+    };
+  }
+
   const valid = await constantTimeVerify(password, user.passwordHash);
   if (!valid) {
     return { error: "Invalid email or password" };

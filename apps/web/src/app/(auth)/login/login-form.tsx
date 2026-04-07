@@ -3,12 +3,36 @@
 import React, { useActionState } from "react";
 import { loginAction } from "./actions";
 
-export function LoginForm() {
+export function LoginForm({ ssoEnabled }: { ssoEnabled?: boolean }) {
   const [state, formAction, pending] = useActionState(loginAction, {
     error: null,
   });
 
   return (
+    <div className="space-y-6">
+      {ssoEnabled && (
+        <div className="space-y-2">
+          <a
+            href="/api/auth/oidc/start?returnTo=%2Fdashboard"
+            className="btn-secondary flex w-full min-h-[44px] items-center justify-center font-medium"
+          >
+            Continue with organization SSO
+          </a>
+          <p className="text-center text-xs text-slate-500">
+            Uses OpenID Connect when enabled by your deployment operator.
+          </p>
+        </div>
+      )}
+      {ssoEnabled && (
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center" aria-hidden="true">
+            <div className="w-full border-t border-slate-200" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase tracking-wide">
+            <span className="bg-white px-2 text-slate-500">Or email</span>
+          </div>
+        </div>
+      )}
     <form action={formAction} className="space-y-4" aria-busy={pending}>
       {state.error && (
         <div
@@ -74,5 +98,6 @@ export function LoginForm() {
         </a>
       </p>
     </form>
+    </div>
   );
 }

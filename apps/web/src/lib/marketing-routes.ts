@@ -1,5 +1,8 @@
 import type { Route } from "next";
 
+/** Public status page — assert until `next build` refreshes generated Route union in CI. */
+const STATUS_ROUTE = "/status" as Route;
+
 export type MarketingRoute = {
   href: Route;
   label: string;
@@ -66,6 +69,12 @@ export const MARKETING_ROUTES: readonly MarketingRoute[] = [
     href: "/support",
     label: "Support",
     includeInPrimaryNav: true,
+    includeInFooter: true,
+    includeInSitemap: true,
+  },
+  {
+    href: STATUS_ROUTE,
+    label: "Status",
     includeInFooter: true,
     includeInSitemap: true,
   },

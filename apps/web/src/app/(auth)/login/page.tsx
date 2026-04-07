@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { getSession } from '@/lib/session';
 import { LoginForm } from './login-form';
 import { pageTitle } from '@/lib/product-brand';
+import { getOidcEnterpriseConfig } from '@/lib/auth/oidc-env';
 
 export const metadata: Metadata = {
   title: pageTitle('Sign in'),
@@ -20,6 +21,15 @@ export default async function LoginPage({ searchParams }: PageProps) {
   const sp = await searchParams;
   const resetOk = sp.reset === 'success';
   const verifyInvalid = sp.verify === 'invalid';
+  const rawMsg = sp.message;
+  const msgStr = Array.isArray(rawMsg) ? rawMsg[0] : rawMsg;
+  const oidcError =
+    sp.oidc === 'error'
+      ? msgStr
+        ? decodeURIComponent(msgStr)
+        : 'Sign-in with your organization failed. Try again or use email and password.'
+      : null;
+  const ssoEnabled = getOidcEnterpriseConfig() !== null;
 
   return (
     <div className="card">
@@ -34,7 +44,12 @@ export default async function LoginPage({ searchParams }: PageProps) {
           That confirmation or reset link is invalid, expired, or already used. Request a new one if you still need access.
         </p>
       )}
-      <LoginForm />
+      {oidcError && (
+        <p role="alert" className="mb-4 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-900">
+          {oidcError}
+        </p>
+      )}
+      <LoginForm ssoEnabled={ssoEnabled} />
       <p className="mt-4 text-center text-sm text-slate-500">
         Don&apos;t have an account?{' '}
         <a href="/signup" className="text-brand-600 hover:text-brand-700 font-medium">
