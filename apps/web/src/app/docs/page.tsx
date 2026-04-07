@@ -24,6 +24,12 @@ const docsCards = [
       "Exact tier limits and what is self-serve versus contract-shaped enterprise scope.",
   },
   {
+    href: "/docs/comparison",
+    title: "How we compare",
+    description:
+      "Category comparison: operations platform vs overlays, score-only tools, and generic AI checkers—scoped to real product behavior.",
+  },
+  {
     href: "/docs/api",
     title: "API and integrations",
     description:
@@ -44,7 +50,7 @@ export default function DocsIndexPage() {
           plan-gated, and where managed enterprise support begins.
         </p>
 
-        <div className="mt-10 grid gap-4 sm:grid-cols-3">
+        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {docsCards.map((card) => (
             <article
               key={card.href}

@@ -33,6 +33,11 @@ export const MARKETING_ROUTES: readonly MarketingRoute[] = [
     includeInSitemap: true,
   },
   {
+    href: "/docs/comparison",
+    label: "How we compare",
+    includeInSitemap: true,
+  },
+  {
     href: "/docs/api",
     label: "API & integrations",
     includeInPrimaryNav: true,
