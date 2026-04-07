@@ -30,18 +30,25 @@ export async function consumeSecurityToken(
   prisma: PrismaClient | Prisma.TransactionClient,
   input: { rawToken: string; kind: SecurityTokenKind },
 ): Promise<{ userId: string } | null> {
+  const now = new Date();
   const tokenHash = hashSecurityToken(input.rawToken);
   const row = await prisma.securityToken.findUnique({
     where: { tokenHash },
   });
   if (!row || row.kind !== input.kind) return null;
   if (row.usedAt) return null;
-  if (row.expiresAt < new Date()) return null;
+  if (row.expiresAt < now) return null;
 
-  await prisma.securityToken.update({
-    where: { id: row.id },
-    data: { usedAt: new Date() },
+  const consumed = await prisma.securityToken.updateMany({
+    where: {
+      id: row.id,
+      kind: input.kind,
+      usedAt: null,
+      expiresAt: { gte: now },
+    },
+    data: { usedAt: now },
   });
+  if (consumed.count !== 1) return null;
 
   return { userId: row.userId };
 }
