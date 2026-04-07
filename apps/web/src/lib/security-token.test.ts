@@ -22,7 +22,7 @@ describe("security-token", () => {
     const prisma = {
       securityToken: {
         findUnique: vi.fn().mockResolvedValue({ ...row }),
-        update: vi.fn().mockResolvedValue({}),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
       },
     };
     const first = await consumeSecurityToken(prisma as any, {
@@ -30,7 +30,7 @@ describe("security-token", () => {
       kind: SecurityTokenKind.PASSWORD_RESET,
     });
     expect(first).toEqual({ userId: "u1" });
-    expect(prisma.securityToken.update).toHaveBeenCalled();
+    expect(prisma.securityToken.updateMany).toHaveBeenCalled();
 
     prisma.securityToken.findUnique.mockResolvedValue({
       ...row,
@@ -41,5 +41,28 @@ describe("security-token", () => {
       kind: SecurityTokenKind.PASSWORD_RESET,
     });
     expect(second).toBeNull();
+  });
+
+  it("returns null when token was consumed concurrently", async () => {
+    const raw = "race-token";
+    const prisma = {
+      securityToken: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: "t1",
+          userId: "u1",
+          kind: SecurityTokenKind.PASSWORD_RESET,
+          usedAt: null,
+          expiresAt: new Date(Date.now() + 60_000),
+        }),
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+      },
+    };
+
+    const consumed = await consumeSecurityToken(prisma as any, {
+      rawToken: raw,
+      kind: SecurityTokenKind.PASSWORD_RESET,
+    });
+
+    expect(consumed).toBeNull();
   });
 });
