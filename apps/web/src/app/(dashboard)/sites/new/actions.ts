@@ -3,11 +3,16 @@
 import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/session";
 import { ApiError } from "@aros/shared";
-import { prisma } from "@/lib/db";
 import { getCrawlQueue, type CrawlJobData } from "@/lib/queue";
 import { resolveDashboardOrgMembership } from "@/lib/route-data-boundary";
 import { getRoutePlatformTruth } from "@/lib/platform-truth-cache";
 import { requireOrgAccess } from "@/lib/auth-guard";
+import {
+  countSitesForOrg,
+  createSiteWithCrawlAndAudit,
+  loadMembershipWorkspaceForAddSite,
+  markCrawlRunQueueRetry,
+} from "@/lib/dashboard-org-scoped-prisma";
 
 interface AddSiteState {
   error: string | null;
@@ -58,22 +63,10 @@ export async function addSiteAction(
     throw error;
   }
 
-  const membership = await prisma.membership.findUnique({
-    where: {
-      userId_organizationId: {
-        userId: user.id,
-        organizationId: orgRes.organizationId,
-      },
-    },
-    include: {
-      organization: {
-        include: {
-          workspaces: { take: 1 },
-          subscription: true,
-        },
-      },
-    },
-  });
+  const membership = await loadMembershipWorkspaceForAddSite(
+    user.id,
+    orgRes.organizationId,
+  );
 
   if (!membership || membership.organization.workspaces.length === 0) {
     return { error: "No workspace found. Please contact support." };
@@ -83,9 +76,7 @@ export async function addSiteAction(
   const subscription = membership.organization.subscription;
 
   if (subscription) {
-    const siteCount = await prisma.site.count({
-      where: { workspace: { organizationId: orgRes.organizationId } },
-    });
+    const siteCount = await countSitesForOrg(orgRes.organizationId);
     if (siteCount >= subscription.maxDomains) {
       return {
         error: `You have reached your plan limit of ${subscription.maxDomains} site(s). Please upgrade.`,
@@ -97,46 +88,18 @@ export async function addSiteAction(
     ? Math.min(maxPages, subscription.maxPagesPerCrawl)
     : maxPages;
 
-  const result = await prisma.$transaction(async (tx) => {
-    const site = await tx.site.create({
-      data: {
-        workspaceId: workspace.id,
-        name,
-        domain,
-        environment: environment as "PRODUCTION" | "STAGING" | "DEVELOPMENT",
-      },
-    });
-
-    await tx.crawlConfig.create({
-      data: {
-        siteId: site.id,
-        sitemapUrl,
-        maxDepth,
-        maxPages: effectiveMaxPages,
-        respectRobots,
-        renderJavaScript,
-      },
-    });
-
-    const crawlRun = await tx.crawlRun.create({
-      data: {
-        siteId: site.id,
-        status: "PENDING",
-      },
-    });
-
-    await tx.auditLog.create({
-      data: {
-        organizationId: orgRes.organizationId,
-        userId: user.id,
-        action: "site.created",
-        entityType: "Site",
-        entityId: site.id,
-        metadata: { name, domain },
-      },
-    });
-
-    return { site, crawlRun };
+  const result = await createSiteWithCrawlAndAudit({
+    workspaceId: workspace.id,
+    organizationId: orgRes.organizationId,
+    userId: user.id,
+    name,
+    domain,
+    environment: environment as "PRODUCTION" | "STAGING" | "DEVELOPMENT",
+    sitemapUrl,
+    maxDepth,
+    maxPages: effectiveMaxPages,
+    respectRobots,
+    renderJavaScript,
   });
 
   try {
@@ -162,13 +125,7 @@ export async function addSiteAction(
       backoff: { type: "exponential", delay: 5000 },
     });
   } catch {
-    await prisma.crawlRun.update({
-      where: { id: result.crawlRun.id },
-      data: {
-        status: "PENDING",
-        errorMessage: "Queue not available - will retry",
-      },
-    });
+    await markCrawlRunQueueRetry(result.crawlRun.id);
   }
 
   redirect(`/sites/${result.site.id}`);

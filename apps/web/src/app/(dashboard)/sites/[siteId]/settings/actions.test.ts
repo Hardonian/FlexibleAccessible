@@ -3,7 +3,7 @@ import { updateAutoScanAfterCrawlAction } from './actions';
 
 vi.mock('@/lib/db', () => ({
   prisma: {
-    crawlConfig: { update: vi.fn() },
+    crawlConfig: { updateMany: vi.fn() },
     auditLog: { create: vi.fn() },
   },
 }));
@@ -29,7 +29,7 @@ describe('updateAutoScanAfterCrawlAction', () => {
       siteId: 's1',
       workspaceId: 'w1',
     } as never);
-    vi.mocked(prisma.crawlConfig.update).mockResolvedValue({} as never);
+    vi.mocked(prisma.crawlConfig.updateMany).mockResolvedValue({ count: 1 } as never);
     vi.mocked(prisma.auditLog.create).mockResolvedValue({} as never);
   });
 
@@ -38,8 +38,8 @@ describe('updateAutoScanAfterCrawlAction', () => {
     fd.set('siteId', 's1');
     const result = await updateAutoScanAfterCrawlAction(undefined, fd);
     expect(result).toEqual({ ok: true });
-    expect(prisma.crawlConfig.update).toHaveBeenCalledWith({
-      where: { siteId: 's1' },
+    expect(prisma.crawlConfig.updateMany).toHaveBeenCalledWith({
+      where: { siteId: 's1', site: { workspace: { organizationId: 'o1' } } },
       data: { autoScanAfterCrawl: false },
     });
   });
@@ -50,8 +50,8 @@ describe('updateAutoScanAfterCrawlAction', () => {
     fd.set('autoScanAfterCrawl', 'on');
     const result = await updateAutoScanAfterCrawlAction(undefined, fd);
     expect(result).toEqual({ ok: true });
-    expect(prisma.crawlConfig.update).toHaveBeenCalledWith({
-      where: { siteId: 's1' },
+    expect(prisma.crawlConfig.updateMany).toHaveBeenCalledWith({
+      where: { siteId: 's1', site: { workspace: { organizationId: 'o1' } } },
       data: { autoScanAfterCrawl: true },
     });
   });

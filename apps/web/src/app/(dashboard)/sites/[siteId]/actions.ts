@@ -1,10 +1,13 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/db";
 import { getCrawlQueue, type CrawlJobData } from "@/lib/queue";
 import { requireSiteAccess } from "@/lib/auth-guard";
 import { ApiError } from "@aros/shared";
+import {
+  markCrawlRunFailedQueue,
+  startCrawlForVerifiedSite,
+} from "@/lib/dashboard-org-scoped-prisma";
 
 export async function startCrawlAction(formData: FormData) {
   const siteId = formData.get("siteId") as string;
@@ -17,37 +20,20 @@ export async function startCrawlAction(formData: FormData) {
       requirePaid: true,
     });
 
-    // Check for running crawl (scoped to the site we verified access to)
-    const runningCrawl = await prisma.crawlRun.findFirst({
-      where: { siteId: ctx.siteId, status: { in: ["PENDING", "RUNNING"] } },
+    const outcome = await startCrawlForVerifiedSite({
+      siteId: ctx.siteId,
+      organizationId: ctx.organizationId,
+      userId: ctx.user.id,
     });
-    if (runningCrawl) {
+
+    if (outcome.kind === "already_running") {
       redirect(`/sites/${ctx.siteId}`);
     }
-
-    const site = await prisma.site.findUnique({
-      where: { id: ctx.siteId },
-      include: { crawlConfig: true },
-    });
-
-    if (!site) {
+    if (outcome.kind === "site_not_found") {
       redirect(`/sites/${ctx.siteId}?error=site_not_found`);
     }
 
-    const config = site.crawlConfig;
-    const crawlRun = await prisma.crawlRun.create({
-      data: { siteId: ctx.siteId, status: "PENDING" },
-    });
-
-    await prisma.auditLog.create({
-      data: {
-        organizationId: ctx.organizationId,
-        userId: ctx.user.id,
-        action: "crawl.started",
-        entityType: "CrawlRun",
-        entityId: crawlRun.id,
-      },
-    });
+    const { crawlRun, site, config } = outcome;
 
     try {
       const jobData: CrawlJobData = {
@@ -73,24 +59,7 @@ export async function startCrawlAction(formData: FormData) {
       });
     } catch (e) {
       const message = e instanceof Error ? e.message : "Queue add failed";
-      await prisma.crawlRun.update({
-        where: { id: crawlRun.id },
-        data: {
-          status: "FAILED",
-          errorMessage: `Crawl queue unavailable: ${message}`,
-          completedAt: new Date(),
-        },
-      });
-      await prisma.auditLog.create({
-        data: {
-          organizationId: ctx.organizationId,
-          userId: ctx.user.id,
-          action: "crawl.enqueue_failed",
-          entityType: "CrawlRun",
-          entityId: crawlRun.id,
-          metadata: { siteId: ctx.siteId, message },
-        },
-      });
+      await markCrawlRunFailedQueue(crawlRun.id, ctx, message);
       redirect(`/sites/${ctx.siteId}?crawl_error=queue_unavailable`);
     }
 

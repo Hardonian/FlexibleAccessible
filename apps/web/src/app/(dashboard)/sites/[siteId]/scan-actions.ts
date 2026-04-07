@@ -1,14 +1,17 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import {
-  enqueueSiteScan,
-  persistPostCrawlScanKickoffAfterEnqueue,
-} from '@aros/core-services';
 import { ApiError } from '@aros/shared';
-import { prisma } from '@/lib/db';
 import { requireSiteAccess } from '@/lib/auth-guard';
 import { logProductEvent, PRODUCT_EVENT_ACTIONS } from '@/lib/product-events';
+import {
+  countScanRunsForOrg,
+  createScanAuditLog,
+  enqueueSiteScanForDashboard,
+  findCompletedCrawlForSiteOrg,
+  persistPostCrawlKickoffAfterEnqueueDashboard,
+  setPostCrawlScanKickoffRequested,
+} from '@/lib/dashboard-org-scoped-prisma';
 import type { ScanSiteActionState } from './scan-action-state';
 
 export async function startSiteScanAction(
@@ -24,23 +27,18 @@ export async function startSiteScanAction(
     const ctx = await requireSiteAccess(siteId, 'scan:start', {
       requirePaid: true,
     });
-    const result = await enqueueSiteScan(
-      { prisma },
-      {
-        siteId: ctx.siteId,
-        organizationId: ctx.organizationId,
-        monthlyScanLimit: ctx.subscription?.maxScansPerMonth,
-        crawlRunId: null,
-        trigger: 'operator',
-        userId: ctx.user.id,
-      }
-    );
+    const result = await enqueueSiteScanForDashboard({
+      siteId: ctx.siteId,
+      organizationId: ctx.organizationId,
+      monthlyScanLimit: ctx.subscription?.maxScansPerMonth,
+      crawlRunId: null,
+      trigger: 'operator',
+      userId: ctx.user.id,
+    });
 
     if (result.ok) {
       if (result.kind === 'queued') {
-        const priorCount = await prisma.scanRun.count({
-          where: { site: { workspace: { organizationId: ctx.organizationId } } },
-        });
+        const priorCount = await countScanRunsForOrg(ctx.organizationId);
         if (priorCount <= 1) {
           await logProductEvent({
             organizationId: ctx.organizationId,
@@ -136,72 +134,53 @@ export async function retryPostCrawlScanKickoffAction(formData: FormData) {
     const ctx = await requireSiteAccess(siteId, 'scan:start', {
       requirePaid: true,
     });
-    const crawl = await prisma.crawlRun.findFirst({
-      where: {
-        id: crawlRunId,
-        siteId: ctx.siteId,
-        status: 'COMPLETED',
-        pagesCrawled: { gt: 0 },
-        site: { workspace: { organizationId: ctx.organizationId } },
-      },
-      select: { id: true },
-    });
+    const crawl = await findCompletedCrawlForSiteOrg(
+      crawlRunId,
+      ctx.siteId,
+      ctx.organizationId
+    );
     if (!crawl) {
       redirect(`/sites/${siteId}`);
     }
 
-    await prisma.crawlRun.update({
-      where: { id: crawlRunId },
-      data: { postCrawlScanKickoffStatus: 'REQUESTED' },
+    await setPostCrawlScanKickoffRequested(crawlRunId);
+
+    const result = await enqueueSiteScanForDashboard({
+      siteId: ctx.siteId,
+      organizationId: ctx.organizationId,
+      monthlyScanLimit: ctx.subscription?.maxScansPerMonth,
+      crawlRunId,
+      trigger: 'operator',
+      userId: ctx.user.id,
     });
 
-    const result = await enqueueSiteScan(
-      { prisma },
-      {
-        siteId: ctx.siteId,
-        organizationId: ctx.organizationId,
-        monthlyScanLimit: ctx.subscription?.maxScansPerMonth,
-        crawlRunId,
-        trigger: 'operator',
-        userId: ctx.user.id,
-      }
-    );
-
-    await persistPostCrawlScanKickoffAfterEnqueue(prisma, crawlRunId, result);
+    await persistPostCrawlKickoffAfterEnqueueDashboard(crawlRunId, result);
 
     if (result.ok && result.kind === 'queued') {
-      await prisma.auditLog
-        .create({
-          data: {
-            organizationId: ctx.organizationId,
-            userId: ctx.user.id,
-            action: 'scan.queued',
-            entityType: 'CrawlRun',
-            entityId: crawlRunId,
-            metadata: { siteId: ctx.siteId, crawlRunId, trigger: 'operator_retry' },
-          },
-        })
-        .catch(() => undefined);
+      await createScanAuditLog({
+        organizationId: ctx.organizationId,
+        userId: ctx.user.id,
+        action: 'scan.queued',
+        entityType: 'CrawlRun',
+        entityId: crawlRunId,
+        metadata: { siteId: ctx.siteId, crawlRunId, trigger: 'operator_retry' },
+      }).catch(() => undefined);
     }
 
     if (!result.ok && result.kind === 'queue_unavailable') {
-      await prisma.auditLog
-        .create({
-          data: {
-            organizationId: ctx.organizationId,
-            userId: ctx.user.id,
-            action: 'scan.enqueue_failed',
-            entityType: 'CrawlRun',
-            entityId: crawlRunId,
-            metadata: {
-              siteId: ctx.siteId,
-              scanRunId: result.scanRunId,
-              reason: 'queue_unavailable',
-              trigger: 'operator_retry',
-            },
-          },
-        })
-        .catch(() => undefined);
+      await createScanAuditLog({
+        organizationId: ctx.organizationId,
+        userId: ctx.user.id,
+        action: 'scan.enqueue_failed',
+        entityType: 'CrawlRun',
+        entityId: crawlRunId,
+        metadata: {
+          siteId: ctx.siteId,
+          scanRunId: result.scanRunId,
+          reason: 'queue_unavailable',
+          trigger: 'operator_retry',
+        },
+      }).catch(() => undefined);
     }
   } catch (e) {
     if (e instanceof ApiError && e.code === 'SUBSCRIPTION_REQUIRED') {
