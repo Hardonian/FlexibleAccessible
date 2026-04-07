@@ -15,7 +15,7 @@
     "test:ct": "playwright test -c playwright-ct.config.ts",
     "test:e2e:update": "playwright test --update-snapshots",
     "test:integration": "vitest run src/lib/__tests__/stripe-webhook.integration.test.ts",
-    "test:launch-critical": "vitest run src/app/api/public-scan/route.test.ts src/app/api/public-scan/[id]/route.test.ts src/lib/public-scan/og-render-model.test.ts src/lib/public-scan/validity.test.ts src/lib/public-scan/target-validation.test.ts src/app/api/github-action/status/[scanRunId]/route.test.ts src/app/api/reports/vpat/route.test.ts src/lib/server-org-boundary.test.ts src/lib/operator-org-resolution.test.ts"
+    "test:launch-critical": "vitest run src/app/api/public-scan/route.test.ts src/app/api/public-scan/[id]/route.test.ts src/lib/public-scan/og-render-model.test.ts src/lib/public-scan/validity.test.ts src/lib/public-scan/target-validation.test.ts src/app/api/github-action/status/[scanRunId]/route.test.ts src/app/api/reports/vpat/route.test.ts src/lib/server-org-boundary.test.ts src/lib/operator-org-resolution.test.ts src/lib/dashboard-org-scoped-prisma.test.ts"
   },
   "dependencies": {
     "@aros/config": "*",
@@ -28,8 +28,8 @@
     "clsx": "^2.1.0",
     "ioredis": "^5.4.0",
     "lucide-react": "^0.468.0",
-    "nodemailer": "^6.9.16",
     "next": "^15.1.0",
+    "nodemailer": "^8.0.4",
     "postcss": "^8.4.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -46,8 +46,8 @@
     "@playwright/experimental-ct-react": "^1.58.2",
     "@playwright/test": "^1.49.0",
     "@testing-library/jest-dom": "^6.9.1",
-    "@types/react": "^19.0.0",
     "@types/nodemailer": "^6.4.17",
+    "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/sanitize-html": "^2.16.1",
     "@vitejs/plugin-react": "^6.0.1",

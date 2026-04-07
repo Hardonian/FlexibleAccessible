@@ -13,7 +13,7 @@ Runs in this exact order:
 ## Tier 2 — Release gate (`npm run verify:release`)
 
 Includes Tier 1 and adds release-blocking tenant isolation + launch-critical truth checks + env-bound integration tests:
-- `npm run verify:tenant-boundary` (fails if critical server entrypoints regress with tenant-boundary lint violations)
+- `npm run verify:tenant-boundary` (fails if critical server entrypoints regress with tenant-boundary lint violations, including high-risk dashboard server actions listed in `scripts/check-tenant-boundary-critical.mjs`)
 - `npm run test:launch-critical` (targeted suites for public-scan validity/expiry truth and canonical org-boundary regression checks on critical routes)
 - `npm run test:integration` (currently `apps/web` Vitest integration suite)
 

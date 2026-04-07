@@ -7,7 +7,7 @@
     "packages/*"
   ],
   "scripts": {
-    "postinstall": "node scripts/workspace-symlinks.js && npm run db:generate",
+    "postinstall": "node scripts/workspace-symlinks.js && node scripts/prune-nested-vite.mjs && npm run db:generate",
     "dev": "npm run dev --workspace=apps/web",
     "dev:worker": "npm run dev --workspace=apps/worker",
     "build": "npm run build --workspace=apps/web",
@@ -57,6 +57,7 @@
     },
     "@rollup/plugin-terser": {
       "serialize-javascript": "7.0.5"
-    }
+    },
+    "vite": "8.0.5"
   }
 }

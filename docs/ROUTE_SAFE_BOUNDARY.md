@@ -11,6 +11,8 @@ Dashboard routes should not duplicate ad hoc `try/catch` around membership and o
   - `resolveDashboardOrgMembership(userId, truth)` — returns `ok | none | platform_blocked | error`. When `truth.allowOrgScopedDbReads` is false, **does not** query Prisma for membership (avoids cascading DB errors).  
   - `runOrgScopedQuery(ctx, fn)` — wraps org-scoped work in `{ ok, data } | { ok: false, message }` instead of throwing.
 
+- `apps/web/src/lib/dashboard-org-scoped-prisma.ts` — **pre-wrapped Prisma helpers** for server actions (API keys, site/crawl flows, remediation/review updates, scan enqueue wrappers). ESLint’s tenant-boundary rule allows importing from here instead of calling `prisma` directly inside `actions.ts` / `scan-actions.ts`. Prefer adding new org-scoped queries here (with `organizationId` / site–workspace filters in the helper) rather than duplicating raw Prisma in action files.
+
 - `apps/web/src/components/reliability/*` — `PlatformShellBanner`, `RouteReliabilityNotice` for consistent copy and roles.
 
 ## How to add a new dashboard page
