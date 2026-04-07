@@ -43,6 +43,8 @@ export default async function ReviewsPage({
         no_org: "Could not determine organization for this review.",
         forbidden: "You do not have permission to update this review.",
         update_failed: "Failed to update review. Please try again.",
+        stale_session:
+          "Your organization context changed. Refresh the page and try again.",
       }[params.review_error] ?? "An error occurred.")
     : null;
 
@@ -214,6 +216,11 @@ export default async function ReviewsPage({
                 <div className="flex gap-2">
                   {task.status === "PENDING" && (
                     <form action={updateReviewAction}>
+                      <input
+                        type="hidden"
+                        name="expectedOrganizationId"
+                        value={orgRes.organizationId}
+                      />
                       <input type="hidden" name="taskId" value={task.id} />
                       <input type="hidden" name="status" value="IN_PROGRESS" />
                       <button type="submit" className="btn-secondary text-xs">
@@ -224,6 +231,11 @@ export default async function ReviewsPage({
                   {task.status === "IN_PROGRESS" && (
                     <>
                       <form action={updateReviewAction}>
+                        <input
+                          type="hidden"
+                          name="expectedOrganizationId"
+                          value={orgRes.organizationId}
+                        />
                         <input type="hidden" name="taskId" value={task.id} />
                         <input type="hidden" name="status" value="APPROVED" />
                         <button type="submit" className="btn-primary text-xs">
@@ -231,6 +243,11 @@ export default async function ReviewsPage({
                         </button>
                       </form>
                       <form action={updateReviewAction}>
+                        <input
+                          type="hidden"
+                          name="expectedOrganizationId"
+                          value={orgRes.organizationId}
+                        />
                         <input type="hidden" name="taskId" value={task.id} />
                         <input type="hidden" name="status" value="REJECTED" />
                         <button type="submit" className="btn-danger text-xs">

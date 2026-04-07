@@ -99,6 +99,8 @@ export default async function SuggestionDetailPage({
         forbidden: "You do not have permission for that action.",
         invalid_transition: "That action is not valid from the current status.",
         update_failed: "Update failed. Please try again.",
+        stale_session:
+          "Your organization context changed. Refresh the page and try again.",
       }[sp.error] ?? "An error occurred.")
     : null;
 
@@ -274,6 +276,11 @@ export default async function SuggestionDetailPage({
                   <form action={approveSuggestionAction}>
                     <input
                       type="hidden"
+                      name="expectedOrganizationId"
+                      value={orgRes.organizationId}
+                    />
+                    <input
+                      type="hidden"
                       name="suggestionId"
                       value={suggestionId}
                     />
@@ -289,6 +296,11 @@ export default async function SuggestionDetailPage({
                   <form action={rejectSuggestionAction}>
                     <input
                       type="hidden"
+                      name="expectedOrganizationId"
+                      value={orgRes.organizationId}
+                    />
+                    <input
+                      type="hidden"
                       name="suggestionId"
                       value={suggestionId}
                     />
@@ -302,6 +314,11 @@ export default async function SuggestionDetailPage({
                 (suggestion.status === "APPROVED" ||
                   suggestion.status === "VALIDATED") && (
                   <form action={exportSnippetAction}>
+                    <input
+                      type="hidden"
+                      name="expectedOrganizationId"
+                      value={orgRes.organizationId}
+                    />
                     <input
                       type="hidden"
                       name="suggestionId"

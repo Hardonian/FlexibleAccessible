@@ -3,13 +3,19 @@
 import type { Route } from "next";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/db";
 import { requireSession } from "@/lib/session";
 import { requireOrgAccess } from "@/lib/auth-guard";
 import { ApiError } from "@aros/shared";
 import { hasPermission } from "@aros/config";
 import crypto from "node:crypto";
 import { logProductEvent, PRODUCT_EVENT_ACTIONS } from "@/lib/product-events";
+import {
+  createApiKeyForOrg,
+  findActiveApiKeyForOrg,
+  listApiKeyUsageForOrg,
+  revokeApiKeyForOrg,
+  rotateApiKeyForOrg,
+} from "@/lib/dashboard-org-scoped-prisma";
 
 const API_KEY_PREFIX = "arsk_live_";
 const KEY_BYTES = 32; // 64 hex chars
@@ -150,22 +156,13 @@ export async function createApiKeyAction(
   const { plaintext, hash } = await generateApiKey();
 
   try {
-    const apiKey = await prisma.apiKey.create({
-      data: {
-        organizationId,
-        keyHash: hash,
-        name,
-        scopes,
-        rateLimitPerMinute,
-        expiresAt,
-      },
-      select: {
-        id: true,
-        name: true,
-        scopes: true,
-        rateLimitPerMinute: true,
-        expiresAt: true,
-      },
+    const apiKey = await createApiKeyForOrg({
+      organizationId: ctx.organizationId,
+      keyHash: hash,
+      name,
+      scopes,
+      rateLimitPerMinute,
+      expiresAt,
     });
 
     revalidatePath("/settings/api-keys");
@@ -238,20 +235,7 @@ export async function rotateApiKeyAction(
   }
 
   // Verify key exists and belongs to this organization
-  const existingKey = await prisma.apiKey.findFirst({
-    where: {
-      id: keyId,
-      organizationId,
-      isActive: true,
-    },
-    select: {
-      id: true,
-      name: true,
-      scopes: true,
-      rateLimitPerMinute: true,
-      expiresAt: true,
-    },
-  });
+  const existingKey = await findActiveApiKeyForOrg(ctx.organizationId, keyId);
 
   if (!existingKey) {
     return { success: false, error: "API key not found or already revoked" };
@@ -261,22 +245,12 @@ export async function rotateApiKeyAction(
   const { plaintext, hash } = await generateApiKey();
 
   try {
-    // Delete old key and create new one with same settings in a transaction
-    const [newKey] = await prisma.$transaction([
-      prisma.apiKey.create({
-        data: {
-          organizationId,
-          keyHash: hash,
-          name: existingKey.name,
-          scopes: existingKey.scopes as string[],
-          rateLimitPerMinute: existingKey.rateLimitPerMinute,
-          expiresAt: existingKey.expiresAt,
-        },
-      }),
-      prisma.apiKey.delete({
-        where: { id: keyId },
-      }),
-    ]);
+    const newKey = await rotateApiKeyForOrg(ctx.organizationId, keyId, hash, {
+      name: existingKey.name,
+      scopes: existingKey.scopes as string[],
+      rateLimitPerMinute: existingKey.rateLimitPerMinute,
+      expiresAt: existingKey.expiresAt,
+    });
 
     revalidatePath("/settings/api-keys");
 
@@ -316,24 +290,13 @@ export async function revokeApiKeyAction(formData: FormData): Promise<void> {
 
   // Soft delete by setting isActive to false
   try {
-    const key = await prisma.apiKey.findFirst({
-      where: {
-        id: keyId,
-        organizationId,
-        isActive: true,
-      },
-    });
+    const revoked = await revokeApiKeyForOrg(ctx.organizationId, keyId);
 
-    if (!key) {
+    if (!revoked.ok) {
       redirectApiKeysQuery({
         error: "API key not found or already revoked",
       });
     }
-
-    await prisma.apiKey.update({
-      where: { id: keyId },
-      data: { isActive: false },
-    });
 
     revalidatePath("/settings/api-keys");
     redirectApiKeysQuery({ status: "revoked" });
@@ -354,26 +317,7 @@ export async function getApiKeyUsageStats(organizationId: string) {
     throw ApiError.forbidden("Only admins and owners can view API key usage");
   }
 
-  const keys = await prisma.apiKey.findMany({
-    where: {
-      organizationId,
-      isActive: true,
-    },
-    include: {
-      mcpUsageLogs: {
-        select: {
-          id: true,
-          createdAt: true,
-        },
-        orderBy: {
-          createdAt: "desc",
-        },
-      },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
+  const keys = await listApiKeyUsageForOrg(ctx.organizationId);
 
   return keys.map((key) => ({
     id: key.id,

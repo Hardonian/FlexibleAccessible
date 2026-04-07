@@ -11,6 +11,8 @@ Dashboard routes should not duplicate ad hoc `try/catch` around membership and o
   - `resolveDashboardOrgMembership(userId, truth)` — returns `ok | none | platform_blocked | error`. When `truth.allowOrgScopedDbReads` is false, **does not** query Prisma for membership (avoids cascading DB errors).  
   - `runOrgScopedQuery(ctx, fn)` — wraps org-scoped work in `{ ok, data } | { ok: false, message }` instead of throwing.
 
+- `apps/web/src/lib/dashboard-org-scoped-prisma.ts` — **pre-wrapped Prisma helpers** for server actions (API keys, site/crawl flows, remediation/review updates, scan enqueue wrappers). ESLint’s tenant-boundary rule allows importing from here instead of calling `prisma` directly inside `actions.ts` / `scan-actions.ts`. Prefer adding new org-scoped queries here (with `organizationId` / site–workspace filters in the helper) rather than duplicating raw Prisma in action files.
+
 - `apps/web/src/components/reliability/*` — `PlatformShellBanner`, `RouteReliabilityNotice` for consistent copy and roles.
 
 ## How to add a new dashboard page
@@ -28,6 +30,8 @@ Dashboard routes should not duplicate ad hoc `try/catch` around membership and o
 
 - Never skip org scoping in degraded paths. Use `runOrgScopedQuery` with queries filtered by `organizationId`.
 - Finding detail and similar routes must scope by org (e.g. `findFirst` with `occurrences.some.site.workspace.organizationId`).
+- For server actions that resolve the active org at submit time, include a hidden `expectedOrganizationId` matching the page’s org and validate with `assertFormOrgMatchesActive` (`dashboard-form-org.ts`) so stale tabs after an org switch get a clear error instead of silent mismatch.
+- Operator console (`/system/operator`) scopes health data to the same org as `getOperatorHealthData` (active-org cookie when permitted, else oldest eligible membership with `org:system:view`). It is not a cross-tenant super-admin view.
 - Operator-only detail stays on `/system` and `org:system:view` APIs; shell banners use `audience: 'operator' | 'user'` for extra hints.
 
 ## Testing

@@ -3,6 +3,14 @@ import { execFileSync } from "node:child_process";
 
 const CRITICAL_ENTRYPOINTS = [
   "src/app/(dashboard)/settings/billing/actions.ts",
+  "src/app/(dashboard)/settings/api-keys/actions.ts",
+  "src/app/(dashboard)/sites/new/actions.ts",
+  "src/app/(dashboard)/sites/[siteId]/actions.ts",
+  "src/app/(dashboard)/sites/[siteId]/scan-actions.ts",
+  "src/app/(dashboard)/sites/[siteId]/settings/actions.ts",
+  "src/app/(dashboard)/remediation/[suggestionId]/actions.ts",
+  "src/app/(dashboard)/reviews/actions.ts",
+  "src/app/(dashboard)/system/operator/actions.ts",
   "src/app/api/comments/route.ts",
   "src/app/api/credits/route.ts",
   "src/app/api/impact/route.ts",

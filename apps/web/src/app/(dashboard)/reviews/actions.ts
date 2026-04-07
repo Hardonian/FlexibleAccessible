@@ -3,10 +3,19 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireSession } from "@/lib/session";
-import { prisma } from "@/lib/db";
 import type { ReviewStatus } from "@aros/db";
-import { hasPermission } from "@aros/config";
-import { getEntitlementState, requireOrgAccess } from "@/lib/auth-guard";
+import type { Prisma } from "@aros/db";
+import { requireOrgAccess } from "@/lib/auth-guard";
+import { getRoutePlatformTruth } from "@/lib/platform-truth-cache";
+import { resolveDashboardOrgMembership } from "@/lib/route-data-boundary";
+import {
+  loadReviewTaskForOrg,
+  updateReviewTaskStatusForOrg,
+} from "@/lib/dashboard-org-scoped-prisma";
+import {
+  assertFormOrgMatchesActive,
+  parseExpectedOrgFromForm,
+} from "@/lib/dashboard-form-org";
 
 const VALID_REVIEW_STATUSES: ReviewStatus[] = [
   "PENDING",
@@ -31,66 +40,41 @@ export async function updateReviewAction(formData: FormData) {
 
   const reviewStatus = status as ReviewStatus;
 
-  const task = await prisma.reviewTask.findUnique({
-    where: { id: taskId },
-    select: {
-      id: true,
-      status: true,
-      suggestion: {
-        select: {
-          cluster: {
-            select: {
-              site: {
-                select: {
-                  workspace: { select: { organizationId: true } },
-                },
-              },
-            },
-          },
-          finding: {
-            select: {
-              site: {
-                select: {
-                  workspace: { select: { organizationId: true } },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
+  const platformTruth = await getRoutePlatformTruth();
+  const orgRes = await resolveDashboardOrgMembership(user.id, platformTruth);
+  if (orgRes.kind !== "ok") {
+    redirect("/reviews?review_error=not_found");
+  }
+
+  const expectedOrg = parseExpectedOrgFromForm(formData);
+  if (!assertFormOrgMatchesActive(expectedOrg, orgRes.organizationId)) {
+    redirect("/reviews?review_error=stale_session");
+  }
+
+  await requireOrgAccess(orgRes.organizationId, "review:manage", {
+    requirePaid: true,
   });
 
+  const task = await loadReviewTaskForOrg(taskId, orgRes.organizationId);
   if (!task) {
     redirect("/reviews?review_error=not_found");
   }
 
-  const orgId =
-    task.suggestion?.cluster?.site.workspace.organizationId ??
-    task.suggestion?.finding?.site.workspace.organizationId;
+  const data: Prisma.ReviewTaskUpdateInput = {
+    status: reviewStatus,
+    assignee: { connect: { id: user.id } },
+    reviewedAt:
+      reviewStatus === "APPROVED" || reviewStatus === "REJECTED"
+        ? new Date()
+        : undefined,
+  };
 
-  if (!orgId) {
-    redirect("/reviews?review_error=no_org");
-  }
-
-  // Use centralized auth guard
-  const ctx = await requireOrgAccess(orgId, "review:manage", {
-    requirePaid: true,
-  });
-
-  try {
-    await prisma.reviewTask.update({
-      where: { id: taskId },
-      data: {
-        status: reviewStatus,
-        assigneeId: user.id,
-        reviewedAt:
-          reviewStatus === "APPROVED" || reviewStatus === "REJECTED"
-            ? new Date()
-            : undefined,
-      },
-    });
-  } catch {
+  const updated = await updateReviewTaskStatusForOrg(
+    taskId,
+    orgRes.organizationId,
+    data,
+  );
+  if (!updated) {
     redirect("/reviews?review_error=update_failed");
   }
 

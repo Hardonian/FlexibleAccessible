@@ -1,8 +1,11 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { prisma } from '@/lib/db';
 import { requireSiteAccess } from '@/lib/auth-guard';
+import {
+  createScanAuditLog,
+  updateCrawlConfigAutoScan,
+} from '@/lib/dashboard-org-scoped-prisma';
 
 export type AutoScanSettingsState = { ok: true } | { ok: false; error: string };
 
@@ -21,23 +24,23 @@ export async function updateAutoScanAfterCrawlAction(
     });
     const enabled = formData.get('autoScanAfterCrawl') === 'on';
 
-    await prisma.crawlConfig.update({
-      where: { siteId: ctx.siteId },
-      data: { autoScanAfterCrawl: enabled },
-    });
+    const updated = await updateCrawlConfigAutoScan(
+      ctx.siteId,
+      ctx.organizationId,
+      enabled
+    );
+    if (!updated) {
+      return { ok: false, error: 'Could not save settings.' };
+    }
 
-    await prisma.auditLog
-      .create({
-        data: {
-          organizationId: ctx.organizationId,
-          userId: ctx.user.id,
-          action: 'crawl.auto_scan_after_crawl.updated',
-          entityType: 'CrawlConfig',
-          entityId: ctx.siteId,
-          metadata: { autoScanAfterCrawl: enabled },
-        },
-      })
-      .catch(() => undefined);
+    await createScanAuditLog({
+      organizationId: ctx.organizationId,
+      userId: ctx.user.id,
+      action: 'crawl.auto_scan_after_crawl.updated',
+      entityType: 'CrawlConfig',
+      entityId: ctx.siteId,
+      metadata: { autoScanAfterCrawl: enabled },
+    }).catch(() => undefined);
 
     revalidatePath(`/sites/${siteId}`);
     revalidatePath(`/sites/${siteId}/settings`);
