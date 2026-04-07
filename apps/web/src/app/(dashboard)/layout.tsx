@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { cookies, headers } from "next/headers";
 import { getSession } from "@/lib/session";
@@ -15,6 +16,19 @@ import { getEntitlementState, isBillingAccessiblePath } from "@/lib/auth-guard";
 import { isEmailVerificationExemptPath } from "@/lib/email-verification-guard";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+    googleBot: {
+      index: false,
+      follow: false,
+      noimageindex: true,
+    },
+  },
+};
 
 const membershipLayoutInclude = {
   organization: {

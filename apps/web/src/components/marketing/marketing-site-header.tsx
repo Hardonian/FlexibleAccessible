@@ -2,17 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import {
-  PRODUCT_DISPLAY_NAME,
-  PRODUCT_TAGLINE,
-} from "@/lib/product-brand";
+import { PRODUCT_DISPLAY_NAME, PRODUCT_TAGLINE } from "@/lib/product-brand";
+import { PRIMARY_MARKETING_NAV } from "@/lib/marketing-routes";
 
 const NAV_LINKS = [
   { href: "/#proof", label: "Proof & workflow" },
   { href: "/#pricing", label: "Plans" },
-  { href: "/trust", label: "Trust" },
-  { href: "/docs/api", label: "Integrations" },
-  { href: "/support", label: "Support" },
+  ...PRIMARY_MARKETING_NAV,
   { href: "/login", label: "Sign in" },
 ] as const;
 
