@@ -18,6 +18,8 @@ Last validated: 2026-04-07.
 ## GTM + ops (internal)
 - [ ] `docs/internal/BUYER_ONE_PAGER.md` reviewed for your deployment contact email (`NEXT_PUBLIC_PRODUCT_CONTACT_EMAIL`).
 - [ ] `docs/internal/RISK_REGISTER.md` reviewed for top 3 risks this quarter.
+- [ ] Audit log export (`GET /api/org/{organizationId}/audit-log`) smoke-tested with an AUDITOR + paid org.
+- [ ] Billing page shows export event counts when Stripe period bounds exist on `subscription`.
 
 ## Quality gates
 - [ ] `npm run lint`
