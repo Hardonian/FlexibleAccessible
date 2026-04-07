@@ -3,6 +3,8 @@ import Link from "next/link";
 import { MarketingSiteChrome } from "@/components/marketing/marketing-site-chrome";
 import { PRODUCT_DISPLAY_NAME } from "@/lib/product-brand";
 import { marketingSurfaceMetadata } from "@/lib/site-metadata";
+import { CONFIDENCE_LABELS } from "@/lib/assurance-ladder";
+import { getPublicPlanCards } from "@/lib/public-packaging";
 
 export const metadata: Metadata = marketingSurfaceMetadata(
   "Trust",
@@ -11,6 +13,8 @@ export const metadata: Metadata = marketingSurfaceMetadata(
 );
 
 export default function TrustPage() {
+  const plans = getPublicPlanCards();
+
   return (
     <MarketingSiteChrome>
       <div className="mx-auto max-w-3xl px-6 py-section-md">
@@ -81,6 +85,63 @@ export default function TrustPage() {
             </p>
           </li>
         </ul>
+
+
+
+        <section className="mt-12">
+          <h2 className="text-lg font-semibold text-slate-900">Confidence labels used in product and exports</h2>
+          <p className="mt-2 text-sm text-slate-600">
+            These labels are intentionally explicit so buyers can see what is machine detected,
+            what is reviewed, and what is still uncertain.
+          </p>
+          <div className="mt-4 overflow-x-auto rounded-xl border border-[rgb(var(--color-border))]">
+            <table className="min-w-full text-left text-sm">
+              <thead className="bg-slate-50 text-slate-700">
+                <tr>
+                  <th className="px-4 py-3 font-semibold">Label</th>
+                  <th className="px-4 py-3 font-semibold">Meaning</th>
+                  <th className="px-4 py-3 font-semibold">Export posture</th>
+                </tr>
+              </thead>
+              <tbody>
+                {CONFIDENCE_LABELS.map((item) => (
+                  <tr key={item.label} className="border-t border-[rgb(var(--color-border))] align-top">
+                    <td className="px-4 py-3 font-medium text-slate-900">{item.label}</td>
+                    <td className="px-4 py-3 text-slate-600">{item.meaning}</td>
+                    <td className="px-4 py-3 text-slate-600">
+                      {item.safeForExternalProof ? "Public-safe proof" : "Internal/contract-bound only"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section className="mt-12">
+          <h2 className="text-lg font-semibold text-slate-900">Commitments by service lane</h2>
+          <p className="mt-2 text-sm text-slate-600">
+            We only publish commitments that can be operationally bounded by plan or contract.
+          </p>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            {plans.map((plan) => (
+              <article
+                key={plan.tier}
+                className="rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface-elevated))] p-4"
+              >
+                <h3 className="text-sm font-semibold text-slate-900">{plan.name}</h3>
+                <ul className="mt-2 space-y-2 text-sm text-slate-600">
+                  {plan.commitments.map((commitment) => (
+                    <li key={commitment.heading}>
+                      <span className="font-medium text-slate-800">{commitment.heading}:</span>{" "}
+                      {commitment.detail}
+                    </li>
+                  ))}
+                </ul>
+              </article>
+            ))}
+          </div>
+        </section>
 
         <p className="mt-12 text-sm text-slate-500">
           For data handling and security practices, see{" "}

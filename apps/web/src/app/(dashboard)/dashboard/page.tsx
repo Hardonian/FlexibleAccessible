@@ -222,6 +222,16 @@ export default async function DashboardPage() {
     jobPipelinesHealthy: platformTruth.flags.jobPipelinesHealthy,
   });
 
+  const latestCrawl = recentCrawls[0] ?? null;
+  const freshness = deriveFreshnessLabel(latestCrawl?.createdAt ?? null);
+  const comparability = deriveComparabilityLabel(recentCrawls.map((crawl) => crawl.status));
+  const automationHealth =
+    platformTruth.flags.workerRunning &&
+    platformTruth.flags.jobPipelinesHealthy &&
+    platformTruth.flags.redisOk
+      ? "Automated"
+      : "Degraded";
+
   const workerNote =
     platformTruth.shellBlocker === "none" &&
     !platformTruth.flags.workerRunning ? (
@@ -244,6 +254,28 @@ export default async function DashboardPage() {
         title="Dashboard"
         description={`Operational overview for ${orgName}.`}
       />
+
+      <section className="card space-y-4" aria-labelledby="assurance-posture-heading">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <h2 id="assurance-posture-heading" className="section-heading">
+            Assurance posture
+          </h2>
+          <span className="badge w-fit bg-slate-50 text-slate-800 ring-1 ring-inset ring-slate-200">
+            {automationHealth}
+          </span>
+        </div>
+        <p className="text-sm text-slate-600">
+          Current evidence is <span className="font-medium text-slate-800">{freshness}</span>. Comparability is <span className="font-medium text-slate-800">{comparability}</span>.
+          {latestCrawl
+            ? " Verification status requires a fresh follow-up crawl after remediation status changes."
+            : " Run the first crawl to establish a baseline before making proof claims."}
+        </p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <TruthTile label="Freshness" value={freshness} />
+          <TruthTile label="Comparability" value={comparability} />
+          <TruthTile label="Automation lane" value={automationHealth} />
+        </div>
+      </section>
 
       <section className="card space-y-4" aria-labelledby="onboarding-status-heading">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -417,3 +449,30 @@ function StatCard({
   );
 }
 
+
+
+function TruthTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+      <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="mt-1 text-sm font-semibold text-slate-900">{value}</p>
+    </div>
+  );
+}
+
+function deriveFreshnessLabel(createdAt: Date | null): string {
+  if (!createdAt) return "Missing evidence";
+
+  const ageHours = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60);
+  if (ageHours <= 24) return "Verified window (≤24h)";
+  if (ageHours <= 72) return "Fresh (≤72h)";
+  return "Stale (>72h)";
+}
+
+function deriveComparabilityLabel(statuses: string[]): string {
+  if (statuses.length < 2) return "Not comparable yet";
+  if (statuses.some((status) => status !== "COMPLETED")) {
+    return "Not comparable (incomplete run in recent history)";
+  }
+  return "Comparable baseline available";
+}

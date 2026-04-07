@@ -34,6 +34,7 @@ export default function PlansAndLimitsPage() {
                 <th className="px-4 py-3 font-semibold">Plan</th>
                 <th className="px-4 py-3 font-semibold">Price / month</th>
                 <th className="px-4 py-3 font-semibold">Operational limits</th>
+                <th className="px-4 py-3 font-semibold">Bounded commitments</th>
               </tr>
             </thead>
             <tbody>
@@ -45,6 +46,16 @@ export default function PlansAndLimitsPage() {
                     <ul className="space-y-1 text-slate-600">
                       {plan.bullets.slice(0, 6).map((bullet) => (
                         <li key={bullet}>• {bullet}</li>
+                      ))}
+                    </ul>
+                  </td>
+                  <td className="px-4 py-4">
+                    <ul className="space-y-1 text-slate-600">
+                      {plan.commitments.map((commitment) => (
+                        <li key={commitment.heading}>
+                          <span className="font-medium text-slate-700">{commitment.heading}:</span>{" "}
+                          {commitment.detail}
+                        </li>
                       ))}
                     </ul>
                   </td>
@@ -65,6 +76,13 @@ export default function PlansAndLimitsPage() {
               support
             </Link>{" "}
             and include procurement requirements early.
+          </p>
+          <p>
+            Confidence labels used in the app and reports are documented in the{" "}
+            <Link href="/trust" className="font-medium text-brand-700 hover:underline">
+              trust page
+            </Link>
+            .
           </p>
           <p>
             API key management and org-scoped usage details are in{" "}

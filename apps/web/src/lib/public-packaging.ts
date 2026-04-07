@@ -1,4 +1,5 @@
 import { PLANS, type PlanTier } from '@aros/config';
+import { getPlanCommitments, type PlanCommitment } from '@/lib/assurance-ladder';
 
 const PUBLIC_PLAN_ORDER: PlanTier[] = ['FREE', 'STARTER', 'PROFESSIONAL', 'ENTERPRISE'];
 
@@ -8,6 +9,7 @@ export type PublicPlanCard = {
   priceMonthly: number;
   highlighted: boolean;
   bullets: string[];
+  commitments: PlanCommitment[];
 };
 
 export function getPublicPlanCards(): PublicPlanCard[] {
@@ -30,6 +32,7 @@ export function getPublicPlanCards(): PublicPlanCard[] {
         aiLine,
         ...plan.features,
       ],
+      commitments: getPlanCommitments(tier),
     };
   });
 }
