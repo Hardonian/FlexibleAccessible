@@ -152,7 +152,7 @@ export PR/snippet/task -> re-verify -> report evidence
 | Queue | BullMQ + Redis |
 | Crawling | Playwright (Chromium) |
 | Scanning | axe-core |
-| Auth | Custom session-based (cookie + DB) |
+| Auth | Custom session-based (cookie + DB); optional enterprise **OIDC SSO** (see `docs/SECURITY_ENTERPRISE_SSO_OIDC.md`) |
 | Billing | Stripe (webhooks) |
 | Integrations | GitHub REST API, Jira |
 

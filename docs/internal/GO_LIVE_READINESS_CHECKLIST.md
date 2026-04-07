@@ -20,6 +20,8 @@ Last validated: 2026-04-07.
 - [ ] `docs/internal/RISK_REGISTER.md` reviewed for top 3 risks this quarter.
 - [ ] Audit log export (`GET /api/org/{organizationId}/audit-log`) smoke-tested with an AUDITOR + paid org.
 - [ ] Billing page shows export event counts when Stripe period bounds exist on `subscription`.
+- [ ] If OIDC SSO is enabled: IdP redirect URI matches `…/api/auth/oidc/callback`; test JIT vs link-existing modes (`docs/SECURITY_ENTERPRISE_SSO_OIDC.md`).
+- [ ] Public `/status` page matches operator expectations vs `/api/health?detailed=true`.
 
 ## Quality gates
 - [ ] `npm run lint`

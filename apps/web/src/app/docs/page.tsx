@@ -35,6 +35,12 @@ const docsCards = [
     description:
       "Org-scoped API keys, operational limits, and supported integration surfaces in this build.",
   },
+  {
+    href: "/security",
+    title: "Security overview",
+    description:
+      "Deployment security posture, optional OIDC enterprise SSO, and where to find detailed health and status.",
+  },
 ] as const;
 
 export default function DocsIndexPage() {
@@ -50,7 +56,7 @@ export default function DocsIndexPage() {
           plan-gated, and where managed enterprise support begins.
         </p>
 
-        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {docsCards.map((card) => (
             <article
               key={card.href}

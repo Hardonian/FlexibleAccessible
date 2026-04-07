@@ -4,7 +4,7 @@
 
 | Ask | Status in current codebase | Path to close |
 |-----|----------------------------|---------------|
-| SSO (SAML / OIDC) | Not documented as shipped in public docs reviewed here | Product initiative + identity provider work |
+| SSO (SAML / OIDC) | **OIDC (OAuth2 code + id_token) shipped** — optional via env; see `docs/SECURITY_ENTERPRISE_SSO_OIDC.md`. SAML requires IdP bridge or separate work. | Configure IdP + env; SAML via gateway if needed |
 | Fine-grained audit log export | **Shipped:** `GET /api/org/{id}/audit-log` (paid + `audit:view`), JSON/CSV; retention is DB-defined | Policy + customer comms |
 | Data residency choice | Single-tenant DB implied by deployment model; not a UI toggle | Contract + infra per region |
 | Custom MSA / DPA | Legal process outside repo | Legal |
