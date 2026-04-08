@@ -10,11 +10,14 @@ import { hasPermission } from "@aros/config";
 import crypto from "node:crypto";
 import { logProductEvent, PRODUCT_EVENT_ACTIONS } from "@/lib/product-events";
 import {
+  createAuditLogForOrg,
   createApiKeyForOrg,
   findActiveApiKeyForOrg,
   listApiKeyUsageForOrg,
   revokeApiKeyForOrg,
   rotateApiKeyForOrg,
+  setApiKeyActiveStateForOrg,
+  updateApiKeyForOrg,
 } from "@/lib/dashboard-org-scoped-prisma";
 
 const API_KEY_PREFIX = "arsk_live_";
@@ -47,6 +50,11 @@ interface CreateKeyState {
     scopes: string[];
     rateLimitPerMinute: number;
   };
+}
+
+interface ApiKeyActionState {
+  success: boolean;
+  error: string | null;
 }
 
 /**
@@ -173,6 +181,19 @@ export async function createApiKeyAction(
       action: PRODUCT_EVENT_ACTIONS.api_key_created,
       metadata: { keyId: apiKey.id, name: apiKey.name },
     });
+    await createAuditLogForOrg({
+      organizationId,
+      userId: user.id,
+      action: "api_key.created",
+      entityType: "ApiKey",
+      entityId: apiKey.id,
+      metadata: {
+        name: apiKey.name,
+        scopes: apiKey.scopes,
+        rateLimitPerMinute: apiKey.rateLimitPerMinute,
+        expiresAt: apiKey.expiresAt?.toISOString() ?? null,
+      },
+    });
 
     return {
       success: true,
@@ -253,6 +274,14 @@ export async function rotateApiKeyAction(
     });
 
     revalidatePath("/settings/api-keys");
+    await createAuditLogForOrg({
+      organizationId: ctx.organizationId,
+      userId: user.id,
+      action: "api_key.rotated",
+      entityType: "ApiKey",
+      entityId: newKey.id,
+      metadata: { replacedKeyId: keyId, name: existingKey.name },
+    });
 
     return {
       success: true,
@@ -273,6 +302,7 @@ export async function rotateApiKeyAction(
 }
 
 export async function revokeApiKeyAction(formData: FormData): Promise<void> {
+  const user = await requireSession();
   const organizationId = (formData.get("organizationId") as string) ?? "";
   const keyId = (formData.get("keyId") as string) ?? "";
 
@@ -299,6 +329,13 @@ export async function revokeApiKeyAction(formData: FormData): Promise<void> {
     }
 
     revalidatePath("/settings/api-keys");
+    await createAuditLogForOrg({
+      organizationId: ctx.organizationId,
+      userId: user.id,
+      action: "api_key.revoked",
+      entityType: "ApiKey",
+      entityId: keyId,
+    });
     redirectApiKeysQuery({ status: "revoked" });
   } catch (error) {
     if (error instanceof ApiError) {
@@ -306,6 +343,147 @@ export async function revokeApiKeyAction(formData: FormData): Promise<void> {
     }
     redirectApiKeysQuery({ error: "Failed to revoke API key" });
   }
+}
+
+export async function setApiKeyStatusAction(
+  _prevState: ApiKeyActionState,
+  formData: FormData,
+): Promise<ApiKeyActionState> {
+  const user = await requireSession();
+  const organizationId = (formData.get("organizationId") as string) ?? "";
+  const keyId = (formData.get("keyId") as string) ?? "";
+  const nextStateRaw = (formData.get("isActive") as string) ?? "";
+
+  if (!keyId) return { success: false, error: "API key ID is required" };
+  if (!["true", "false"].includes(nextStateRaw)) {
+    return { success: false, error: "Invalid key status requested" };
+  }
+
+  const ctx = await requireOrgAccess(organizationId);
+  if (!hasPermission(ctx.role, "integrations:manage")) {
+    return {
+      success: false,
+      error: "Only admins and owners can change API key status",
+    };
+  }
+
+  const isActive = nextStateRaw === "true";
+  const changed = await setApiKeyActiveStateForOrg(
+    ctx.organizationId,
+    keyId,
+    isActive,
+  );
+  if (!changed.ok) {
+    return {
+      success: false,
+      error:
+        changed.reason === "unchanged"
+          ? "API key is already in that state"
+          : "API key not found",
+    };
+  }
+
+  await createAuditLogForOrg({
+    organizationId: ctx.organizationId,
+    userId: user.id,
+    action: isActive ? "api_key.enabled" : "api_key.disabled",
+    entityType: "ApiKey",
+    entityId: keyId,
+  });
+  revalidatePath("/settings/api-keys");
+  return { success: true, error: null };
+}
+
+export async function updateApiKeyAction(
+  _prevState: ApiKeyActionState,
+  formData: FormData,
+): Promise<ApiKeyActionState> {
+  const user = await requireSession();
+  const organizationId = (formData.get("organizationId") as string) ?? "";
+  const keyId = (formData.get("keyId") as string) ?? "";
+  const name = (formData.get("name") as string)?.trim() ?? "";
+  const scopesRaw = (formData.get("scopes") as string) ?? "";
+  const rateLimitRaw = (formData.get("rateLimitPerMinute") as string) ?? "60";
+  const expiresAtRaw = (formData.get("expiresAt") as string) ?? "";
+
+  if (!keyId) return { success: false, error: "API key ID is required" };
+  if (!name) return { success: false, error: "API key name is required" };
+  if (name.length > 100) {
+    return {
+      success: false,
+      error: "API key name must be 100 characters or less",
+    };
+  }
+
+  const rateLimitPerMinute = parseInt(rateLimitRaw, 10);
+  if (
+    Number.isNaN(rateLimitPerMinute) ||
+    rateLimitPerMinute < 1 ||
+    rateLimitPerMinute > 10000
+  ) {
+    return {
+      success: false,
+      error: "Rate limit must be between 1 and 10,000 requests per minute",
+    };
+  }
+
+  let scopes: string[] = [];
+  try {
+    scopes = JSON.parse(scopesRaw);
+  } catch {
+    return { success: false, error: "Invalid scopes format" };
+  }
+  if (!Array.isArray(scopes) || scopes.length === 0) {
+    return { success: false, error: "At least one scope is required" };
+  }
+
+  let expiresAt: Date | null = null;
+  if (expiresAtRaw) {
+    const parsed = new Date(expiresAtRaw);
+    if (Number.isNaN(parsed.getTime())) {
+      return { success: false, error: "Invalid expiration date" };
+    }
+    if (parsed < new Date()) {
+      return { success: false, error: "Expiration date must be in the future" };
+    }
+    expiresAt = parsed;
+  }
+
+  const ctx = await requireOrgAccess(organizationId);
+  if (!hasPermission(ctx.role, "integrations:manage")) {
+    return {
+      success: false,
+      error: "Only admins and owners can update API keys",
+    };
+  }
+
+  const result = await updateApiKeyForOrg({
+    organizationId: ctx.organizationId,
+    keyId,
+    name,
+    scopes,
+    rateLimitPerMinute,
+    expiresAt,
+  });
+  if (result.count === 0) {
+    return { success: false, error: "API key not found or already revoked" };
+  }
+
+  await createAuditLogForOrg({
+    organizationId: ctx.organizationId,
+    userId: user.id,
+    action: "api_key.updated",
+    entityType: "ApiKey",
+    entityId: keyId,
+    metadata: {
+      name,
+      scopes,
+      rateLimitPerMinute,
+      expiresAt: expiresAt?.toISOString() ?? null,
+    },
+  });
+  revalidatePath("/settings/api-keys");
+  return { success: true, error: null };
 }
 
 /**

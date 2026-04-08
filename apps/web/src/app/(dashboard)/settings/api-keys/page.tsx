@@ -201,7 +201,8 @@ export default async function ApiKeysPage({ searchParams }: PageProps) {
 
   const { keys, membership } = result.data;
   const { organizationId, role } = orgRes;
-  const subscription = membership.organization.subscription;
+  const { organization } = membership;
+  const subscription = organization.subscription;
   const entitlement = getEntitlementState(subscription);
   const canManageApiKeys = hasPermission(role, "integrations:manage");
 
@@ -224,6 +225,12 @@ export default async function ApiKeysPage({ searchParams }: PageProps) {
     createdAt: key.createdAt,
     totalCalls: key.mcpUsageLogs.length,
   }));
+  const activeKeys = keys.filter((key) => key.isActive);
+  const totalCalls = keys.reduce((sum, key) => sum + key.mcpUsageLogs.length, 0);
+  const lastUsedAt = keys
+    .map((key) => key.lastUsedAt)
+    .filter((value): value is Date => Boolean(value))
+    .sort((a, b) => b.getTime() - a.getTime())[0];
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -249,6 +256,48 @@ export default async function ApiKeysPage({ searchParams }: PageProps) {
           <p className="mt-1">{notice.message}</p>
         </div>
       )}
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="card">
+          <p className="text-xs uppercase tracking-wide text-slate-500">
+            MCP posture
+          </p>
+          <p className="mt-2 text-lg font-semibold text-slate-900">
+            {organization.mcpEnabled ? "Enabled" : "Disabled"}
+          </p>
+          <p className="mt-1 text-sm text-slate-600">
+            {organization.mcpEnabled
+              ? "MCP requests are accepted subject to key and quota checks."
+              : "MCP traffic is blocked at org level even if keys exist."}
+          </p>
+        </div>
+        <div className="card">
+          <p className="text-xs uppercase tracking-wide text-slate-500">
+            Period token usage
+          </p>
+          <p className="mt-2 text-lg font-semibold text-slate-900">
+            {organization.mcpUsageThisPeriod.toLocaleString()} /{" "}
+            {organization.mcpTokenLimit > 0
+              ? organization.mcpTokenLimit.toLocaleString()
+              : "Unlimited"}
+          </p>
+          <p className="mt-1 text-sm text-slate-600">
+            Current usage window as tracked by server-side MCP billing logs.
+          </p>
+        </div>
+        <div className="card">
+          <p className="text-xs uppercase tracking-wide text-slate-500">
+            API key summary
+          </p>
+          <p className="mt-2 text-lg font-semibold text-slate-900">
+            {activeKeys.length} active / {keys.length} total
+          </p>
+          <p className="mt-1 text-sm text-slate-600">
+            {totalCalls.toLocaleString()} calls recorded
+            {lastUsedAt ? ` · last used ${lastUsedAt.toLocaleDateString()}` : ""}
+          </p>
+        </div>
+      </div>
 
       {expiringSoonKeys.length > 0 && (
         <div
@@ -297,6 +346,24 @@ export default async function ApiKeysPage({ searchParams }: PageProps) {
           </div>
         </div>
       )}
+
+      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+        <p className="font-medium text-slate-900">Developer notes</p>
+        <ul className="mt-2 list-disc pl-5 space-y-1">
+          <li>
+            Implemented: org-scoped key creation, one-time plaintext reveal,
+            rotate/revoke/disable/enable, and lifecycle audit log entries.
+          </li>
+          <li>
+            Implemented: runtime enforcement of org binding, key active state,
+            expiration checks, and per-key rate limit metadata in storage.
+          </li>
+          <li>
+            Staged: external-facing OpenAPI browser and self-serve org quota
+            editing UI are not shipped on this route.
+          </li>
+        </ul>
+      </div>
     </div>
   );
 }

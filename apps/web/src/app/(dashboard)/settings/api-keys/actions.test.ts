@@ -4,6 +4,8 @@ import {
   revokeApiKeyAction,
   rotateApiKeyAction,
   getApiKeyUsageStats,
+  setApiKeyStatusAction,
+  updateApiKeyAction,
 } from "./actions";
 
 vi.mock("@/lib/db", () => ({
@@ -13,8 +15,12 @@ vi.mock("@/lib/db", () => ({
       findFirst: vi.fn(),
       findMany: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
       delete: vi.fn(),
       count: vi.fn(),
+    },
+    auditLog: {
+      create: vi.fn(),
     },
     $transaction: vi.fn(),
   },
@@ -633,5 +639,136 @@ describe("getApiKeyUsageStats", () => {
     await expect(getApiKeyUsageStats("org_123")).rejects.toThrow(
       "Only admins and owners can view API key usage",
     );
+  });
+});
+
+describe("setApiKeyStatusAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(requireSession).mockResolvedValue({
+      id: "user_123",
+      email: "admin@example.com",
+      name: "Admin User",
+      emailVerified: true,
+    });
+    vi.mocked(requireOrgAccess).mockResolvedValue({
+      user: {
+        id: "user_123",
+        email: "admin@example.com",
+        name: "Admin User",
+        emailVerified: true,
+      },
+      organizationId: "org_123",
+      role: "ADMIN",
+      subscription: null,
+      entitlement: { hasPaidAccess: true, reason: "active_paid" },
+    });
+  });
+
+  it("disables an active key", async () => {
+    vi.mocked(prisma.apiKey.findFirst).mockResolvedValue({
+      id: "key_123",
+      isActive: true,
+    } as any);
+    vi.mocked(prisma.apiKey.update).mockResolvedValue({ id: "key_123" } as any);
+
+    const formData = new FormData();
+    formData.set("organizationId", "org_123");
+    formData.set("keyId", "key_123");
+    formData.set("isActive", "false");
+
+    const result = await setApiKeyStatusAction(
+      { success: false, error: null },
+      formData,
+    );
+
+    expect(result).toEqual({ success: true, error: null });
+    expect(prisma.apiKey.update).toHaveBeenCalledWith({
+      where: { id: "key_123" },
+      data: { isActive: false },
+    });
+    expect(prisma.auditLog.create).toHaveBeenCalled();
+  });
+});
+
+describe("updateApiKeyAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(requireSession).mockResolvedValue({
+      id: "user_123",
+      email: "admin@example.com",
+      name: "Admin User",
+      emailVerified: true,
+    });
+    vi.mocked(requireOrgAccess).mockResolvedValue({
+      user: {
+        id: "user_123",
+        email: "admin@example.com",
+        name: "Admin User",
+        emailVerified: true,
+      },
+      organizationId: "org_123",
+      role: "ADMIN",
+      subscription: null,
+      entitlement: { hasPaidAccess: true, reason: "active_paid" },
+    });
+  });
+
+  it("updates editable API key fields", async () => {
+    vi.mocked(prisma.apiKey.updateMany).mockResolvedValue({ count: 1 } as any);
+
+    const formData = new FormData();
+    formData.set("organizationId", "org_123");
+    formData.set("keyId", "key_123");
+    formData.set("name", "Renamed Key");
+    formData.set("scopes", JSON.stringify(["read", "reports:read"]));
+    formData.set("rateLimitPerMinute", "120");
+
+    const result = await updateApiKeyAction(
+      { success: false, error: null },
+      formData,
+    );
+
+    expect(result).toEqual({ success: true, error: null });
+    expect(prisma.apiKey.updateMany).toHaveBeenCalledWith({
+      where: { id: "key_123", organizationId: "org_123", isActive: true },
+      data: expect.objectContaining({
+        name: "Renamed Key",
+        scopes: ["read", "reports:read"],
+        rateLimitPerMinute: 120,
+      }),
+    });
+    expect(prisma.auditLog.create).toHaveBeenCalled();
+  });
+
+  it("rejects unauthorized role when updating", async () => {
+    vi.mocked(requireOrgAccess).mockResolvedValue({
+      user: {
+        id: "user_123",
+        email: "dev@example.com",
+        name: "Dev User",
+        emailVerified: true,
+      },
+      organizationId: "org_123",
+      role: "DEVELOPER",
+      subscription: null,
+      entitlement: { hasPaidAccess: true, reason: "active_paid" },
+    });
+
+    const formData = new FormData();
+    formData.set("organizationId", "org_123");
+    formData.set("keyId", "key_123");
+    formData.set("name", "Renamed Key");
+    formData.set("scopes", JSON.stringify(["read"]));
+    formData.set("rateLimitPerMinute", "120");
+
+    const result = await updateApiKeyAction(
+      { success: false, error: null },
+      formData,
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe("Only admins and owners can update API keys");
+    expect(prisma.apiKey.updateMany).not.toHaveBeenCalled();
   });
 });

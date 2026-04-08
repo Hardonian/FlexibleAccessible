@@ -19,6 +19,8 @@ import {
   createApiKeyAction,
   rotateApiKeyAction,
   revokeApiKeyAction,
+  setApiKeyStatusAction,
+  updateApiKeyAction,
 } from "./actions";
 
 interface ApiKey {
@@ -77,9 +79,10 @@ function formatRelativeTime(date: Date): string {
   return `${diffMonths} month${diffMonths === 1 ? "" : "s"}`;
 }
 
-function maskKey(key: string): string {
-  if (key.length <= 12) return "****";
-  return key.slice(0, 8) + "...";
+function formatDateTimeLocalInputValue(date: Date | null): string {
+  if (!date) return "";
+  const normalized = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return normalized.toISOString().slice(0, 16);
 }
 
 export function ApiKeysList({
@@ -94,14 +97,18 @@ export function ApiKeysList({
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isRotating, setIsRotating] = useState<string | null>(null);
   const [selectedScopes, setSelectedScopes] = useState<string[]>(["read"]);
+  const [editKeyId, setEditKeyId] = useState<string | null>(null);
 
   const [isCreatePending, startCreateTransition] = useTransition();
   const [isRotatePending, startRotateTransition] = useTransition();
+  const [isStatusPending, startStatusTransition] = useTransition();
+  const [isUpdatePending, startUpdateTransition] = useTransition();
 
   const [createError, setCreateError] = useState<string | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [statusError, setStatusError] = useState<string | null>(null);
   const [revokeConfirmId, setRevokeConfirmId] = useState<string | null>(null);
 
-  // Clear copied state after 2 seconds
   useEffect(() => {
     if (copiedId) {
       const timer = setTimeout(() => setCopiedId(null), 2000);
@@ -109,7 +116,6 @@ export function ApiKeysList({
     }
   }, [copiedId]);
 
-  // Handle scope checkbox changes
   function handleScopeChange(scopeId: string, checked: boolean) {
     setSelectedScopes((prev) => {
       if (checked) {
@@ -119,7 +125,6 @@ export function ApiKeysList({
     });
   }
 
-  // Handle form submission for creating a new key
   async function handleCreateSubmit(formData: FormData) {
     setCreateError(null);
 
@@ -128,7 +133,6 @@ export function ApiKeysList({
       return;
     }
 
-    // Add selected scopes to form data
     formData.set("scopes", JSON.stringify(selectedScopes));
 
     startCreateTransition(async () => {
@@ -145,7 +149,6 @@ export function ApiKeysList({
       if (result.key) {
         setNewKey(result.key);
         setShowCreateForm(false);
-        // Add the new key to the list (we'll need to refetch or reconstruct)
         const newApiKey: ApiKey = {
           id: result.key.id,
           name: result.key.name,
@@ -153,9 +156,7 @@ export function ApiKeysList({
           rateLimitPerMinute: result.key.rateLimitPerMinute,
           isActive: true,
           lastUsedAt: null,
-          expiresAt: result.key.expiresAt
-            ? new Date(result.key.expiresAt)
-            : null,
+          expiresAt: result.key.expiresAt ? new Date(result.key.expiresAt) : null,
           createdAt: new Date(),
           totalCalls: 0,
         };
@@ -164,10 +165,8 @@ export function ApiKeysList({
     });
   }
 
-  // Handle key rotation
   async function handleRotate(keyId: string) {
-    if (disabled) return;
-    if (isRotating) return;
+    if (disabled || isRotating) return;
 
     setIsRotating(keyId);
 
@@ -193,31 +192,91 @@ export function ApiKeysList({
           id: result.key.id,
           name: result.key.name,
           plaintext: result.key.plaintext,
-          expiresAt:
-            keys.find((k) => k.id === keyId)?.expiresAt?.toISOString() ?? null,
+          expiresAt: keys.find((k) => k.id === keyId)?.expiresAt?.toISOString() ?? null,
           scopes: keys.find((k) => k.id === keyId)?.scopes ?? [],
-          rateLimitPerMinute:
-            keys.find((k) => k.id === keyId)?.rateLimitPerMinute ?? 60,
+          rateLimitPerMinute: keys.find((k) => k.id === keyId)?.rateLimitPerMinute ?? 60,
         });
-        // Remove the old key from the list
         setKeys((prev) => prev.filter((k) => k.id !== keyId));
       }
     });
   }
 
-  // Handle revoke confirmation
   async function handleRevokeSubmit(formData: FormData) {
     if (disabled) return;
     await revokeApiKeyAction(formData);
   }
 
-  // Copy key to clipboard
+  async function handleStatusChange(keyId: string, isActive: boolean) {
+    if (disabled) return;
+    setStatusError(null);
+
+    const formData = new FormData();
+    formData.set("organizationId", organizationId);
+    formData.set("keyId", keyId);
+    formData.set("isActive", String(isActive));
+
+    startStatusTransition(async () => {
+      const result = await setApiKeyStatusAction(
+        { success: false, error: null },
+        formData,
+      );
+      if (!result.success) {
+        setStatusError(result.error);
+        return;
+      }
+
+      setKeys((prev) => prev.map((k) => (k.id === keyId ? { ...k, isActive } : k)));
+    });
+  }
+
+  async function handleEditSubmit(formData: FormData) {
+    if (!editKeyId || disabled) return;
+
+    setEditError(null);
+    formData.set("organizationId", organizationId);
+    formData.set("keyId", editKeyId);
+    formData.set("scopes", JSON.stringify(formData.getAll("scope").map(String)));
+
+    startUpdateTransition(async () => {
+      const result = await updateApiKeyAction(
+        { success: false, error: null },
+        formData,
+      );
+      if (!result.success) {
+        setEditError(result.error);
+        return;
+      }
+
+      const keyName = ((formData.get("name") as string) ?? "").trim();
+      const scopes = formData.getAll("scope").map(String);
+      const rateLimitPerMinute = parseInt(
+        (formData.get("rateLimitPerMinute") as string) ?? "60",
+        10,
+      );
+      const expiresAtRaw = (formData.get("expiresAt") as string) ?? "";
+
+      setKeys((prev) =>
+        prev.map((k) =>
+          k.id === editKeyId
+            ? {
+                ...k,
+                name: keyName,
+                scopes,
+                rateLimitPerMinute,
+                expiresAt: expiresAtRaw ? new Date(expiresAtRaw) : null,
+              }
+            : k,
+        ),
+      );
+      setEditKeyId(null);
+    });
+  }
+
   async function copyKey(key: string, id: string) {
     try {
       await navigator.clipboard.writeText(key);
       setCopiedId(id);
     } catch {
-      // Fallback for older browsers
       const textArea = document.createElement("textarea");
       textArea.value = key;
       document.body.appendChild(textArea);
@@ -228,7 +287,6 @@ export function ApiKeysList({
     }
   }
 
-  // Check if a key is expiring soon (within 7 days)
   function isExpiringSoon(key: ApiKey): boolean {
     if (!key.expiresAt || !key.isActive) return false;
     const sevenDaysFromNow = new Date();
@@ -236,13 +294,11 @@ export function ApiKeysList({
     return key.expiresAt < sevenDaysFromNow && key.expiresAt > new Date();
   }
 
-  // Check if key is expired
   function isExpired(key: ApiKey): boolean {
     if (!key.expiresAt || !key.isActive) return false;
     return key.expiresAt < new Date();
   }
 
-  // Get scope badges
   function getScopeBadges(scopes: string[]): string[] {
     if (scopes.includes("*")) return ["Full Access"];
     return scopes.map((s) => {
@@ -258,9 +314,7 @@ export function ApiKeysList({
           <div className="h-8 w-8 rounded-full bg-brand-100 flex items-center justify-center">
             <Key className="h-4 w-4 text-brand-600" />
           </div>
-          <h2 className="text-lg font-semibold text-slate-900">
-            API Key Created
-          </h2>
+          <h2 className="text-lg font-semibold text-slate-900">API Key Created</h2>
         </div>
 
         <div className="rounded-xl border-2 border-brand-200 bg-white p-4 mb-4">
@@ -289,14 +343,11 @@ export function ApiKeysList({
 
         <div className="space-y-2 text-sm text-slate-600">
           <p>
-            <span className="font-medium text-slate-900">Name:</span>{" "}
-            {newKey.name}
+            <span className="font-medium text-slate-900">Name:</span> {newKey.name}
           </p>
           <p>
             <span className="font-medium text-slate-900">Scopes:</span>{" "}
-            {newKey.scopes.length > 0
-              ? newKey.scopes.join(", ")
-              : "Full Access"}
+            {newKey.scopes.length > 0 ? newKey.scopes.join(", ") : "Full Access"}
           </p>
           <p>
             <span className="font-medium text-slate-900">Rate Limit:</span>{" "}
@@ -311,11 +362,7 @@ export function ApiKeysList({
         </div>
 
         <div className="mt-6 flex gap-2">
-          <button
-            type="button"
-            onClick={() => setNewKey(null)}
-            className="btn-primary"
-          >
+          <button type="button" onClick={() => setNewKey(null)} className="btn-primary">
             Done
           </button>
           <button
@@ -361,9 +408,7 @@ export function ApiKeysList({
       ) : (
         <div className="card">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-slate-900">
-              Create New API Key
-            </h2>
+            <h2 className="text-lg font-semibold text-slate-900">Create New API Key</h2>
           </div>
 
           <form action={handleCreateSubmit} className="space-y-4">
@@ -383,9 +428,7 @@ export function ApiKeysList({
                 className="input"
                 disabled={isCreatePending || disabled}
               />
-              <p className="mt-1 text-xs text-slate-500">
-                A descriptive name to identify this key
-              </p>
+              <p className="mt-1 text-xs text-slate-500">A descriptive name to identify this key</p>
             </div>
 
             <div>
@@ -401,19 +444,13 @@ export function ApiKeysList({
                       name="scope"
                       value={scope.id}
                       checked={selectedScopes.includes(scope.id)}
-                      onChange={(e) =>
-                        handleScopeChange(scope.id, e.target.checked)
-                      }
+                      onChange={(e) => handleScopeChange(scope.id, e.target.checked)}
                       className="mt-1 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-600"
                       disabled={isCreatePending || disabled}
                     />
                     <div>
-                      <p className="text-sm font-medium text-slate-900">
-                        {scope.label}
-                      </p>
-                      <p className="text-xs text-slate-500">
-                        {scope.description}
-                      </p>
+                      <p className="text-sm font-medium text-slate-900">{scope.label}</p>
+                      <p className="text-xs text-slate-500">{scope.description}</p>
                     </div>
                   </label>
                 ))}
@@ -459,16 +496,8 @@ export function ApiKeysList({
             )}
 
             <div className="flex gap-2 pt-2">
-              <button
-                type="submit"
-                className="btn-primary"
-                disabled={isCreatePending || disabled}
-              >
-                {isCreatePending ? (
-                  <LoadingSpinner size="sm" label="Creating..." />
-                ) : (
-                  "Create Key"
-                )}
+              <button type="submit" className="btn-primary" disabled={isCreatePending || disabled}>
+                {isCreatePending ? <LoadingSpinner size="sm" label="Creating..." /> : "Create Key"}
               </button>
               <button
                 type="button"
@@ -480,6 +509,12 @@ export function ApiKeysList({
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {statusError && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          {statusError}
         </div>
       )}
 
@@ -514,28 +549,19 @@ export function ApiKeysList({
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="font-semibold text-slate-900">{key.name}</h3>
                     {key.isActive && isExpired(key) && (
-                      <span className="badge bg-red-100 text-red-800">
-                        Expired
-                      </span>
+                      <span className="badge bg-red-100 text-red-800">Expired</span>
                     )}
                     {key.isActive && isExpiringSoon(key) && !isExpired(key) && (
                       <span className="badge bg-amber-100 text-amber-800">
                         Expires in {formatRelativeTime(key.expiresAt!)}
                       </span>
                     )}
-                    {!key.isActive && (
-                      <span className="badge bg-slate-100 text-slate-500">
-                        Revoked
-                      </span>
-                    )}
+                    {!key.isActive && <span className="badge bg-slate-100 text-slate-500">Disabled</span>}
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2 mt-2">
                     {getScopeBadges(key.scopes).map((badge) => (
-                      <span
-                        key={badge}
-                        className="badge bg-slate-100 text-slate-700"
-                      >
+                      <span key={badge} className="badge bg-slate-100 text-slate-700">
                         {badge}
                       </span>
                     ))}
@@ -566,15 +592,8 @@ export function ApiKeysList({
                 {key.isActive && !isExpired(key) && (
                   <div className="flex items-center gap-2 shrink-0">
                     {revokeConfirmId === key.id ? (
-                      <form
-                        action={handleRevokeSubmit}
-                        className="flex items-center gap-2"
-                      >
-                        <input
-                          type="hidden"
-                          name="organizationId"
-                          value={organizationId}
-                        />
+                      <form action={handleRevokeSubmit} className="flex items-center gap-2">
+                        <input type="hidden" name="organizationId" value={organizationId} />
                         <input type="hidden" name="keyId" value={key.id} />
                         <button
                           type="submit"
@@ -595,11 +614,20 @@ export function ApiKeysList({
                       <>
                         <button
                           type="button"
+                          onClick={() => {
+                            setEditKeyId(key.id);
+                            setEditError(null);
+                          }}
+                          className="btn-secondary text-xs px-2 py-1"
+                          disabled={disabled}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => handleRotate(key.id)}
                           className="btn-secondary text-xs px-2 py-1"
-                          disabled={
-                            isRotating === key.id || isRotatePending || disabled
-                          }
+                          disabled={isRotating === key.id || isRotatePending || disabled}
                           title="Rotate key"
                         >
                           {isRotating === key.id ? (
@@ -610,6 +638,14 @@ export function ApiKeysList({
                               Rotate
                             </>
                           )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleStatusChange(key.id, false)}
+                          className="btn-secondary text-xs px-2 py-1"
+                          disabled={disabled || isStatusPending}
+                        >
+                          Disable
                         </button>
                         <button
                           type="button"
@@ -625,7 +661,107 @@ export function ApiKeysList({
                     )}
                   </div>
                 )}
+                {!key.isActive && (
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleStatusChange(key.id, true)}
+                      className="btn-secondary text-xs px-2 py-1"
+                      disabled={disabled || isStatusPending}
+                    >
+                      Enable
+                    </button>
+                  </div>
+                )}
               </div>
+
+              {editKeyId === key.id && (
+                <form action={handleEditSubmit} className="mt-4 border-t border-slate-200 pt-4 space-y-3">
+                  <div>
+                    <label htmlFor={`edit-name-${key.id}`} className="label">
+                      Key Name
+                    </label>
+                    <input
+                      id={`edit-name-${key.id}`}
+                      name="name"
+                      type="text"
+                      defaultValue={key.name}
+                      maxLength={100}
+                      required
+                      className="input"
+                      disabled={isUpdatePending}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="label">Rate Limit (per minute)</label>
+                      <input
+                        type="number"
+                        name="rateLimitPerMinute"
+                        defaultValue={key.rateLimitPerMinute}
+                        min={1}
+                        max={10000}
+                        required
+                        className="input"
+                        disabled={isUpdatePending}
+                      />
+                    </div>
+                    <div>
+                      <label className="label">Expiration Date (optional)</label>
+                      <input
+                        type="datetime-local"
+                        name="expiresAt"
+                        defaultValue={formatDateTimeLocalInputValue(key.expiresAt)}
+                        className="input"
+                        disabled={isUpdatePending}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="label">Scopes</label>
+                    <div className="space-y-2">
+                      {availableScopes.map((scope) => (
+                        <label key={`${key.id}-${scope.id}`} className="flex items-start gap-2">
+                          <input
+                            type="checkbox"
+                            name="scope"
+                            value={scope.id}
+                            defaultChecked={key.scopes.includes(scope.id)}
+                            disabled={isUpdatePending}
+                          />
+                          <span className="text-sm text-slate-700">{scope.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {editError && (
+                    <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                      {editError}
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    <button
+                      type="submit"
+                      className="btn-primary text-xs px-2 py-1"
+                      disabled={isUpdatePending}
+                    >
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-secondary text-xs px-2 py-1"
+                      onClick={() => setEditKeyId(null)}
+                      disabled={isUpdatePending}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
           ))}
         </div>
