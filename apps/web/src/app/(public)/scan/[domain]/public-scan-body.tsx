@@ -334,22 +334,49 @@ export function PublicScanBody({ domain, initialScan }: Props) {
             </div>
           )}
 
-          <div className="card border-[rgb(var(--color-border))] bg-[rgb(var(--color-canvas))] text-center py-10">
-            <h2 className="text-xl font-bold text-slate-900">
-              Need monitored coverage and exports?
-            </h2>
-            <p className="mt-2 text-slate-600 max-w-xl mx-auto text-sm">
-              Workspaces add private crawls, tracked findings, remediation
-              workflows, and plan-gated exports with server-enforced limits.
+          <div className="rounded-2xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-canvas))] px-6 py-8">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-700">
+              Private workspace
             </p>
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+            <h2 className="mt-2 text-xl font-bold text-slate-900">
+              {currentProof.totalViolations > 0
+                ? `Track and address these ${currentProof.totalViolations} issue${currentProof.totalViolations !== 1 ? "s" : ""} over time`
+                : "Monitor this site continuously with a private workspace"}
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm text-slate-600">
+              {currentProof.totalViolations > 0
+                ? `This public sample covered ${currentProof.pagesScanned} page${currentProof.pagesScanned !== 1 ? "s" : ""} and expires shortly. A private workspace stores your full scan history, lets you track regressions, and produces evidence reports for auditors and stakeholders.`
+                : `Your site returned a clean public sample. A private workspace runs recurring scans across your full domain, so regressions surface before they reach production.`}
+            </p>
+            <ul className="mt-4 space-y-1.5 text-sm text-slate-700" role="list">
+              <li className="flex items-start gap-2">
+                <span className="mt-0.5 text-brand-600" aria-hidden="true">›</span>
+                <span><span className="font-medium">Persistent history:</span> compare each scan run — detect regressions before stakeholders do</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-0.5 text-brand-600" aria-hidden="true">›</span>
+                <span><span className="font-medium">Full-domain coverage:</span> scan beyond the 5-page public sample limit</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-0.5 text-brand-600" aria-hidden="true">›</span>
+                <span><span className="font-medium">Evidence exports:</span> structured JSON/CSV reports for audits, tickets, and legal review</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-0.5 text-brand-600" aria-hidden="true">›</span>
+                <span><span className="font-medium">Source-first remediation:</span> AI-drafted fix suggestions with human-review workflows — no overlay substitutes</span>
+              </li>
+            </ul>
+            <div className="mt-6 flex flex-wrap items-center gap-3">
               <Link href="/signup" className="btn-primary px-6 py-3">
-                Create workspace
+                Create free workspace
               </Link>
               <Link href="/" className="btn-secondary px-6 py-3">
                 Scan another site
               </Link>
             </div>
+            <p className="mt-4 text-xs text-slate-500">
+              Free to start. Paid plans unlock full-domain scans, team seats, saved org history, and API access — enforced server-side.
+            </p>
           </div>
 
           <div className="rounded-lg border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface-elevated))] px-4 py-3 text-center text-sm text-slate-600">

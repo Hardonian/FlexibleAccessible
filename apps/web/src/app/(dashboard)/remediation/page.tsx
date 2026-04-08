@@ -142,17 +142,29 @@ export default async function RemediationPage() {
         </p>
       </div>
 
-      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
-        All suggestions are AI-generated drafts. They must be reviewed by a
-        human before export or application. Automated scanning cannot guarantee
-        full WCAG conformance.
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+        All suggestions are AI-generated drafts and require human review before export or application.
+        Source-first means fixing the actual broken element — not adding an overlay.
+        Automated analysis cannot guarantee full WCAG conformance; expert manual audit may still be required.
       </div>
 
       {suggestions.length === 0 ? (
-        <div className="card text-center py-12">
-          <p className="text-slate-500">
-            No remediation suggestions yet. Run scans to generate them.
-          </p>
+        <div className="card py-10 px-6">
+          <div className="mx-auto max-w-md text-center">
+            <h3 className="text-base font-semibold text-slate-900">No remediation suggestions yet</h3>
+            <p className="mt-2 text-sm leading-relaxed text-slate-500">
+              Source-first remediation suggestions are AI-drafted code fixes generated from your findings.
+              Each suggestion targets the actual broken element — not an overlay workaround — and must be reviewed by a human before it is safe to apply.
+            </p>
+            <div className="mt-6 flex flex-col items-center gap-2">
+              <Link href="/sites" className="btn-primary text-sm">
+                Go to sites and run a scan
+              </Link>
+              <p className="text-xs text-slate-400">
+                After a scan completes, open any finding to generate a suggestion.
+              </p>
+            </div>
+          </div>
         </div>
       ) : (
         <div className="space-y-3">

@@ -6,9 +6,11 @@ import { updateAutoScanAfterCrawlAction } from "./actions";
 export function AutoScanAfterCrawlForm({
   siteId,
   initialEnabled,
+  initialScheduleCron,
 }: {
   siteId: string;
   initialEnabled: boolean;
+  initialScheduleCron: string | null;
 }) {
   const [state, formAction, pending] = useActionState(
     updateAutoScanAfterCrawlAction,
@@ -41,6 +43,26 @@ export function AutoScanAfterCrawlForm({
           </span>
         </span>
       </label>
+
+      <label className="block text-sm text-slate-700" htmlFor="schedule-cadence">
+        <span className="font-medium text-slate-900">Scheduled crawl cadence</span>
+        <span className="mt-1 block text-slate-500">
+          Recurring crawl execution happens in UTC. Scheduled crawls are only
+          enqueued for verified sites on active paid or trialing subscriptions.
+        </span>
+        <select
+          id="schedule-cadence"
+          name="scheduleCron"
+          defaultValue={initialScheduleCron ?? "off"}
+          className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+        >
+          <option value="off">Off</option>
+          <option value="@daily">Daily</option>
+          <option value="@weekly">Weekly</option>
+          <option value="@monthly">Monthly</option>
+        </select>
+      </label>
+
       <div className="flex items-center gap-3">
         <button type="submit" className="btn-primary" disabled={pending}>
           {pending ? "Saving…" : "Save"}

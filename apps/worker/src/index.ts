@@ -9,6 +9,7 @@ import { handleRemediationJob } from "./jobs/remediation";
 import { handlePublicScanJob } from "./jobs/public-scan";
 import { AgentOrchestrator } from "@aros/agents";
 import { bullmqConnectionOptions, VISUAL_REVIEW_QUEUE_NAME } from "@aros/shared";
+import { startScheduledCrawlLoop } from "./services/scheduled-crawls";
 
 async function handleVisualReviewJob(job: any) {
   const { siteId, scanRunId, organizationId } = job.data;
@@ -103,9 +104,12 @@ const heartbeatInterval = setInterval(() => {
   void heartbeatTick();
 }, HEARTBEAT_MS);
 
+const scheduledCrawlInterval = startScheduledCrawlLoop(prisma);
+
 async function shutdown() {
   console.log("[Worker] Shutting down...");
   clearInterval(heartbeatInterval);
+  clearInterval(scheduledCrawlInterval);
   await Promise.all([
     crawlWorker.close(),
     scanWorker.close(),

@@ -104,6 +104,7 @@ export default async function SiteSettingsPage({
   }
 
   const autoScanAfterCrawl = site.crawlConfig?.autoScanAfterCrawl !== false;
+  const scheduleCron = site.crawlConfig?.scheduleCron ?? null;
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">
@@ -132,6 +133,7 @@ export default async function SiteSettingsPage({
         <AutoScanAfterCrawlForm
           siteId={siteId}
           initialEnabled={autoScanAfterCrawl}
+          initialScheduleCron={scheduleCron}
         />
       </div>
     </div>

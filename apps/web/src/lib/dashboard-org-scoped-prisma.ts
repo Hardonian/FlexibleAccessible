@@ -281,6 +281,76 @@ export async function revokeApiKeyForOrg(organizationId: string, keyId: string) 
   return { ok: true as const };
 }
 
+export async function setApiKeyActiveStateForOrg(
+  organizationId: string,
+  keyId: string,
+  isActive: boolean,
+) {
+  const key = await prisma.apiKey.findFirst({
+    where: {
+      id: keyId,
+      organizationId,
+    },
+    select: {
+      id: true,
+      isActive: true,
+    },
+  });
+  if (!key) return { ok: false as const, reason: "not_found" as const };
+  if (key.isActive === isActive) {
+    return { ok: false as const, reason: "unchanged" as const };
+  }
+
+  await prisma.apiKey.update({
+    where: { id: keyId },
+    data: { isActive },
+  });
+  return { ok: true as const };
+}
+
+export async function updateApiKeyForOrg(input: {
+  organizationId: string;
+  keyId: string;
+  name: string;
+  scopes: string[];
+  rateLimitPerMinute: number;
+  expiresAt: Date | null;
+}) {
+  return prisma.apiKey.updateMany({
+    where: {
+      id: input.keyId,
+      organizationId: input.organizationId,
+      isActive: true,
+    },
+    data: {
+      name: input.name,
+      scopes: input.scopes,
+      rateLimitPerMinute: input.rateLimitPerMinute,
+      expiresAt: input.expiresAt,
+    },
+  });
+}
+
+export async function createAuditLogForOrg(input: {
+  organizationId: string;
+  userId: string;
+  action: string;
+  entityType: string;
+  entityId: string;
+  metadata?: Record<string, unknown>;
+}) {
+  await prisma.auditLog.create({
+    data: {
+      organizationId: input.organizationId,
+      userId: input.userId,
+      action: input.action,
+      entityType: input.entityType,
+      entityId: input.entityId,
+      metadata: input.metadata as Prisma.InputJsonValue | undefined,
+    },
+  });
+}
+
 export async function listApiKeyUsageForOrg(organizationId: string) {
   return prisma.apiKey.findMany({
     where: {
@@ -422,14 +492,17 @@ export async function createScanAuditLog(input: {
   });
 }
 
-export async function updateCrawlConfigAutoScan(
+export async function updateCrawlAutomationSettings(
   siteId: string,
   organizationId: string,
-  enabled: boolean,
+  input: { autoScanAfterCrawl: boolean; scheduleCron: string | null },
 ) {
   const updated = await prisma.crawlConfig.updateMany({
     where: { siteId, site: { workspace: { organizationId } } },
-    data: { autoScanAfterCrawl: enabled },
+    data: {
+      autoScanAfterCrawl: input.autoScanAfterCrawl,
+      scheduleCron: input.scheduleCron,
+    },
   });
   return updated.count === 1;
 }
