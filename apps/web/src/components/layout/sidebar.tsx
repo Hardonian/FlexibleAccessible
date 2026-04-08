@@ -3,7 +3,7 @@
 import { useTransition } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Key, Users } from "lucide-react";
+import { CreditCard, Key, Lock, Sparkles, Users } from "lucide-react";
 import {
   DASHBOARD_NAV_ITEMS,
   NAV_ICON_MAP,
@@ -93,27 +93,33 @@ export function Sidebar({
 
       <nav className="flex-1 overflow-y-auto p-3">
         <ul className="space-y-1" role="list">
-          {DASHBOARD_NAV_ITEMS.filter(
-            (item) => hasPaidAccess || !item.premium,
-          ).map((item) => {
+          {DASHBOARD_NAV_ITEMS.map((item) => {
+            const isLocked = item.premium && !hasPaidAccess;
             const isActive =
-              pathname === item.href || pathname.startsWith(item.href + "/");
+              !isLocked &&
+              (pathname === item.href || pathname.startsWith(item.href + "/"));
             const Icon = NAV_ICON_MAP[item.icon];
             return (
               <li key={item.href}>
                 <Link
                   href={item.href}
                   className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                    isActive
-                      ? "bg-brand-50 text-brand-700"
-                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                    isLocked
+                      ? "text-slate-400 hover:bg-slate-50 hover:text-slate-500"
+                      : isActive
+                        ? "bg-brand-50 text-brand-700"
+                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                   }`}
                   aria-current={isActive ? "page" : undefined}
+                  aria-label={isLocked ? `${item.label} — requires paid plan` : undefined}
                 >
                   {Icon && (
                     <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
                   )}
-                  {item.label}
+                  <span className="flex-1">{item.label}</span>
+                  {isLocked && (
+                    <Lock className="h-3 w-3 shrink-0 text-slate-300" aria-hidden="true" />
+                  )}
                 </Link>
               </li>
             );
@@ -166,6 +172,29 @@ export function Sidebar({
           <ul className="mt-1 space-y-1" role="list">
             <li>
               <Link
+                href="/settings/billing"
+                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  pathname.startsWith("/settings/billing")
+                    ? "bg-brand-50 text-brand-700"
+                    : !hasPaidAccess
+                      ? "text-brand-700 hover:bg-brand-50"
+                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                }`}
+                aria-current={
+                  pathname.startsWith("/settings/billing") ? "page" : undefined
+                }
+              >
+                <CreditCard className="h-4 w-4 shrink-0" aria-hidden="true" />
+                <span className="flex-1">Billing</span>
+                {!hasPaidAccess && (
+                  <span className="rounded-full bg-brand-100 px-1.5 py-0.5 text-[10px] font-semibold text-brand-700">
+                    Upgrade
+                  </span>
+                )}
+              </Link>
+            </li>
+            <li>
+              <Link
                 href="/settings/api-keys"
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                   pathname.startsWith("/settings/api-keys")
@@ -198,6 +227,18 @@ export function Sidebar({
             </li>
           </ul>
         </div>
+
+        {!hasPaidAccess && (
+          <div className="mt-4 px-1">
+            <Link
+              href="/settings/billing"
+              className="flex items-center gap-2 rounded-lg border border-brand-100 bg-brand-50 px-3 py-2 text-xs font-semibold text-brand-700 transition-colors hover:bg-brand-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-1"
+            >
+              <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              Upgrade to unlock workspace
+            </Link>
+          </div>
+        )}
 
         {aiUsage && (
           <AiUsageIndicator

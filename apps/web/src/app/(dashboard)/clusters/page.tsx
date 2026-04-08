@@ -108,11 +108,18 @@ export default async function ClustersPage() {
       </div>
 
       {clusters.length === 0 ? (
-        <div className="card text-center py-12">
-          <h3 className="text-lg font-medium text-slate-900">No clusters yet</h3>
-          <p className="text-slate-500 mt-2">
-            Clusters are generated after scanning. Run a scan to discover component-level patterns.
-          </p>
+        <div className="card py-10 px-6">
+          <div className="mx-auto max-w-md text-center">
+            <h3 className="text-base font-semibold text-slate-900">No issue clusters yet</h3>
+            <p className="mt-2 text-sm leading-relaxed text-slate-500">
+              Issue clusters group related findings by component or selector pattern.
+              Fix a cluster once and resolve the same issue across every affected page —
+              higher leverage than fixing individual occurrences.
+            </p>
+            <Link href="/sites" className="btn-primary mt-6 inline-block text-sm">
+              Run a scan to discover patterns
+            </Link>
+          </div>
         </div>
       ) : (
         <div className="space-y-3">

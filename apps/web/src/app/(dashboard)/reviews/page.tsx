@@ -167,10 +167,9 @@ export default async function ReviewsPage({
         </p>
       </div>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
-        Some accessibility criteria cannot be verified by automated scanning
-        alone. These tasks require human review for accurate conformance
-        assessment.
+      <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
+        Some accessibility criteria require human judgment — automated scanning cannot capture them.
+        Each review task here records a human decision for audit purposes.
       </div>
 
       {reviewError && (
@@ -180,8 +179,22 @@ export default async function ReviewsPage({
       )}
 
       {tasks.length === 0 ? (
-        <div className="card text-center py-12">
-          <p className="text-slate-500">No review tasks yet.</p>
+        <div className="card py-10 px-6">
+          <div className="mx-auto max-w-md text-center">
+            <h3 className="text-base font-semibold text-slate-900">No review tasks yet</h3>
+            <p className="mt-2 text-sm leading-relaxed text-slate-500">
+              Review tasks are created when AI-assisted remediation suggestions are generated for your findings.
+              Each suggestion must pass human review before it can be exported or applied — automated analysis alone is not enough.
+            </p>
+            <div className="mt-6 flex flex-col items-center gap-2">
+              <Link href="/findings" className="btn-primary text-sm">
+                View findings backlog
+              </Link>
+              <p className="text-xs text-slate-400">
+                Findings → Remediation suggestions → Review tasks
+              </p>
+            </div>
+          </div>
         </div>
       ) : (
         <div className="space-y-3">
