@@ -21,6 +21,18 @@ const REVIEW_REASON: Record<ReviewType, string> = {
   MANUAL_AUDIT: "Rule requires explicit human verification.",
 };
 
+const REVIEW_REASON_STATE: Record<
+  ReviewType,
+  "requires_human_review" | "partial"
+> = {
+  ALT_TEXT_REVIEW: "partial",
+  CONTENT_CLARITY: "requires_human_review",
+  KEYBOARD_FLOW: "requires_human_review",
+  SCREEN_READER: "requires_human_review",
+  SUGGESTION_REVIEW: "partial",
+  MANUAL_AUDIT: "requires_human_review",
+};
+
 export default async function ReviewsPage({
   searchParams,
 }: {
@@ -221,8 +233,12 @@ export default async function ReviewsPage({
                   <div className="flex-1 space-y-2">
                     <div className="flex items-center gap-2 flex-wrap">
                       <ReviewStatusBadge status={task.status} />
-                      <TruthBadge state="requires_human_review" />
-                      {stale ? <TruthBadge state="partial" /> : null}
+                      <TruthBadge state={REVIEW_REASON_STATE[task.type]} />
+                      {stale ? (
+                        <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+                          Stale queue item
+                        </span>
+                      ) : null}
                     </div>
                     <h3 className="text-sm font-semibold text-slate-900">{task.title}</h3>
                     {task.description ? (
@@ -266,7 +282,7 @@ export default async function ReviewsPage({
                       organizationId={orgRes.organizationId}
                       taskId={task.id}
                       status="IN_PROGRESS"
-                      label="Mark pending"
+                      label="Start review"
                     />
                   )}
                   <ReviewActionForm
