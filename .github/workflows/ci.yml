@@ -63,11 +63,23 @@ jobs:
           REDIS_URL: redis://localhost:6379
         run: npm run db:push && npm run db:seed
 
-      - name: Run Release Verification (Core + Integration)
+      - name: Run Core Verification
         env:
           DATABASE_URL: postgresql://aros_user:aros_password@localhost:5432/aros_test?schema=public
           REDIS_URL: redis://localhost:6379
-        run: npm run verify:release
+        run: npm run verify:core
+
+      - name: Run Touched Route Safety Checks
+        env:
+          DATABASE_URL: postgresql://aros_user:aros_password@localhost:5432/aros_test?schema=public
+          REDIS_URL: redis://localhost:6379
+        run: npm run verify:touched-routes
+
+      - name: Run Tenant Boundary + Integration Verification
+        env:
+          DATABASE_URL: postgresql://aros_user:aros_password@localhost:5432/aros_test?schema=public
+          REDIS_URL: redis://localhost:6379
+        run: npm run verify:tenant-boundary && npm run test:integration
 
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium
