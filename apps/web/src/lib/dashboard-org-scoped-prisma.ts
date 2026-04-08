@@ -422,14 +422,17 @@ export async function createScanAuditLog(input: {
   });
 }
 
-export async function updateCrawlConfigAutoScan(
+export async function updateCrawlAutomationSettings(
   siteId: string,
   organizationId: string,
-  enabled: boolean,
+  input: { autoScanAfterCrawl: boolean; scheduleCron: string | null },
 ) {
   const updated = await prisma.crawlConfig.updateMany({
     where: { siteId, site: { workspace: { organizationId } } },
-    data: { autoScanAfterCrawl: enabled },
+    data: {
+      autoScanAfterCrawl: input.autoScanAfterCrawl,
+      scheduleCron: input.scheduleCron,
+    },
   });
   return updated.count === 1;
 }

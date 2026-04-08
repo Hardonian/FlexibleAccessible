@@ -4,10 +4,17 @@ import { revalidatePath } from 'next/cache';
 import { requireSiteAccess } from '@/lib/auth-guard';
 import {
   createScanAuditLog,
-  updateCrawlConfigAutoScan,
+  updateCrawlAutomationSettings,
 } from '@/lib/dashboard-org-scoped-prisma';
+import { parseSupportedScheduleCron } from '@aros/core-services';
 
 export type AutoScanSettingsState = { ok: true } | { ok: false; error: string };
+
+function normalizeScheduleCron(input: FormDataEntryValue | null): string | null {
+  const raw = typeof input === 'string' ? input.trim() : '';
+  if (!raw || raw === 'off') return null;
+  return parseSupportedScheduleCron(raw);
+}
 
 export async function updateAutoScanAfterCrawlAction(
   _prev: AutoScanSettingsState | undefined,
@@ -23,11 +30,16 @@ export async function updateAutoScanAfterCrawlAction(
       requirePaid: true,
     });
     const enabled = formData.get('autoScanAfterCrawl') === 'on';
+    const scheduleCron = normalizeScheduleCron(formData.get('scheduleCron'));
 
-    const updated = await updateCrawlConfigAutoScan(
+    if (formData.get('scheduleCron') && scheduleCron === null && formData.get('scheduleCron') !== 'off') {
+      return { ok: false, error: 'Unsupported scan cadence.' };
+    }
+
+    const updated = await updateCrawlAutomationSettings(
       ctx.siteId,
       ctx.organizationId,
-      enabled
+      { autoScanAfterCrawl: enabled, scheduleCron }
     );
     if (!updated) {
       return { ok: false, error: 'Could not save settings.' };
@@ -36,10 +48,10 @@ export async function updateAutoScanAfterCrawlAction(
     await createScanAuditLog({
       organizationId: ctx.organizationId,
       userId: ctx.user.id,
-      action: 'crawl.auto_scan_after_crawl.updated',
+      action: 'crawl.automation_settings.updated',
       entityType: 'CrawlConfig',
       entityId: ctx.siteId,
-      metadata: { autoScanAfterCrawl: enabled },
+      metadata: { autoScanAfterCrawl: enabled, scheduleCron },
     }).catch(() => undefined);
 
     revalidatePath(`/sites/${siteId}`);
