@@ -10,6 +10,7 @@ import { handlePublicScanJob } from "./jobs/public-scan";
 import { AgentOrchestrator } from "@aros/agents";
 import { bullmqConnectionOptions, VISUAL_REVIEW_QUEUE_NAME } from "@aros/shared";
 import { startScheduledCrawlLoop } from "./services/scheduled-crawls";
+import { runSiteOpsAlertTick } from "./services/site-ops-alerts";
 
 async function handleVisualReviewJob(job: any) {
   const { siteId, scanRunId, organizationId } = job.data;
@@ -106,10 +107,34 @@ const heartbeatInterval = setInterval(() => {
 
 const scheduledCrawlInterval = startScheduledCrawlLoop(prisma);
 
+
+const SITE_OPS_ALERT_INTERVAL_MS = 5 * 60_000;
+async function siteOpsAlertTick() {
+  try {
+    const result = await runSiteOpsAlertTick(prisma);
+    if (result.transitionsDetected > 0) {
+      console.log(
+        `[SiteOpsAlert] checked=${result.checked} transitions=${result.transitionsDetected} notifications=${result.notificationsSent}`,
+      );
+    }
+  } catch (e) {
+    console.error(
+      "[SiteOpsAlert] tick failed:",
+      e instanceof Error ? e.message : e,
+    );
+  }
+}
+void siteOpsAlertTick();
+const siteOpsAlertInterval = setInterval(() => {
+  void siteOpsAlertTick();
+}, SITE_OPS_ALERT_INTERVAL_MS);
+
+
 async function shutdown() {
   console.log("[Worker] Shutting down...");
   clearInterval(heartbeatInterval);
   clearInterval(scheduledCrawlInterval);
+  clearInterval(siteOpsAlertInterval);
   await Promise.all([
     crawlWorker.close(),
     scanWorker.close(),
