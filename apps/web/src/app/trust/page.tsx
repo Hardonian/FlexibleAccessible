@@ -37,8 +37,8 @@ export default function TrustPage() {
             <p className="mt-2 text-sm leading-relaxed">
               Automated checks surface many failures and regressions; they do not
               replace manual audit, assistive technology testing, or legal
-              advice. We say so on every public sample and in-product where it
-              matters.
+              advice. We reinforce this in public docs and review workflows so
+              there is no deterministic “AI compliance” implication.
             </p>
           </li>
           <li>
@@ -61,7 +61,7 @@ export default function TrustPage() {
               otherwise remediation falls back to rule-based suggestions and
               copilot returns an explicit unavailable state. Usage is bounded by
               plan limits and requires human review before exports or remediation
-              workflows advance. There is no “autopilot compliance” story.
+              workflows advance.
             </p>
           </li>
           <li>
@@ -90,7 +90,46 @@ export default function TrustPage() {
           </li>
         </ul>
 
-
+        <section className="mt-12">
+          <h2 className="text-lg font-semibold text-slate-900">Evidence model and export posture</h2>
+          <p className="mt-2 text-sm text-slate-600">
+            Procurement and operators should distinguish between stored operational data,
+            review rationale, and externally shareable evidence.
+          </p>
+          <div className="mt-4 overflow-x-auto rounded-xl border border-[rgb(var(--color-border))]">
+            <table className="min-w-full text-left text-sm">
+              <thead className="bg-slate-50 text-slate-700">
+                <tr>
+                  <th className="px-4 py-3 font-semibold">Surface</th>
+                  <th className="px-4 py-3 font-semibold">Stored data</th>
+                  <th className="px-4 py-3 font-semibold">Export posture</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-t border-[rgb(var(--color-border))] align-top">
+                  <td className="px-4 py-3 font-medium text-slate-900">Scans and findings</td>
+                  <td className="px-4 py-3 text-slate-600">Site/workspace metadata, findings, severities, and trend history.</td>
+                  <td className="px-4 py-3 text-slate-600">Used in reports and dashboards with confidence labels.</td>
+                </tr>
+                <tr className="border-t border-[rgb(var(--color-border))] align-top">
+                  <td className="px-4 py-3 font-medium text-slate-900">Review operations</td>
+                  <td className="px-4 py-3 text-slate-600">Review task status, reviewer notes, timestamps, and evidence linkage counts.</td>
+                  <td className="px-4 py-3 text-slate-600">Operational evidence, exportable through org-scoped APIs.</td>
+                </tr>
+                <tr className="border-t border-[rgb(var(--color-border))] align-top">
+                  <td className="px-4 py-3 font-medium text-slate-900">Admin audit trail</td>
+                  <td className="px-4 py-3 text-slate-600">Member/admin actions, entity references, and timestamps.</td>
+                  <td className="px-4 py-3 text-slate-600">JSON/CSV org audit-log route for support, buyers, and internal governance.</td>
+                </tr>
+                <tr className="border-t border-[rgb(var(--color-border))] align-top">
+                  <td className="px-4 py-3 font-medium text-slate-900">Object storage evidence</td>
+                  <td className="px-4 py-3 text-slate-600">Artifact storage mode depends on operator deployment configuration.</td>
+                  <td className="px-4 py-3 text-slate-600">Environment-dependent. Confirm deployment posture during procurement review.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
 
         <section className="mt-12">
           <h2 className="text-lg font-semibold text-slate-900">Confidence labels used in product and exports</h2>
@@ -122,7 +161,6 @@ export default function TrustPage() {
           </div>
         </section>
 
-
         <section className="mt-12">
           <h2 className="text-lg font-semibold text-slate-900">Procurement posture summary</h2>
           <div className="mt-4 space-y-3 text-sm text-slate-700">
@@ -144,11 +182,30 @@ export default function TrustPage() {
               <dd className="mt-1">Workspace metadata, scan findings, remediation suggestions, review tasks, and audit events. Evidence storage mode depends on deployment object storage configuration.</dd>
             </div>
             <div>
+              <dt className="font-semibold text-slate-900">What evidence can procurement teams request during evaluation?</dt>
+              <dd className="mt-1">Audit-log exports (JSON/CSV), reports with confidence labels, and review queue records with reviewer rationale. Operator-managed deployment settings determine infrastructure-specific artifacts.</dd>
+            </div>
+            <div>
               <dt className="font-semibold text-slate-900">Can teams export evidence?</dt>
               <dd className="mt-1">Yes. Reports and audit-log export routes exist with organization-scoped access and permission checks.</dd>
             </div>
+            <div>
+              <dt className="font-semibold text-slate-900">Are SSO and directory sync available by default?</dt>
+              <dd className="mt-1">No. OIDC support is environment/operator-configured and SCIM remains staged in this build. Procurement commitments should reflect deployed configuration, not roadmap assumptions.</dd>
+            </div>
           </dl>
         </section>
+
+        <section className="mt-12">
+          <h2 className="text-lg font-semibold text-slate-900">In-app trust and admin surfaces</h2>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Link href="/reviews" className="btn-secondary text-xs">Review queue</Link>
+            <Link href="/settings/members" className="btn-secondary text-xs">Team members</Link>
+            <Link href="/docs/reviews-and-manual-verification" className="btn-secondary text-xs">Review docs</Link>
+            <Link href="/docs/team-admin" className="btn-secondary text-xs">Team-admin docs</Link>
+          </div>
+        </section>
+
         <section className="mt-12">
           <h2 className="text-lg font-semibold text-slate-900">Commitments by service lane</h2>
           <p className="mt-2 text-sm text-slate-600">
