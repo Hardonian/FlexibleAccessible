@@ -134,6 +134,7 @@ export default async function MembersPage() {
   const subscription = org.subscription;
   const entitlement = getEntitlementState(subscription);
   const canManageMembers = hasPermission(membership.role, "org:members:manage");
+  const canViewAudit = hasPermission(membership.role, "audit:view");
 
   const pendingInviteCount = await runOrgScopedQuery(orgRes, (orgId) =>
     prisma.auditLog.count({
@@ -141,6 +142,23 @@ export default async function MembersPage() {
     }),
   );
   const pendingInvites = pendingInviteCount.ok ? pendingInviteCount.data : 0;
+  const recentAuditResult = canViewAudit
+    ? await runOrgScopedQuery(orgRes, (orgId) =>
+        prisma.auditLog.findMany({
+          where: {
+            organizationId: orgId,
+            OR: [
+              { action: { startsWith: "member:" } },
+              { action: { startsWith: "review:" } },
+            ],
+          },
+          orderBy: { createdAt: "desc" },
+          take: 5,
+          select: { id: true, action: true, createdAt: true },
+        }),
+      )
+    : null;
+  const recentAudit = recentAuditResult && recentAuditResult.ok ? recentAuditResult.data : [];
   const seatsUsed = org.memberships.length + pendingInvites;
   const seatCap = subscription?.maxSeats ?? 1;
   const seatsAtOrOverCap = seatsUsed >= seatCap;
@@ -183,7 +201,12 @@ export default async function MembersPage() {
       </div>
 
       <div className="card">
-        <h2 className="text-lg font-semibold text-slate-900">Seat usage</h2>
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-lg font-semibold text-slate-900">Seat usage</h2>
+          <Link href="/docs/team-admin" className="text-xs font-medium text-brand-700 hover:underline">
+            Team-admin guide
+          </Link>
+        </div>
         <p className="mt-1 text-sm text-slate-500">
           Members + pending invites consume seats. Seat limits are enforced server-side.
         </p>
@@ -225,9 +248,41 @@ export default async function MembersPage() {
           <li><TruthBadge state="environment_dependent" className="mr-2" />OIDC SSO depends on deployment env and operator configuration.</li>
           <li><TruthBadge state="staged" className="mr-2" />SCIM and directory sync are staged, not implemented in this build.</li>
         </ul>
-        <Link href={`/api/org/${org.id}/audit-log`} className="text-sm font-medium text-brand-700 hover:underline">
-          Open org audit-log API
-        </Link>
+      </div>
+
+      <div className="card space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-slate-900">Admin audit visibility</h2>
+          {canViewAudit ? (
+            <Link href={`/api/org/${org.id}/audit-log?format=csv`} className="text-xs font-medium text-brand-700 hover:underline">
+              Export CSV
+            </Link>
+          ) : null}
+        </div>
+        {canViewAudit ? (
+          recentAudit.length > 0 ? (
+            <ul className="space-y-2 text-sm text-slate-700">
+              {recentAudit.map((event) => (
+                <li key={event.id} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2">
+                  <span className="font-mono text-xs text-slate-600">{event.action}</span>
+                  <span className="text-xs text-slate-500">{event.createdAt.toLocaleString()}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-slate-500">No recent member/review audit events.</p>
+          )
+        ) : (
+          <p className="text-sm text-slate-500">Your role can manage members but cannot view audit exports.</p>
+        )}
+        <div className="flex flex-wrap gap-2">
+          <Link href={`/api/org/${org.id}/audit-log`} className="text-sm font-medium text-brand-700 hover:underline">
+            Open org audit-log API
+          </Link>
+          <Link href="/trust" className="text-sm font-medium text-brand-700 hover:underline">
+            Trust posture
+          </Link>
+        </div>
       </div>
     </div>
   );

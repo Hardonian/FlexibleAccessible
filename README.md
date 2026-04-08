@@ -99,7 +99,8 @@ Open http://localhost:3000
 
 ```bash
 npm run verify        # lint + typecheck + unit tests + production build
-npm run verify:release # verify:core + integration tests (strict release gate before E2E)
+npm run verify:release # verify:core + touched-route safety + tenant boundary + integration tests
+npm run verify:touched-routes # launch-critical route/workflow checks for public trust and review/admin surfaces
 npm run test          # Run all unit tests (Vitest)
 npm run test:e2e      # Playwright (requires DATABASE_URL; preflight validates env before db:push + db:seed)
 npm run typecheck     # TypeScript type checking

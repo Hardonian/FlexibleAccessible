@@ -1,16 +1,32 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { MarketingSiteChrome } from "@/components/marketing/marketing-site-chrome";
 import { marketingSurfaceMetadata } from "@/lib/site-metadata";
 
-export const metadata: Metadata = marketingSurfaceMetadata("Reports and proof", "How report exports and audit evidence should be interpreted.", "/docs/reports-and-proof");
+export const metadata: Metadata = marketingSurfaceMetadata(
+  "Reports and proof",
+  "How report exports, confidence labels, and audit evidence should be interpreted.",
+  "/docs/reports-and-proof",
+);
 
 export default function DocsReportsProofPage() {
   return (
     <MarketingSiteChrome>
       <div className="mx-auto max-w-3xl px-6 py-section-md space-y-4">
         <h1 className="text-3xl font-bold text-slate-900">Reports and proof</h1>
-        <p className="text-sm text-slate-700">Reports can be exported from authenticated routes. Confidence labels indicate machine certainty and review status; they are not legal determinations.</p>
-        <p className="text-sm text-slate-700">Audit logs capture review and team-admin events for organization-scoped evidence trails.</p>
+        <p className="text-sm text-slate-700">
+          Reports can be exported from authenticated routes. Confidence labels
+          indicate machine certainty and review status; they are not legal determinations.
+        </p>
+        <p className="text-sm text-slate-700">
+          Audit logs capture review and team-admin events for organization-scoped
+          evidence trails, with JSON/CSV export options through the org audit route.
+        </p>
+        <div className="flex flex-wrap gap-2 pt-2">
+          <Link href="/trust" className="btn-secondary text-xs">Trust overview</Link>
+          <Link href="/docs/reviews-and-manual-verification" className="btn-secondary text-xs">Review operations docs</Link>
+          <Link href="/docs/team-admin" className="btn-secondary text-xs">Team-admin docs</Link>
+        </div>
       </div>
     </MarketingSiteChrome>
   );
