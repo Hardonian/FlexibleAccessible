@@ -33,26 +33,37 @@ describe('updateAutoScanAfterCrawlAction', () => {
     vi.mocked(prisma.auditLog.create).mockResolvedValue({} as never);
   });
 
-  it('persists autoScanAfterCrawl false when checkbox off', async () => {
+  it('persists automation settings with cadence off', async () => {
     const fd = new FormData();
     fd.set('siteId', 's1');
+    fd.set('scheduleCron', 'off');
     const result = await updateAutoScanAfterCrawlAction(undefined, fd);
     expect(result).toEqual({ ok: true });
     expect(prisma.crawlConfig.updateMany).toHaveBeenCalledWith({
       where: { siteId: 's1', site: { workspace: { organizationId: 'o1' } } },
-      data: { autoScanAfterCrawl: false },
+      data: { autoScanAfterCrawl: false, scheduleCron: null },
     });
   });
 
-  it('persists autoScanAfterCrawl true when checkbox on', async () => {
+  it('persists autoScanAfterCrawl true and supported cadence', async () => {
     const fd = new FormData();
     fd.set('siteId', 's1');
     fd.set('autoScanAfterCrawl', 'on');
+    fd.set('scheduleCron', '@weekly');
     const result = await updateAutoScanAfterCrawlAction(undefined, fd);
     expect(result).toEqual({ ok: true });
     expect(prisma.crawlConfig.updateMany).toHaveBeenCalledWith({
       where: { siteId: 's1', site: { workspace: { organizationId: 'o1' } } },
-      data: { autoScanAfterCrawl: true },
+      data: { autoScanAfterCrawl: true, scheduleCron: '@weekly' },
     });
+  });
+
+  it('rejects unsupported cadence strings', async () => {
+    const fd = new FormData();
+    fd.set('siteId', 's1');
+    fd.set('scheduleCron', '0 0 * * *');
+    const result = await updateAutoScanAfterCrawlAction(undefined, fd);
+    expect(result).toEqual({ ok: false, error: 'Unsupported scan cadence.' });
+    expect(prisma.crawlConfig.updateMany).not.toHaveBeenCalled();
   });
 });

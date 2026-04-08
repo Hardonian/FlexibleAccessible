@@ -64,3 +64,13 @@ export {
   revokeFindingGovernanceDecision,
 } from './finding-control-plane';
 export { getDefaultRemediationRecipe, resolveRemediationRecipe } from './remediation-recipes';
+
+export {
+  currentScheduleWindow,
+  nextScheduleRunAt,
+  parseSupportedScheduleCron,
+  scheduleBlockedReason,
+  scheduleCadenceLabel,
+  SUPPORTED_SCHEDULE_CRONS,
+  type SupportedScheduleCron,
+} from './scheduled-crawl';

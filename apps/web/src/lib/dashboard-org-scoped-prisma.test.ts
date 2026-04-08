@@ -38,7 +38,7 @@ import {
   loadRemediationSuggestionForOrg,
   loadReviewTaskForOrg,
   revokeApiKeyForOrg,
-  updateCrawlConfigAutoScan,
+  updateCrawlAutomationSettings,
   updateReviewTaskStatusForOrg,
 } from "./dashboard-org-scoped-prisma";
 
@@ -98,9 +98,9 @@ describe("dashboard-org-scoped-prisma", () => {
     );
   });
 
-  it("updateCrawlConfigAutoScan requires matching site workspace org", async () => {
+  it("updateCrawlAutomationSettings requires matching site workspace org", async () => {
     updateManyCrawlConfig.mockResolvedValueOnce({ count: 0 });
-    const ok = await updateCrawlConfigAutoScan("site-1", "org-y", true);
+    const ok = await updateCrawlAutomationSettings("site-1", "org-y", { autoScanAfterCrawl: true, scheduleCron: "@daily" });
     expect(ok).toBe(false);
     expect(updateManyCrawlConfig).toHaveBeenCalledWith(
       expect.objectContaining({

@@ -32,6 +32,11 @@ import {
   retryPostCrawlScanKickoffAction,
 } from "./scan-actions";
 import { pageTitle } from "@/lib/product-brand";
+import {
+  nextScheduleRunAt,
+  scheduleBlockedReason,
+  scheduleCadenceLabel,
+} from "@aros/core-services";
 
 export async function generateMetadata({
   params,
@@ -314,6 +319,12 @@ export default async function SiteDetailPage({
         ? "Verification is already running for this site."
         : null;
 
+  const scheduleCron = site.crawlConfig?.scheduleCron ?? null;
+  const cadenceLabel = scheduleCadenceLabel(scheduleCron);
+  const scheduleNextRunAt = nextScheduleRunAt(scheduleCron, new Date());
+  const scheduleBlockedHint = scheduleBlockedReason(scheduleCron);
+  const lastSuccessfulCrawl = recentCrawls.find((crawl) => crawl.status === "COMPLETED" && crawl.completedAt);
+
   const findingsBySeverity = {
     critical: findings.filter((f) => f.impact === "CRITICAL").length,
     serious: findings.filter((f) => f.impact === "SERIOUS").length,
@@ -449,6 +460,17 @@ export default async function SiteDetailPage({
         <div className="card">
           <p className="text-sm text-slate-500">Open Findings</p>
           <p className="text-2xl font-bold text-slate-900">{findings.length}</p>
+        </div>
+        <div className="card sm:col-span-2 lg:col-span-4">
+          <p className="text-sm text-slate-500">Recurring crawl automation</p>
+          <div className="mt-2 grid gap-2 text-sm text-slate-700 sm:grid-cols-3">
+            <p><span className="font-medium text-slate-900">Cadence:</span> {cadenceLabel}</p>
+            <p><span className="font-medium text-slate-900">Last successful crawl:</span> {lastSuccessfulCrawl?.completedAt?.toLocaleString() ?? "Never"}</p>
+            <p><span className="font-medium text-slate-900">Next scheduled run (UTC window end):</span> {scheduleNextRunAt?.toLocaleString() ?? "Not scheduled"}</p>
+          </div>
+          {scheduleBlockedHint ? (
+            <p className="mt-2 text-xs text-amber-700">Blocked: {scheduleBlockedHint}</p>
+          ) : null}
         </div>
       </div>
 
