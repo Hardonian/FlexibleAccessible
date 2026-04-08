@@ -236,7 +236,7 @@ export default async function SettingsPage() {
         <h2 className="text-lg font-semibold text-slate-900 mb-4">
           Management
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Link
             href="/settings/api-keys"
             className="group flex items-start gap-3 rounded-xl border border-slate-200 p-4 transition-colors hover:border-brand-200 hover:bg-brand-50/30"
@@ -320,6 +320,35 @@ export default async function SettingsPage() {
               </h3>
               <p className="mt-1 text-xs text-slate-500">
                 Monitor usage and quotas
+              </p>
+            </div>
+          </Link>
+
+          <Link
+            href="/trust"
+            className="group flex items-start gap-3 rounded-xl border border-slate-200 p-4 transition-colors hover:border-brand-200 hover:bg-brand-50/30"
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-600 group-hover:bg-brand-100 group-hover:text-brand-600">
+              <svg
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12l2 2 4-4m5-2a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+            <div>
+              <h3 className="font-medium text-slate-900 group-hover:text-brand-700">
+                Trust &amp; admin
+              </h3>
+              <p className="mt-1 text-xs text-slate-500">
+                Security posture, docs, and team-admin references
               </p>
             </div>
           </Link>
