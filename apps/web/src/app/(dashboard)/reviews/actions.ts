@@ -29,6 +29,7 @@ export async function updateReviewAction(formData: FormData) {
   const user = await requireSession();
   const taskId = formData.get("taskId") as string;
   const status = (formData.get("status") as string) || "";
+  const note = ((formData.get("note") as string) || "").trim();
 
   if (!taskId) {
     redirect("/reviews?review_error=missing_task");
@@ -63,6 +64,7 @@ export async function updateReviewAction(formData: FormData) {
   const data: Prisma.ReviewTaskUpdateInput = {
     status: reviewStatus,
     assignee: { connect: { id: user.id } },
+    notes: note.length > 0 ? note.slice(0, 2000) : undefined,
     reviewedAt:
       reviewStatus === "APPROVED" || reviewStatus === "REJECTED"
         ? new Date()

@@ -443,6 +443,20 @@ export default async function SettingsPage() {
         </div>
       </div>
 
+
+
+      <div className="card">
+        <h2 className="text-lg font-semibold text-slate-900">Trust &amp; administration</h2>
+        <p className="mt-1 text-sm text-slate-500">
+          Procurement-facing trust posture, security limits, and team-admin operating guides.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Link href="/trust" className="btn-secondary text-xs">Trust center</Link>
+          <Link href="/security" className="btn-secondary text-xs">Security posture</Link>
+          <Link href="/docs/team-admin" className="btn-secondary text-xs">Team-admin docs</Link>
+        </div>
+      </div>
+
       <div className="card">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-slate-900">Integrations</h2>

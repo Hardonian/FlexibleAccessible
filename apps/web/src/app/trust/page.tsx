@@ -5,6 +5,7 @@ import { PRODUCT_DISPLAY_NAME } from "@/lib/product-brand";
 import { marketingSurfaceMetadata } from "@/lib/site-metadata";
 import { CONFIDENCE_LABELS } from "@/lib/assurance-ladder";
 import { getPublicPlanCards } from "@/lib/public-packaging";
+import { TruthBadge } from "@/components/truth/truth-badge";
 
 export const metadata: Metadata = marketingSurfaceMetadata(
   "Trust",
@@ -121,6 +122,33 @@ export default function TrustPage() {
           </div>
         </section>
 
+
+        <section className="mt-12">
+          <h2 className="text-lg font-semibold text-slate-900">Procurement posture summary</h2>
+          <div className="mt-4 space-y-3 text-sm text-slate-700">
+            <p><TruthBadge state="implemented" className="mr-2" />Organization-scoped access controls, audit logs, and server-side entitlement checks are implemented.</p>
+            <p><TruthBadge state="environment_dependent" className="mr-2" />Email verification, Redis-backed limits, and object storage behavior depend on deployment configuration.</p>
+            <p><TruthBadge state="staged" className="mr-2" />Procurement extras such as custom SLA language and enterprise IAM controls are contract/operator scoped, not implied by default.</p>
+          </div>
+        </section>
+
+        <section className="mt-12">
+          <h2 className="text-lg font-semibold text-slate-900">Procurement FAQ</h2>
+          <dl className="mt-4 space-y-4 text-sm text-slate-700">
+            <div>
+              <dt className="font-semibold text-slate-900">Does AROS guarantee legal compliance?</dt>
+              <dd className="mt-1">No. The platform provides evidence, automation, and review workflow support. Legal/compliance determinations require qualified human review.</dd>
+            </div>
+            <div>
+              <dt className="font-semibold text-slate-900">What data is persisted?</dt>
+              <dd className="mt-1">Workspace metadata, scan findings, remediation suggestions, review tasks, and audit events. Evidence storage mode depends on deployment object storage configuration.</dd>
+            </div>
+            <div>
+              <dt className="font-semibold text-slate-900">Can teams export evidence?</dt>
+              <dd className="mt-1">Yes. Reports and audit-log export routes exist with organization-scoped access and permission checks.</dd>
+            </div>
+          </dl>
+        </section>
         <section className="mt-12">
           <h2 className="text-lg font-semibold text-slate-900">Commitments by service lane</h2>
           <p className="mt-2 text-sm text-slate-600">

@@ -31,6 +31,36 @@ export const MARKETING_ROUTES: readonly MarketingRoute[] = [
     includeInSitemap: true,
   },
   {
+    href: "/docs/quickstart",
+    label: "Quickstart",
+    includeInSitemap: true,
+  },
+  {
+    href: "/docs/how-scans-work",
+    label: "How scans work",
+    includeInSitemap: true,
+  },
+  {
+    href: "/docs/reports-and-proof",
+    label: "Reports & proof",
+    includeInSitemap: true,
+  },
+  {
+    href: "/docs/remediation-workflow",
+    label: "Remediation workflow",
+    includeInSitemap: true,
+  },
+  {
+    href: "/docs/reviews-and-manual-verification",
+    label: "Reviews & manual verification",
+    includeInSitemap: true,
+  },
+  {
+    href: "/docs/team-admin",
+    label: "Team admin",
+    includeInSitemap: true,
+  },
+  {
     href: "/docs/plans-and-limits",
     label: "Plans & limits",
     includeInSitemap: true,
@@ -44,6 +74,11 @@ export const MARKETING_ROUTES: readonly MarketingRoute[] = [
     href: "/docs/api",
     label: "API & integrations",
     includeInPrimaryNav: true,
+    includeInSitemap: true,
+  },
+  {
+    href: "/docs/api-mcp",
+    label: "API + MCP",
     includeInSitemap: true,
   },
   {

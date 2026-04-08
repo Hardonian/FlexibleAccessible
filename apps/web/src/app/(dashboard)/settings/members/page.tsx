@@ -12,6 +12,7 @@ import { EntitlementWall } from "@/components/monetization/entitlement-wall";
 import { getEntitlementState } from "@/lib/auth-guard";
 import { hasPermission } from "@aros/config";
 import { MembersList } from "./members-list";
+import { TruthBadge } from "@/components/truth/truth-badge";
 
 export const metadata = { title: "Members" };
 
@@ -134,6 +135,16 @@ export default async function MembersPage() {
   const entitlement = getEntitlementState(subscription);
   const canManageMembers = hasPermission(membership.role, "org:members:manage");
 
+  const pendingInviteCount = await runOrgScopedQuery(orgRes, (orgId) =>
+    prisma.auditLog.count({
+      where: { organizationId: orgId, action: "member:invite_pending" },
+    }),
+  );
+  const pendingInvites = pendingInviteCount.ok ? pendingInviteCount.data : 0;
+  const seatsUsed = org.memberships.length + pendingInvites;
+  const seatCap = subscription?.maxSeats ?? 1;
+  const seatsAtOrOverCap = seatsUsed >= seatCap;
+
   if (!entitlement.hasPaidAccess) {
     return (
       <div className="space-y-6 max-w-4xl">
@@ -171,6 +182,33 @@ export default async function MembersPage() {
         </p>
       </div>
 
+      <div className="card">
+        <h2 className="text-lg font-semibold text-slate-900">Seat usage</h2>
+        <p className="mt-1 text-sm text-slate-500">
+          Members + pending invites consume seats. Seat limits are enforced server-side.
+        </p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-3 text-sm">
+          <div>
+            <p className="text-slate-500">Members</p>
+            <p className="font-semibold text-slate-900">{org.memberships.length}</p>
+          </div>
+          <div>
+            <p className="text-slate-500">Pending invites</p>
+            <p className="font-semibold text-slate-900">{pendingInvites}</p>
+          </div>
+          <div>
+            <p className="text-slate-500">Seat cap</p>
+            <p className="font-semibold text-slate-900">{seatCap}</p>
+          </div>
+        </div>
+        {seatsAtOrOverCap ? (
+          <p className="mt-3 text-sm text-amber-800">
+            Seat cap reached. Remove pending invites or upgrade before adding members.
+            <Link href="/settings/billing" className="ml-1 font-medium underline">Open billing</Link>
+          </p>
+        ) : null}
+      </div>
+
       <MembersList
         organizationId={org.id}
         members={org.memberships}
@@ -178,6 +216,19 @@ export default async function MembersPage() {
         currentUserRole={membership.role}
         canManageMembers={canManageMembers}
       />
+
+      <div className="card space-y-3">
+        <h2 className="text-lg font-semibold text-slate-900">Enterprise admin controls</h2>
+        <p className="text-sm text-slate-600">Posture by feature in this deployment:</p>
+        <ul className="space-y-2 text-sm text-slate-700">
+          <li><TruthBadge state="partial" className="mr-2" />Invites are recorded and seat-checked; outbound invite email is not automatic.</li>
+          <li><TruthBadge state="environment_dependent" className="mr-2" />OIDC SSO depends on deployment env and operator configuration.</li>
+          <li><TruthBadge state="staged" className="mr-2" />SCIM and directory sync are staged, not implemented in this build.</li>
+        </ul>
+        <Link href={`/api/org/${org.id}/audit-log`} className="text-sm font-medium text-brand-700 hover:underline">
+          Open org audit-log API
+        </Link>
+      </div>
     </div>
   );
 }
