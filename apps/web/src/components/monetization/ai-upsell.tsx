@@ -38,17 +38,11 @@ export function AiUpsell({ reason }: AiUpsellProps) {
             {description}
           </p>
           <div className="mt-4 flex flex-wrap gap-3">
-            <Link 
-              href={"/settings/billing" as any} 
-              className="bg-brand-600 hover:bg-brand-700 text-white px-5 py-2 rounded-lg text-sm font-semibold transition-all shadow-md shadow-brand-100"
+            <Link
+              href={"/settings/billing" as any}
+              className="rounded-lg bg-brand-600 px-5 py-2 text-sm font-semibold text-white shadow-md shadow-brand-100 transition-all hover:bg-brand-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-1"
             >
               View plans and upgrade
-            </Link>
-            <Link 
-              href={"/settings/billing" as any} 
-              className="bg-white border border-slate-200 text-slate-700 px-5 py-2 rounded-lg text-sm font-semibold hover:bg-slate-50 transition-all"
-            >
-              Manage billing
             </Link>
           </div>
         </div>
