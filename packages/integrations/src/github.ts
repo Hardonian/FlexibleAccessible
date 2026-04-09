@@ -1,117 +1,169 @@
-export interface PRInput {
-  token: string;
-  owner: string;
-  repo: string;
-  baseBranch: string;
-  title: string;
-  body: string;
-  files: Array<{
-    path: string;
-    content: string;
-  }>;
-}
+// Package github provides GitHub integration for issues and actions
+import { type GitHubConfig, type CreateGitHubIssuePayload, type GitHubIssue, type AccessibilityFinding } from './types';
 
-export interface PRResult {
-  success: boolean;
-  prUrl?: string;
-  error?: string;
+const API_BASE = 'https://api.github.com';
+
+/**
+ * Create a GitHub issue from accessibility findings
+ */
+export async function createIssue(
+  config: GitHubConfig,
+  payload: CreateGitHubIssuePayload
+): Promise<GitHubIssue> {
+  const { owner, repo, token } = config;
+
+  const response = await fetch(`${API_BASE}/repos/${owner}/${repo}/issues`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/vnd.github+json'
+    },
+    body: JSON.stringify({
+      title: payload.title,
+      body: payload.body,
+      labels: payload.labels || ['accessibility', 'a11y'],
+      assignees: payload.assignees || []
+    })
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to create GitHub issue: ${response.status} - ${error}`);
+  }
+
+  return response.json();
 }
 
 /**
- * Creates a GitHub pull request with the suggested fix files.
- * Uses the GitHub REST API directly.
+ * Create issues for multiple accessibility findings
  */
-export async function createGitHubPR(input: PRInput): Promise<PRResult> {
-  const { token, owner, repo, baseBranch, title, body, files } = input;
-  const headers = {
-    Authorization: `token ${token}`,
-    Accept: 'application/vnd.github.v3+json',
-    'Content-Type': 'application/json',
-  };
-  const apiBase = `https://api.github.com/repos/${owner}/${repo}`;
+export async function createIssuesForFindings(
+  config: GitHubConfig,
+  findings: AccessibilityFinding[],
+  options?: { batchSize?: number; dryRun?: boolean }
+): Promise<{ created: number; issueUrls: string[]; errors: string[] }> {
+  const issueUrls: string[] = [];
+  const errors: string[] = [];
+  let created = 0;
+  const batchSize = options?.batchSize || 10;
 
-  try {
-    // 1. Get base branch SHA
-    const refResponse = await fetch(`${apiBase}/git/ref/heads/${baseBranch}`, { headers });
-    if (!refResponse.ok) {
-      return { success: false, error: `Failed to get base branch: ${refResponse.status}` };
-    }
-    const refData = (await refResponse.json()) as { object?: { sha?: string } };
-    const baseSha = refData.object?.sha;
-    if (!baseSha) {
-      return { success: false, error: 'Invalid ref response from GitHub' };
+  for (let i = 0; i < findings.length; i += batchSize) {
+    const batch = findings.slice(i, i + batchSize);
+
+    if (options?.dryRun) {
+      console.log(`[DRY RUN] Would create ${batch.length} issues`);
+      created += batch.length;
+      continue;
     }
 
-    // 2. Create blobs for each file
-    const blobs = [];
-    for (const file of files) {
-      const blobResponse = await fetch(`${apiBase}/git/blobs`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ content: file.content, encoding: 'utf-8' }),
-      });
-      const blobData = (await blobResponse.json()) as { sha?: string };
-      if (!blobData.sha) {
-        return { success: false, error: `Failed to create blob for ${file.path}` };
+    for (const finding of batch) {
+      const body = formatFindingAsMarkdown(finding);
+      const title = `[A11y] ${finding.wcagCriteria}: ${finding.severity}`;
+
+      try {
+        const issue = await createIssue(config, { title, body });
+        issueUrls.push(issue.html_url);
+        created++;
+      } catch (error) {
+        errors.push(`${finding.id}: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
-      blobs.push({ path: file.path, sha: blobData.sha, mode: '100644', type: 'blob' });
     }
+  }
 
-    // 3. Create tree
-    const treeResponse = await fetch(`${apiBase}/git/trees`, {
+  return { created, issueUrls, errors };
+}
+
+/**
+ * Format an accessibility finding as markdown for GitHub
+ */
+export function formatFindingAsMarkdown(finding: AccessibilityFinding): string {
+  const severityEmoji = {
+    critical: '🔴',
+    serious: '🟠',
+    moderate: '🟡',
+    minor: '🔵'
+  }[finding.severity] || '⚪';
+
+  return `
+## Accessibility Finding
+
+${severityEmoji} **Severity:** ${finding.severity.toUpperCase()}
+
+### Description
+${finding.description}
+
+### Help
+${finding.help}
+
+### Impact
+${finding.impact}
+
+### Details
+| Field | Value |
+|-------|-------|
+| URL | ${finding.url} |
+| Element | ${finding.element || 'N/A'} |
+| WCAG Criteria | ${finding.wcagCriteria} |
+| Finding ID | ${finding.id} |
+| Timestamp | ${finding.timestamp} |
+
+---
+*Generated by AccessibleMadeFlexible*
+  `.trim();
+}
+
+/**
+ * Add a label to an existing issue
+ */
+export async function addLabel(
+  config: GitHubConfig,
+  issueNumber: number,
+  labels: string[]
+): Promise<void> {
+  const { owner, repo, token } = config;
+
+  const response = await fetch(
+    `${API_BASE}/repos/${owner}/${repo}/issues/${issueNumber}/labels`,
+    {
       method: 'POST',
-      headers,
-      body: JSON.stringify({ base_tree: baseSha, tree: blobs }),
-    });
-    const treeData = (await treeResponse.json()) as { sha?: string };
-    if (!treeData.sha) {
-      return { success: false, error: 'Failed to create git tree' };
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/vnd.github+json'
+      },
+      body: JSON.stringify(labels)
     }
+  );
 
-    // 4. Create commit
-    const branchName = `aros/fix-${Date.now()}`;
-    const commitResponse = await fetch(`${apiBase}/git/commits`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        message: title,
-        tree: treeData.sha,
-        parents: [baseSha],
-      }),
-    });
-    const commitData = (await commitResponse.json()) as { sha?: string };
-    if (!commitData.sha) {
-      return { success: false, error: 'Failed to create commit' };
+  if (!response.ok) {
+    throw new Error(`Failed to add label: ${response.status}`);
+  }
+}
+
+/**
+ * Close an issue
+ */
+export async function closeIssue(
+  config: GitHubConfig,
+  issueNumber: number
+): Promise<void> {
+  const { owner, repo, token } = config;
+
+  const response = await fetch(
+    `${API_BASE}/repos/${owner}/${repo}/issues/${issueNumber}`,
+    {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/vnd.github+json'
+      },
+      body: JSON.stringify({ state: 'closed' })
     }
+  );
 
-    // 5. Create branch
-    await fetch(`${apiBase}/git/refs`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ ref: `refs/heads/${branchName}`, sha: commitData.sha }),
-    });
-
-    // 6. Create PR
-    const prResponse = await fetch(`${apiBase}/pulls`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        title,
-        body,
-        head: branchName,
-        base: baseBranch,
-      }),
-    });
-    const prData = (await prResponse.json()) as { html_url?: string };
-    if (!prData.html_url) {
-      return { success: false, error: 'Pull request created but response missing URL' };
-    }
-
-    return { success: true, prUrl: prData.html_url };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    };
+  if (!response.ok) {
+    throw new Error(`Failed to close issue: ${response.status}`);
   }
 }
