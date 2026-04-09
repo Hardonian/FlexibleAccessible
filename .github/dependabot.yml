@@ -12,3 +12,4 @@ updates:
     labels:
       - "security"
       - "dependencies"
+    rebase-strategy: "auto"
