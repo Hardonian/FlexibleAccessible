@@ -7,14 +7,27 @@ const ALLOWED_DIRECT_PRISMA_IMPORTS = new Set([
 
 let output = '';
 
+// Try ripgrep first, fall back to grep if not available
 try {
   output = execSync(
-    'rg -n "from [\\\"\']@prisma/client[\\\"\']|import\\([\\\"\']@prisma/client[\\\"\']\\)" apps packages --glob "*.ts" --glob "*.tsx" --glob "!packages/db/**"',
+    'rg -n "from [\\\"\'\]@prisma/client[\\\"\'\]|import\\([\\\"\'\]@prisma/client[\\\"\'\]\\)" apps packages --glob "*.ts" --glob "*.tsx" --glob "!packages/db/**"',
     { encoding: 'utf8' },
   );
 } catch (error) {
+  // rg exits with code 1 if no matches found (which is good - means no violations)
   if (error.status !== 1) {
-    throw error;
+    // Try grep as fallback (ripgrep not installed in CI)
+    try {
+      output = execSync(
+        'grep -rn "from.*@prisma/client" apps packages --include="*.ts" --include="*.tsx" | grep -v "packages/db/"',
+        { encoding: 'utf8' },
+      );
+    } catch (grepError) {
+      // grep exits with code 1 if no matches found (which is good)
+      if (grepError.status !== 1) {
+        throw grepError;
+      }
+    }
   }
 }
 
