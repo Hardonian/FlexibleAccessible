@@ -42,6 +42,73 @@ async function main() {
     update: {},
   });
 
+  // Self dogfooding org - AROS scanning itself
+  const selfOrg = await prisma.organization.upsert({
+    where: { slug: 'aros-platform' },
+    create: { name: 'AROS Platform', slug: 'aros-platform' },
+    update: {},
+  });
+
+  // Membership for self org
+  await prisma.membership.upsert({
+    where: { userId_organizationId: { userId: user.id, organizationId: selfOrg.id } },
+    create: { userId: user.id, organizationId: selfOrg.id, role: 'OWNER' },
+    update: {},
+  });
+
+  // Subscription for self org
+  await prisma.subscription.upsert({
+    where: { organizationId: selfOrg.id },
+    create: {
+      organizationId: selfOrg.id,
+      plan: 'ENTERPRISE',
+      status: 'ACTIVE',
+      maxDomains: 100,
+      maxPagesPerCrawl: 10000,
+      maxScansPerMonth: 1000,
+      maxSeats: 50,
+      aiEnabled: true,
+      aiTokenLimit: 1000000,
+    },
+    update: {},
+  });
+
+
+  // Workspace for self org
+  const selfWorkspace = await prisma.workspace.upsert({
+    where: { organizationId_slug: { organizationId: selfOrg.id, slug: 'production' } },
+    create: { organizationId: selfOrg.id, name: 'Production', slug: 'production' },
+    update: {},
+  });
+
+  // Self-scan site - AROS platform itself
+  const selfSite = await prisma.site.upsert({
+    where: { id: 'self-scan-aros-dev' },
+    create: {
+      id: 'self-scan-aros-dev',
+      workspaceId: selfWorkspace.id,
+      name: 'AROS Production',
+      domain: 'https://aros.dev',
+      environment: 'PRODUCTION',
+      verified: true,
+    },
+    update: {},
+  });
+
+  // Crawl config for self site
+  await prisma.crawlConfig.upsert({
+    where: { siteId: selfSite.id },
+    create: {
+      siteId: selfSite.id,
+      sitemapUrl: 'https://aros.dev/sitemap.xml',
+      maxDepth: 5,
+      maxPages: 500,
+    },
+    update: {},
+  });
+
+  console.log('Self dogfooding org created: aros-platform (site: aros.dev)');
+
   // Membership
   await prisma.membership.upsert({
     where: { userId_organizationId: { userId: user.id, organizationId: org.id } },
