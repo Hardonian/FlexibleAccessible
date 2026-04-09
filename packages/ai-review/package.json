@@ -12,7 +12,7 @@
     "@aros/db": "*",
     "@aros/shared": "*",
     "@aros/scan-engine": "*",
-    "@google/generative-ai": "^0.21.0",
+    "@google/generative-ai": "^0.24.1",
     "zod": "^3.24.0"
   },
   "devDependencies": {
