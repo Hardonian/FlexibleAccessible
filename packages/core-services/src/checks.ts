@@ -1,46 +1,171 @@
+/**
+ * Infrastructure Health Checks
+ * 
+ * REFACTORED: Now using standardized patterns from @aros/shared
+ * - StandardResult<T> for type-safe results
+ * - SystemPosture for health aggregation
+ * - Fail-closed semantics
+ */
+
 import IORedis from 'ioredis';
 import { bullmqConnectionOptions, VISUAL_REVIEW_QUEUE_NAME } from '@aros/shared';
 import { Queue } from 'bullmq';
-import type { DependencyCheckResult, JobQueueDepthSnapshot } from './types';
+import type { JobQueueDepthSnapshot } from './types';
+import { 
+  type StandardResult, 
+  type ComponentPosture,
+  success, 
+  failure,
+  buildComponentPosture,
+} from '@aros/shared';
 
-export async function checkPostgres(ping: () => Promise<unknown>): Promise<DependencyCheckResult> {
-  const checkedAt = new Date().toISOString();
+/**
+ * Generate trace ID for observability
+ */
+function generateTraceId(): string {
+  return `chk_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+/**
+ * Check Postgres connectivity using standardized Result pattern
+ * 
+ * @param ping - Function that pings the database
+ * @returns StandardResult with void data on success
+ */
+export async function checkPostgres(
+  ping: () => Promise<unknown>
+): Promise<StandardResult<void>> {
+  const traceId = generateTraceId();
+  const startTime = Date.now();
+  
   try {
     await ping();
-    return { ok: true, checkedAt };
+    return success(undefined, {
+      traceId,
+      durationMs: Date.now() - startTime,
+      timestamp: new Date().toISOString(),
+    });
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Database unreachable';
-    return { ok: false, message, checkedAt };
+    return failure('unavailable', {
+      message,
+      code: 'DB_UNREACHABLE',
+    }, {
+      traceId,
+      durationMs: Date.now() - startTime,
+      timestamp: new Date().toISOString(),
+      reasonCodes: ['DB_CONNECTION_FAILED'],
+    });
   }
 }
 
-export async function checkRedisPing(url: string): Promise<DependencyCheckResult> {
-  const checkedAt = new Date().toISOString();
-  const client = new IORedis(url, { maxRetriesPerRequest: 1, connectTimeout: 3000, lazyConnect: true });
+/**
+ * Check Redis connectivity using standardized Result pattern
+ * 
+ * @param url - Redis connection URL
+ * @returns StandardResult with void data on success
+ */
+export async function checkRedisPing(
+  url: string
+): Promise<StandardResult<void>> {
+  const traceId = generateTraceId();
+  const startTime = Date.now();
+  const client = new IORedis(url, { 
+    maxRetriesPerRequest: 1, 
+    connectTimeout: 3000, 
+    lazyConnect: true 
+  });
+  
   try {
     await client.connect();
     const pong = await client.ping();
     if (pong !== 'PONG') {
-      return { ok: false, message: `Unexpected PING response: ${pong}`, checkedAt };
+      return failure('degraded', {
+        message: `Unexpected PING response: ${pong}`,
+        code: 'REDIS_UNEXPECTED_RESPONSE',
+      }, {
+        traceId,
+        durationMs: Date.now() - startTime,
+        timestamp: new Date().toISOString(),
+        reasonCodes: ['REDIS_PROTOCOL_MISMATCH'],
+      });
     }
-    return { ok: true, checkedAt };
+    return success(undefined, {
+      traceId,
+      durationMs: Date.now() - startTime,
+      timestamp: new Date().toISOString(),
+    });
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Redis unreachable';
-    return { ok: false, message, checkedAt };
+    return failure('unavailable', {
+      message,
+      code: 'REDIS_UNREACHABLE',
+    }, {
+      traceId,
+      durationMs: Date.now() - startTime,
+      timestamp: new Date().toISOString(),
+      reasonCodes: ['REDIS_CONNECTION_FAILED'],
+    });
   } finally {
     await client.quit().catch(() => client.disconnect());
   }
 }
 
 /**
- * Opens short-lived queue handles to read counts. Fails closed if Redis is down.
+ * Get component posture for Redis (for SystemPosture aggregation)
  */
-export async function getQueueDepths(): Promise<{
-  ok: true;
-  snapshot: JobQueueDepthSnapshot;
-  checkedAt: string;
-} | { ok: false; message: string; checkedAt: string }> {
+export async function getRedisPosture(url: string): Promise<ComponentPosture> {
+  const result = await checkRedisPing(url);
+  
+  return buildComponentPosture(
+    {
+      id: 'redis',
+      name: 'Redis Connection',
+      criticality: 'critical',
+      category: 'queue',
+    },
+    result.ok ? 'ok' : 'failed',
+    result.ok ? 'Connected and responding to PING' : (result.error?.message ?? 'Connection failed'),
+    {
+      reasonCodes: result.ok ? [] : (result.metadata.reasonCodes ?? []),
+    }
+  );
+}
+
+/**
+ * Get component posture for Postgres (for SystemPosture aggregation)
+ */
+export async function getPostgresPosture(
+  ping: () => Promise<unknown>
+): Promise<ComponentPosture> {
+  const result = await checkPostgres(ping);
+  
+  return buildComponentPosture(
+    {
+      id: 'postgres',
+      name: 'PostgreSQL Database',
+      criticality: 'critical',
+      category: 'data',
+    },
+    result.ok ? 'ok' : 'failed',
+    result.ok ? 'Database responding to queries' : (result.error?.message ?? 'Database unreachable'),
+    {
+      reasonCodes: result.ok ? [] : (result.metadata.reasonCodes ?? []),
+    }
+  );
+}
+
+/**
+ * Get queue depths with standardized Result pattern
+ * Fails closed if Redis is down.
+ * 
+ * @returns StandardResult with JobQueueDepthSnapshot
+ */
+export async function getQueueDepths(): Promise<StandardResult<JobQueueDepthSnapshot>> {
+  const traceId = generateTraceId();
+  const startTime = Date.now();
   const checkedAt = new Date().toISOString();
+  
   const connection = bullmqConnectionOptions();
   const q = (name: string) => new Queue(name, { connection });
 
@@ -70,10 +195,22 @@ export async function getQueueDepths(): Promise<{
       visualReview: { waiting: vr.waiting ?? 0, active: vr.active ?? 0, failed: vr.failed ?? 0 },
     };
 
-    return { ok: true, snapshot, checkedAt };
+    return success(snapshot, {
+      traceId,
+      durationMs: Date.now() - startTime,
+      timestamp: checkedAt,
+    });
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Could not read queue metrics';
-    return { ok: false, message, checkedAt };
+    return failure('unavailable', {
+      message,
+      code: 'QUEUE_METRICS_UNAVAILABLE',
+    }, {
+      traceId,
+      durationMs: Date.now() - startTime,
+      timestamp: checkedAt,
+      reasonCodes: ['QUEUE_CONNECTION_FAILED'],
+    });
   } finally {
     await Promise.all([
       crawl.close(),
@@ -85,3 +222,19 @@ export async function getQueueDepths(): Promise<{
     ]);
   }
 }
+
+/**
+ * Get queue component posture (for SystemPosture aggregation)
+ */
+export async function getQueuePosture(): Promise<ComponentPosture> {
+  const result = await getQueueDepths();
+  
+  return buildComponentPosture(
+    {
+      id: 'bullmq',
+      name: 'BullMQ Job Queues',
+      criticality: 'critical',
+      category: 'queue',
+    },
+    result.ok ? 'ok' : 'failed',
+    result.ok ? 'All queues readable' :

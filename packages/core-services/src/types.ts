@@ -1,3 +1,66 @@
+/**
+ * Core Services Types
+ * 
+ * REFACTORED: Now using standardized patterns from @aros/shared
+ * All new code should use StandardResult<T>, SystemPosture, etc.
+ * 
+ * @deprecated Legacy types are maintained for backward compatibility.
+ * Migrate to standardized patterns: result.ts, posture.ts, verification.ts, auth.ts
+ */
+
+// Re-export standardized types for convenience
+export type {
+  ResultState,
+  ErrorDetails,
+  ResultMetadata,
+  StandardResult,
+  PostureLevel,
+  ComponentState,
+  ComponentPosture,
+  SystemPosture,
+  DegradationThresholds,
+  ComponentCriticality,
+  ComponentDefinition,
+  HealthScore,
+  ReadinessResult,
+  VerificationStatus,
+  VerificationMethod,
+  VerificationTargetType,
+  VerificationTarget,
+  VerificationEvidence,
+  VerificationResultDetails,
+  VerificationAttempt,
+  VerificationConfig,
+  Permission,
+  ResourceType,
+  UserRole,
+  Resource,
+  Grant,
+  BlastRadiusClass,
+} from '@aros/shared';
+
+export {
+  success,
+  failure,
+  isSuccess,
+  isFailure,
+  ResultAsync,
+  DEFAULT_DEGRADATION_THRESHOLDS,
+  buildComponentPosture,
+  componentStateToLevel,
+  aggregatePosture,
+  calculateHealthScore,
+  determineReadiness,
+  degradedPosture,
+  unhealthyPosture,
+} from '@aros/shared';
+
+// ==================== LEGACY TYPES (DEPRECATED) ====================
+
+/** 
+ * @deprecated Use ComponentCriticality from @aros/shared 
+ * Migration: 'critical' | 'optional' -> 'critical' | 'high' | 'medium' | 'low' | 'optional'
+ */
 export type ServiceCriticality = 'critical' | 'optional';
 
 export type ServiceCategory =
@@ -11,7 +74,10 @@ export type ServiceCategory =
 
 export type ServiceScope = 'deployment' | 'organization';
 
-/** Unified runtime + config posture for a registered service */
+/** 
+ * @deprecated Use ComponentState from @aros/shared
+ * Migration: ServiceHealthState maps to ComponentState
+ */
 export type ServiceHealthState =
   | 'unavailable'
   | 'disabled'
@@ -20,6 +86,29 @@ export type ServiceHealthState =
   | 'running'
   | 'degraded'
   | 'failed';
+
+/**
+ * Maps legacy ServiceHealthState to standardized ComponentState
+ */
+export function toComponentState(state: ServiceHealthState): ComponentState {
+  const mapping: Record<ServiceHealthState, ComponentState> = {
+    'unavailable': 'unknown',
+    'disabled': 'disabled',
+    'misconfigured': 'misconfigured',
+    'ready': 'ok',
+    'running': 'ok',
+    'degraded': 'degraded',
+    'failed': 'failed',
+  };
+  return mapping[state] ?? 'unknown';
+}
+
+/**
+ * Maps legacy ServiceCriticality to standardized ComponentCriticality
+ */
+export function toComponentCriticality(criticality: ServiceCriticality): ComponentCriticality {
+  return criticality === 'critical' ? 'critical' : 'optional';
+}
 
 export interface CoreServiceDefinition {
   id: string;
@@ -32,6 +121,9 @@ export interface CoreServiceDefinition {
   userVisibleWhenDown: boolean;
 }
 
+/**
+ * @deprecated Use standardized DependencyCheckResult or StandardResult pattern
+ */
 export interface DependencyCheckResult {
   ok: boolean;
   message?: string;
@@ -41,6 +133,29 @@ export interface DependencyCheckResult {
    * Callers should not treat `ok: false` as a production outage in this case.
    */
   skipped?: boolean;
+}
+
+/**
+ * Converts legacy DependencyCheckResult to standardized pattern
+ */
+export function toStandardResult<T>(
+  result: DependencyCheckResult,
+  data?: T,
+  traceId: string = 'legacy'
+): StandardResult<T> {
+  if (result.ok) {
+    return success(data as T, {
+      traceId,
+      timestamp: result.checkedAt,
+    });
+  }
+  return failure('unavailable', {
+    message: result.message ?? 'Dependency check failed',
+    code: 'DEPENDENCY_FAILED',
+  }, {
+    traceId,
+    timestamp: result.checkedAt,
+  });
 }
 
 export interface CoreServiceRuntimeView extends CoreServiceDefinition {
@@ -57,8 +172,47 @@ export interface CoreServiceRuntimeView extends CoreServiceDefinition {
   dependencies: Record<string, DependencyCheckResult>;
 }
 
+/**
+ * Converts CoreServiceRuntimeView to standardized ComponentPosture
+ */
+export function toComponentPosture(view: CoreServiceRuntimeView): ComponentPosture {
+  return buildComponentPosture(
+    {
+      id: view.id,
+      name: view.name,
+      criticality: toComponentCriticality(view.criticality),
+      category: view.category,
+    },
+    toComponentState(view.healthState),
+    view.failureReason ?? view.nextStep,
+    {
+      lastActivityAt: view.lastActivityAt ?? undefined,
+      reasonCodes: view.configIssues,
+    }
+  );
+}
+
+/** 
+ * @deprecated Use ReadinessResult from @aros/shared
+ */
 export type PlatformReadiness = 'not_installed' | 'blocked' | 'degraded' | 'ready';
 
+/**
+ * Maps legacy PlatformReadiness to standardized PostureLevel
+ */
+export function toPostureLevel(readiness: PlatformReadiness): PostureLevel {
+  const mapping: Record<PlatformReadiness, PostureLevel> = {
+    'not_installed': 'unknown',
+    'blocked': 'unhealthy',
+    'degraded': 'degraded',
+    'ready': 'healthy',
+  };
+  return mapping[readiness];
+}
+
+/**
+ * @deprecated Use standardized bootstrap patterns
+ */
 export interface PlatformBootstrapStatus {
   installed: boolean;
   installedAt: string | null;
@@ -86,6 +240,10 @@ export interface JobQueueDepthSnapshot {
   visualReview: JobQueueDepthRow;
 }
 
+/**
+ * @deprecated Use SystemPosture from @aros/shared
+ * Migration guide: PlatformHealthReport -> SystemPosture
+ */
 export interface PlatformHealthReport {
   checkedAt: string;
   /** When `skipped_build`, Postgres/Redis/queue were not probed (Next.js production build). */
@@ -113,3 +271,8 @@ export interface PlatformHealthReport {
     snapshot: JobQueueDepthSnapshot;
   } | null;
 }
+
+/**
+ * Converts PlatformHealthReport to standardized SystemPosture
+ */
+export function toSystemPosture(report: PlatformHealthReport):
