@@ -1,4 +1,5 @@
 import { test, expect, Page } from "@playwright/test";
+import { injectAxe, checkA11y } from "@axe-core/playwright";
 
 async function checkAccessibility(
   page: Page,
@@ -6,6 +7,13 @@ async function checkAccessibility(
   description: string,
 ) {
   await page.goto(url);
+
+  // Standards-based accessibility scan (WCAG)
+  await injectAxe(page);
+  await checkA11y(page, undefined, {
+    detailedReport: true,
+    detailedReportOptions: { html: true },
+  });
 
   // Check for keyboard-navigable interactive elements
   const focusableElements = await page

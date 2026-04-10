@@ -93,6 +93,12 @@ jobs:
           REDIS_URL: redis://localhost:6379
         run: npm run test:e2e
 
+      - name: Run Accessibility E2E Slice (axe-core)
+        env:
+          DATABASE_URL: postgresql://aros_user:aros_password@localhost:5432/aros_test?schema=public
+          REDIS_URL: redis://localhost:6379
+        run: npm run test:e2e -- apps/web/e2e/accessibility.spec.ts
+
       - name: Upload Playwright Artifacts
         if: always()
         uses: actions/upload-artifact@v4
