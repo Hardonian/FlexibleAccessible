@@ -45,3 +45,5 @@ apps/web/public/fallback-*.js
 # Misc
 *.log
 npm-debug.log*
+*.key
+*.pem
