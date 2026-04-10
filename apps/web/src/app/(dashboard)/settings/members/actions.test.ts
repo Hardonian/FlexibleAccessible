@@ -22,6 +22,12 @@ vi.mock("@/lib/db", () => ({
     user: {
       findUnique: vi.fn(),
     },
+    organizationAuthPolicy: {
+      findUnique: vi.fn(),
+    },
+    organizationVerifiedDomain: {
+      findMany: vi.fn(),
+    },
     auditLog: {
       create: vi.fn(),
       count: vi.fn(),
@@ -48,6 +54,8 @@ describe("inviteMemberAction", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(prisma.auditLog.count).mockResolvedValue(0);
+    vi.mocked(prisma.organizationAuthPolicy.findUnique).mockResolvedValue({ enforceVerifiedDomains: false } as any);
+    vi.mocked(prisma.organizationVerifiedDomain.findMany).mockResolvedValue([] as any);
   });
 
   it("invites existing user successfully", async () => {
@@ -101,7 +109,33 @@ describe("inviteMemberAction", () => {
     });
   });
 
-  it("rejects invalid email format", async () => {
+  
+  it("blocks invite when verified-domain policy does not match", async () => {
+    vi.mocked(requireOrgAccess).mockResolvedValue({
+      user: { id: "user_admin", email: "admin@example.com", name: "Admin", emailVerified: true },
+      organizationId: "org_123",
+      role: "ADMIN",
+      subscription: null,
+      entitlement: { hasPaidAccess: false, reason: "free_plan" },
+    });
+
+    vi.mocked(prisma.subscription.findUnique).mockResolvedValue({ maxSeats: 10 } as any);
+    vi.mocked(prisma.membership.count).mockResolvedValue(1);
+    vi.mocked(prisma.organizationAuthPolicy.findUnique).mockResolvedValue({ enforceVerifiedDomains: true } as any);
+    vi.mocked(prisma.organizationVerifiedDomain.findMany).mockResolvedValue([{ domain: "company.com" }] as any);
+
+    const formData = new FormData();
+    formData.set("organizationId", "org_123");
+    formData.set("email", "new@other.com");
+    formData.set("role", "DEVELOPER");
+
+    const result = await inviteMemberAction({ success: false, error: null }, formData);
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("Invite blocked by organization domain policy");
+    expect(prisma.membership.create).not.toHaveBeenCalled();
+  });
+it("rejects invalid email format", async () => {
     vi.mocked(requireOrgAccess).mockResolvedValue({
       user: { id: "user_admin", email: "admin@example.com", name: "Admin", emailVerified: true },
       organizationId: "org_123",
