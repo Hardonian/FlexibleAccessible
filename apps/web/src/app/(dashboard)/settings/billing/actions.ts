@@ -8,6 +8,11 @@ import {
   getBillingCustomer,
   getOrCreateBillingCustomer,
 } from "@/lib/billing/org-scoped-queries";
+import {
+  getBillingCustomerByOrg,
+  grantDevCredits,
+} from "@/lib/credits/org-scoped-queries";
+import { CREDIT_PACKS, type CreditPackId } from "@/lib/credits/packs";
 import type { PlanTier } from "@aros/db";
 import { logProductEvent, PRODUCT_EVENT_ACTIONS } from "@/lib/product-events";
 
@@ -131,4 +136,93 @@ export async function openBillingPortalAction(formData: FormData) {
   });
 
   redirect(session.url);
+}
+
+export async function purchaseFixCreditsAction(formData: FormData) {
+  const user = await requireAuthenticatedSession();
+  const organizationId =
+    (formData.get("organizationId") as string | null) ?? "";
+  const packId = ((formData.get("pack") as string | null) ?? "") as CreditPackId;
+
+  if (!organizationId) {
+    redirectWithError("Organization is required.");
+  }
+
+  if (!Object.prototype.hasOwnProperty.call(CREDIT_PACKS, packId)) {
+    redirectWithError("Select a valid fix credit pack.");
+  }
+
+  const ctx = await requireOrgAccess(organizationId, "org:billing");
+  const pack = CREDIT_PACKS[packId];
+  const billingCustomer = await getBillingCustomerByOrg(ctx);
+  if (!billingCustomer) {
+    redirectWithError(
+      "No billing customer exists yet. Start a subscription checkout first.",
+    );
+  }
+
+  const stripeSecret = process.env.STRIPE_SECRET_KEY;
+  if (stripeSecret) {
+    let StripeCtor: any;
+    try {
+      StripeCtor = (await import("stripe")).default;
+    } catch {
+      StripeCtor = null;
+    }
+
+    if (StripeCtor) {
+      const stripe = new StripeCtor(stripeSecret);
+      const session = await stripe.checkout.sessions.create({
+        customer: billingCustomer.stripeCustomerId,
+        mode: "payment",
+        line_items: [
+          {
+            price_data: {
+              currency: "usd",
+              product_data: {
+                name: `AROS Fix Credits — ${pack.label}`,
+                description: `${pack.credits} fix credits for accessibility remediation`,
+              },
+              unit_amount: pack.priceCents,
+            },
+            quantity: 1,
+          },
+        ],
+        metadata: {
+          organizationId: ctx.organizationId,
+          creditPack: packId,
+          creditAmount: String(pack.credits),
+        },
+        success_url: `${getAppBaseUrl()}/settings/billing?credits=success`,
+        cancel_url: `${getAppBaseUrl()}/settings/billing?credits=cancelled`,
+      });
+
+      if (!session.url) {
+        redirectWithError("Stripe did not return a checkout URL for credits.");
+      }
+
+      await logProductEvent({
+        organizationId: ctx.organizationId,
+        userId: user.id,
+        action: PRODUCT_EVENT_ACTIONS.fix_credits_checkout_started,
+        metadata: { pack: packId, credits: pack.credits, mode: "stripe" },
+      });
+
+      redirect(session.url);
+    }
+  }
+
+  await grantDevCredits(ctx, {
+    credits: pack.credits,
+    label: pack.label,
+  });
+
+  await logProductEvent({
+    organizationId: ctx.organizationId,
+    userId: user.id,
+    action: PRODUCT_EVENT_ACTIONS.fix_credits_checkout_started,
+    metadata: { pack: packId, credits: pack.credits, mode: "dev_grant" },
+  });
+
+  redirect(`/settings/billing?credits=granted&pack=${packId}`);
 }

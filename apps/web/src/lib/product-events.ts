@@ -5,6 +5,7 @@ import type { Prisma } from '@aros/db';
 export const PRODUCT_EVENT_ACTIONS = {
   signup_completed: 'product:signup_completed',
   checkout_started: 'product:checkout_started',
+  fix_credits_checkout_started: 'product:fix_credits_checkout_started',
   invite_sent: 'product:invite_sent',
   api_key_created: 'product:api_key_created',
   first_private_scan_queued: 'product:first_private_scan_queued',
