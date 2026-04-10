@@ -238,6 +238,19 @@ export default async function SettingsPage() {
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Link
+            href="/settings/identity"
+            className="group flex items-start gap-3 rounded-xl border border-slate-200 p-4 transition-colors hover:border-brand-200 hover:bg-brand-50/30"
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-600 group-hover:bg-brand-100 group-hover:text-brand-600">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V7zm8 3a3 3 0 100 6 3 3 0 000-6z" /></svg>
+            </div>
+            <div>
+              <h3 className="font-medium text-slate-900 group-hover:text-brand-700">Identity & access</h3>
+              <p className="mt-1 text-sm text-slate-500">Enterprise login policy, domains, and sign-in provenance</p>
+            </div>
+          </Link>
+
+          <Link
             href="/settings/api-keys"
             className="group flex items-start gap-3 rounded-xl border border-slate-200 p-4 transition-colors hover:border-brand-200 hover:bg-brand-50/30"
           >
