@@ -5,20 +5,12 @@ import { getAppBaseUrl } from "@/lib/billing";
 import { ApiError } from "@aros/shared";
 import { requireCanonicalOrgAccess } from "@/lib/server-org-boundary";
 import { getBillingCustomerByOrg, getCreditLedger, grantDevCredits } from "@/lib/credits/org-scoped-queries";
+import { CREDIT_PACKS, type CreditPackId } from "@/lib/credits/packs";
 
 const purchaseSchema = z.object({
   organizationId: z.string().min(1),
   pack: z.enum(["small", "medium", "large"]),
 });
-
-const CREDIT_PACKS: Record<
-  string,
-  { credits: number; priceCents: number; label: string }
-> = {
-  small: { credits: 100, priceCents: 900, label: "100 fix credits" },
-  medium: { credits: 500, priceCents: 3900, label: "500 fix credits" },
-  large: { credits: 2000, priceCents: 12900, label: "2000 fix credits" },
-};
 
 /**
  * GET /api/credits?organizationId=xxx
@@ -68,7 +60,7 @@ export async function POST(request: Request) {
     const ctx = await requireCanonicalOrgAccess(parsed.organizationId, "org:billing", {
       requirePaid: true,
     });
-    const pack = CREDIT_PACKS[parsed.pack];
+    const pack = CREDIT_PACKS[parsed.pack as CreditPackId];
 
     if (!pack) {
       return apiError(ApiError.badRequest("Invalid pack"));

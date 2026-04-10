@@ -12,12 +12,14 @@ import { getBillingPlanCards, isStripeBillingConfigured } from "@/lib/billing";
 import { getEntitlementState } from "@/lib/auth-guard";
 import {
   openBillingPortalAction,
+  purchaseFixCreditsAction,
   startSubscriptionCheckoutAction,
 } from "./actions";
 import {
   USAGE_METRIC_REPORT_EXPORT,
   USAGE_METRIC_VPAT_EXPORT,
 } from "@/lib/usage/report-export-usage";
+import { CREDIT_PACK_ORDER, CREDIT_PACKS, type CreditPackId } from "@/lib/credits/packs";
 
 export const metadata = { title: "Billing" };
 
@@ -38,6 +40,36 @@ function noticeFromSearchParams(
       variant: "info" as const,
       title: "Checkout cancelled",
       message: "No changes were made to your subscription.",
+    };
+  }
+
+  if (searchParams.credits === "success") {
+    return {
+      variant: "info" as const,
+      title: "Fix credit checkout complete",
+      message:
+        "Payment succeeded. Credits are added after Stripe webhook confirmation.",
+    };
+  }
+
+  if (searchParams.credits === "cancelled") {
+    return {
+      variant: "info" as const,
+      title: "Fix credit checkout cancelled",
+      message: "No fix credits were purchased.",
+    };
+  }
+
+  if (searchParams.credits === "granted") {
+    const pack = searchParams.pack && Object.prototype.hasOwnProperty.call(CREDIT_PACKS, searchParams.pack)
+      ? CREDIT_PACKS[searchParams.pack as CreditPackId]
+      : null;
+    return {
+      variant: "info" as const,
+      title: "Fix credits granted (development mode)",
+      message: pack
+        ? `${pack.credits} credits were granted because Stripe is not configured in this environment.`
+        : "Credits were granted because Stripe is not configured in this environment.",
     };
   }
 
@@ -85,6 +117,8 @@ interface PageProps {
     error?: string;
     status?: string;
     from?: string;
+    credits?: string;
+    pack?: string;
   }>;
 }
 
@@ -150,7 +184,7 @@ export default async function BillingPage({ searchParams }: PageProps) {
           0,
         ),
       );
-      const [membership, customer, scansUsedThisMonth, memberCount, pendingInviteCount] =
+      const [membership, customer, scansUsedThisMonth, memberCount, pendingInviteCount, creditLedger, recentCreditTransactions] =
         await Promise.all([
         prisma.membership.findUnique({
           where: {
@@ -185,6 +219,22 @@ export default async function BillingPage({ searchParams }: PageProps) {
         prisma.auditLog.count({
           where: { organizationId, action: "member:invite_pending" },
         }),
+        prisma.fixCreditBalance.findUnique({
+          where: { organizationId },
+        }),
+        prisma.fixCredit.findMany({
+          where: { organizationId },
+          orderBy: { createdAt: "desc" },
+          take: 10,
+          select: {
+            id: true,
+            type: true,
+            amount: true,
+            description: true,
+            expiresAt: true,
+            createdAt: true,
+          },
+        }),
       ]);
 
       const sub = membership?.organization.subscription;
@@ -210,6 +260,8 @@ export default async function BillingPage({ searchParams }: PageProps) {
         scansUsedThisMonth,
         memberCount,
         pendingInviteCount,
+        creditLedger,
+        recentCreditTransactions,
         exportEventsThisPeriod,
       };
     },
@@ -252,6 +304,12 @@ export default async function BillingPage({ searchParams }: PageProps) {
     Math.round((scansUsedThisMonth / Math.max(scanLimit, 1)) * 100),
   );
   const exportEventsThisPeriod = billingResult.data.exportEventsThisPeriod ?? 0;
+  const creditLedger = billingResult.data.creditLedger;
+  const creditBalance = creditLedger?.balance ?? 0;
+  const creditsPurchased = creditLedger?.totalPurchased ?? 0;
+  const creditsSpent = creditLedger?.totalSpent ?? 0;
+  const creditsRefunded = creditLedger?.totalRefunded ?? 0;
+  const recentCreditTransactions = billingResult.data.recentCreditTransactions ?? [];
 
   return (
     <div className="space-y-8 max-w-6xl">
@@ -564,6 +622,82 @@ export default async function BillingPage({ searchParams }: PageProps) {
               </article>
             );
           })}
+        </div>
+      </section>
+
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+        <div className="space-y-1">
+          <h2 className="text-xl font-semibold text-slate-950">Fix credits</h2>
+          <p className="text-sm text-slate-600">
+            Credits are consumed by assisted remediation actions. Purchase is
+            enforced server-side and tied to this organization billing customer.
+          </p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-4">
+          <Stat label="Current balance" value={String(creditBalance)} />
+          <Stat label="Purchased" value={String(creditsPurchased)} />
+          <Stat label="Spent" value={String(creditsSpent)} />
+          <Stat label="Refunded" value={String(creditsRefunded)} />
+        </div>
+        <p className="text-xs text-slate-500">
+          {stripeReady
+            ? "Production behavior: checkout opens Stripe and credits are applied by webhook."
+            : "Development behavior: Stripe is unavailable, so purchases grant credits immediately for testing."}
+        </p>
+        <div className="grid gap-3 md:grid-cols-3">
+          {CREDIT_PACK_ORDER.map((packId) => {
+            const pack = CREDIT_PACKS[packId];
+            return (
+              <form key={packId} action={purchaseFixCreditsAction} className="rounded-2xl border border-slate-200 p-4">
+                <input type="hidden" name="organizationId" value={membership.organizationId} />
+                <input type="hidden" name="pack" value={packId} />
+                <p className="text-sm font-medium text-slate-900">{pack.label}</p>
+                <p className="mt-1 text-xs text-slate-600">${(pack.priceCents / 100).toFixed(2)} one-time</p>
+                <button type="submit" className="btn-secondary mt-3 w-full min-h-[44px]" disabled={!canManageBilling}>
+                  Buy {pack.credits} credits
+                </button>
+              </form>
+            );
+          })}
+        </div>
+        <div className="overflow-x-auto rounded-2xl border border-slate-200">
+          <table className="min-w-full text-left text-sm">
+            <thead className="bg-slate-50 text-slate-600">
+              <tr>
+                <th className="px-3 py-2 font-medium">Date</th>
+                <th className="px-3 py-2 font-medium">Type</th>
+                <th className="px-3 py-2 font-medium">Amount</th>
+                <th className="px-3 py-2 font-medium">Description</th>
+                <th className="px-3 py-2 font-medium">Expiry</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recentCreditTransactions.length === 0 ? (
+                <tr>
+                  <td className="px-3 py-3 text-slate-500" colSpan={5}>
+                    No credit transactions yet.
+                  </td>
+                </tr>
+              ) : (
+                recentCreditTransactions.map((entry) => (
+                  <tr key={entry.id} className="border-t border-slate-100">
+                    <td className="px-3 py-2 text-slate-700">
+                      {entry.createdAt.toLocaleDateString()}
+                    </td>
+                    <td className="px-3 py-2 text-slate-700">{entry.type}</td>
+                    <td className="px-3 py-2 text-slate-700 tabular-nums">
+                      {entry.amount > 0 ? "+" : ""}
+                      {entry.amount}
+                    </td>
+                    <td className="px-3 py-2 text-slate-600">{entry.description}</td>
+                    <td className="px-3 py-2 text-slate-600">
+                      {entry.expiresAt ? entry.expiresAt.toLocaleDateString() : "—"}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </section>
     </div>
