@@ -7,6 +7,7 @@ import { runOrgScopedQuery } from "@/lib/route-data-boundary";
 import { hasPermission } from "@aros/config";
 import type { MemberRole } from "@aros/db";
 import { logProductEvent, PRODUCT_EVENT_ACTIONS } from "@/lib/product-events";
+import { emailMatchesVerifiedDomains } from "@/lib/org-auth-policy";
 
 const INVITABLE_ROLES: MemberRole[] = [
   "DEVELOPER",
@@ -141,6 +142,34 @@ export async function inviteMemberAction(
       success: false,
       error: "Seat limit reached. Upgrade your plan to add more members.",
     };
+  }
+
+  const identityPolicyResult = await runOrgScopedQuery(ctx, async (orgId) => {
+    const policy = await prisma.organizationAuthPolicy.findUnique({
+      where: { organizationId: orgId },
+      select: { enforceVerifiedDomains: true },
+    });
+    const domains = await prisma.organizationVerifiedDomain.findMany({
+      where: { organizationId: orgId, verifiedAt: { not: null } },
+      select: { domain: true },
+    });
+    return { policy, domains };
+  });
+  if (!identityPolicyResult.ok) {
+    return { success: false, error: "Unable to validate identity policy" };
+  }
+
+  if (identityPolicyResult.data.policy?.enforceVerifiedDomains) {
+    const allowed = emailMatchesVerifiedDomains(
+      email,
+      identityPolicyResult.data.domains.map((item) => item.domain),
+    );
+    if (!allowed) {
+      return {
+        success: false,
+        error: "Invite blocked by organization domain policy. Add and verify this email domain in Settings → Identity & access.",
+      };
+    }
   }
 
   const existingUserResult = await runOrgScopedQuery(ctx, async () =>

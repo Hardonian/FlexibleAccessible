@@ -164,7 +164,7 @@ export default function TrustPage() {
         <section className="mt-12">
           <h2 className="text-lg font-semibold text-slate-900">Procurement posture summary</h2>
           <div className="mt-4 space-y-3 text-sm text-slate-700">
-            <p><TruthBadge state="implemented" className="mr-2" />Organization-scoped access controls, audit logs, and server-side entitlement checks are implemented.</p>
+            <p><TruthBadge state="implemented" className="mr-2" />Organization-scoped access controls, audit logs, server-side entitlement checks, and org-level identity policy controls (login mode + verified-domain enforcement) are implemented.</p>
             <p><TruthBadge state="environment_dependent" className="mr-2" />Email verification, Redis-backed limits, and object storage behavior depend on deployment configuration.</p>
             <p><TruthBadge state="staged" className="mr-2" />Procurement extras such as custom SLA language and enterprise IAM controls are contract/operator scoped, not implied by default.</p>
           </div>

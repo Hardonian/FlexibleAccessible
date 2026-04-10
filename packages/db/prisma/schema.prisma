@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // ─── AUTH & TENANCY ──────────────────────────────────────────
@@ -38,6 +37,7 @@ model User {
   governanceDecisionsRevoked FindingGovernanceDecision[] @relation("governanceRevokedBy")
   findingComments FindingComment[]
   securityTokens SecurityToken[]
+  createdVerifiedDomains OrganizationVerifiedDomain[] @relation("verifiedDomainCreatedBy")
 
   @@unique([oidcIssuer, oidcSubject], name: "users_oidc_issuer_subject_key")
   @@map("users")
@@ -100,6 +100,8 @@ model Organization {
   fixCreditBalances  FixCreditBalance[]
   findingComments    FindingComment[]
   deployWebhooks     DeployWebhook[]
+  authPolicy         OrganizationAuthPolicy?
+  verifiedDomains    OrganizationVerifiedDomain[]
 
   // MCP API monetization
   mcpEnabled         Boolean  @default(false)
@@ -107,6 +109,43 @@ model Organization {
   mcpUsageThisPeriod Int      @default(0)
 
   @@map("organizations")
+}
+
+model OrganizationAuthPolicy {
+  id                     String   @id @default(cuid())
+  organizationId         String   @unique
+  loginMode              AuthLoginMode @default(PASSWORD_AND_SSO)
+  enforceVerifiedDomains Boolean  @default(false)
+  allowJitProvisioning   Boolean  @default(false)
+  ssoConfigStatus        OrgSsoConfigStatus @default(DISABLED)
+  ssoIssuerUrl           String?
+  ssoEntryPoint          String?
+  ssoMetadataUrl         String?
+  scimBaseUrl            String?
+  scimTokenLastRotatedAt DateTime?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("organization_auth_policies")
+}
+
+model OrganizationVerifiedDomain {
+  id              String   @id @default(cuid())
+  organizationId  String
+  domain          String
+  verifiedAt      DateTime?
+  createdByUserId String?
+  createdAt       DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdByUser User? @relation("verifiedDomainCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, domain])
+  @@index([organizationId, verifiedAt])
+  @@index([createdByUserId])
+  @@map("organization_verified_domains")
 }
 
 model Workspace {
@@ -132,6 +171,18 @@ enum MemberRole {
   CONTENT_EDITOR
   AUDITOR
   REVIEWER
+}
+
+enum AuthLoginMode {
+  PASSWORD_AND_SSO
+  SSO_ONLY
+  PASSWORD_ONLY
+}
+
+enum OrgSsoConfigStatus {
+  DISABLED
+  INCOMPLETE
+  CONFIGURED
 }
 
 model Membership {

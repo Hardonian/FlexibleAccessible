@@ -36,6 +36,26 @@ async function constantTimeVerify(
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const LOGIN_MAX_PER_IP = 30;
 
+async function passwordLoginBlockedByOrgPolicy(userId: string): Promise<boolean> {
+  const memberships = await prisma.membership.findMany({
+    where: { userId },
+    select: {
+      organization: {
+        select: {
+          authPolicy: {
+            select: { loginMode: true },
+          },
+        },
+      },
+    },
+  });
+
+  return memberships.some(
+    (membership) => membership.organization.authPolicy?.loginMode === "SSO_ONLY",
+  );
+}
+
+
 export async function loginAction(
   _prevState: LoginState,
   formData: FormData,
@@ -76,6 +96,13 @@ export async function loginAction(
   const valid = await constantTimeVerify(password, user.passwordHash);
   if (!valid) {
     return { error: "Invalid email or password" };
+  }
+
+  if (await passwordLoginBlockedByOrgPolicy(user.id)) {
+    return {
+      error:
+        "Password sign-in is disabled by your organization policy. Use the “Continue with SSO” path.",
+    };
   }
 
   if (!user.emailVerified) {

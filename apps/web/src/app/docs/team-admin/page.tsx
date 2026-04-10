@@ -6,7 +6,7 @@ import { marketingSurfaceMetadata } from "@/lib/site-metadata";
 
 export const metadata: Metadata = marketingSurfaceMetadata(
   "Team admin",
-  "Member roles, seat usage, pending invites, audit trail posture, and staged enterprise controls.",
+  "Member roles, seat usage, pending invites, audit trail posture, and staged enterprise controls, including org-level identity policy and verified-domain enforcement.",
   "/docs/team-admin",
 );
 
@@ -22,7 +22,7 @@ export default function DocsTeamAdminPage() {
 
         <section className="space-y-2">
           <h2 className="text-lg font-semibold text-slate-900">Current posture</h2>
-          <p className="text-sm text-slate-700"><TruthBadge state="implemented" className="mr-2" />Organization members, role changes, seat usage, pending invite records, and org-scoped audit-log export routes are available.</p>
+          <p className="text-sm text-slate-700"><TruthBadge state="implemented" className="mr-2" />Organization members, role changes, seat usage, pending invite records, org-level identity policy controls (/settings/identity), and org-scoped audit-log export routes are available.</p>
           <p className="text-sm text-slate-700"><TruthBadge state="partial" className="mr-2" />Invites are recorded and seat-checked; outbound invite email remains manual in this deployment.</p>
           <p className="text-sm text-slate-700"><TruthBadge state="environment_dependent" className="mr-2" />OIDC SSO depends on deployment env/operator configuration.</p>
           <p className="text-sm text-slate-700"><TruthBadge state="staged" className="mr-2" />SCIM and directory sync are staged and should not be sold as default capabilities.</p>
