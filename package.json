@@ -7,7 +7,7 @@
     "packages/*"
   ],
   "scripts": {
-    "postinstall": "node scripts/workspace-symlinks.js && node scripts/prune-nested-vite.mjs && npm run db:generate",
+    "postinstall": "node scripts/workspace-symlinks.js && node scripts/prune-nested-vite.mjs",
     "dev": "npm run dev --workspace=apps/web",
     "dev:worker": "npm run dev --workspace=apps/worker",
     "build": "npm run build --workspace=apps/web",
@@ -37,7 +37,6 @@
     "verify:touched-routes": "npm run test:launch-critical"
   },
   "devDependencies": {
-    "turbo": "^2.7.4",
     "@axe-core/playwright": "^4.11.1",
     "@ioredis/commands": "^1.5.1",
     "@playwright/experimental-ct-react": "^1.58.2",
@@ -47,12 +46,18 @@
     "prettier": "^3.4.0",
     "redis-errors": "^1.2.0",
     "standard-as-callback": "^2.1.0",
+    "turbo": "^2.7.4",
     "typescript": "^5.7.0"
   },
   "engines": {
     "node": ">=20.0.0"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@hono/node-server": "^1.19.13",
+    "hono": "^4.12.12",
+    "next": "^16.2.3",
+    "nodemailer": "^8.0.5"
+  },
   "overrides": {
     "@prisma/config": {
       "effect": "3.21.0"
