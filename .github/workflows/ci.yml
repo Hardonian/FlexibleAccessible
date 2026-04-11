@@ -49,8 +49,17 @@ jobs:
           node-version: "24"
           cache: false
 
-      - name: Install Dependencies
-        run: npm ci
+      - name: Install Dependencies (retry on transient registry/network failures)
+        run: |
+          for i in 1 2 3; do
+            npm ci && break
+            echo "npm ci failed on attempt $i, retrying..."
+            sleep 10
+            if [ "$i" -eq 3 ]; then
+              echo "npm ci failed after 3 attempts"
+              exit 1
+            fi
+          done
 
       - name: npm audit (high and critical must be zero)
         run: npm audit --audit-level=high
