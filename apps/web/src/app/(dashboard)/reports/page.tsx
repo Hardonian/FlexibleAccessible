@@ -233,6 +233,94 @@ export default async function ReportsPage({
               Imported: {opSummary.evidenceSourceMix.imported}
             </p>
           </div>
+          <div className="grid gap-4 border-t border-[rgb(var(--color-border))] pt-4 md:grid-cols-2">
+            <div>
+              <p className="text-sm font-medium text-slate-900">
+                Recurrence intelligence (compounding memory)
+              </p>
+              <p className="mt-1 text-xs text-slate-600">
+                These counters track repeated fingerprints and regression signals
+                across completed scan runs.
+              </p>
+              <ul className="mt-2 space-y-1 text-sm text-slate-700">
+                <li>
+                  Recurring across runs:{" "}
+                  <span className="font-semibold tabular-nums">
+                    {opSummary.recurrence.recurringAcrossScanRuns}
+                  </span>
+                </li>
+                <li>
+                  Regressed and still open:{" "}
+                  <span className="font-semibold tabular-nums">
+                    {opSummary.recurrence.regressedOpenFindings}
+                  </span>
+                </li>
+                <li>
+                  Improved but open backlog:{" "}
+                  <span className="font-semibold tabular-nums">
+                    {opSummary.recurrence.improvedOpenBacklog}
+                  </span>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-slate-900">
+                Managed-service review pressure
+              </p>
+              <p className="mt-1 text-xs text-slate-600">
+                Queue pressure is deterministic from unresolved review tasks for
+                this organization.
+              </p>
+              <ul className="mt-2 space-y-1 text-sm text-slate-700">
+                <li>
+                  Unresolved reviews:{" "}
+                  <span className="font-semibold tabular-nums">
+                    {opSummary.reviewQueue.unresolved}
+                  </span>
+                </li>
+                <li>
+                  Overdue (&gt;72h):{" "}
+                  <span className="font-semibold tabular-nums">
+                    {opSummary.reviewQueue.overdue72h}
+                  </span>
+                </li>
+                <li>
+                  Manual audit pending:{" "}
+                  <span className="font-semibold tabular-nums">
+                    {opSummary.reviewQueue.manualAuditPending}
+                  </span>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div className="border-t border-[rgb(var(--color-border))] pt-4">
+            <p className="text-sm font-medium text-slate-900">
+              Top recurring rule hotspots
+            </p>
+            {opSummary.recurrence.topRecurringRuleHotspots.length === 0 ? (
+              <p className="mt-1 text-sm text-slate-500">
+                No recurring scan-run hotspots yet.
+              </p>
+            ) : (
+              <ul className="mt-2 space-y-1 text-sm text-slate-700">
+                {opSummary.recurrence.topRecurringRuleHotspots.map((row) => (
+                  <li key={row.ruleId}>
+                    <span className="font-mono text-xs text-slate-900">
+                      {row.ruleId}
+                    </span>{" "}
+                    · recurring{" "}
+                    <span className="font-semibold tabular-nums">
+                      {row.recurringFindings}
+                    </span>{" "}
+                    · critical open{" "}
+                    <span className="font-semibold tabular-nums">
+                      {row.criticalOpenFindings}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
 
         <div className="card flex flex-col">

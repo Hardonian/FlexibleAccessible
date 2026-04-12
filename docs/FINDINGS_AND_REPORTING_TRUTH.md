@@ -7,6 +7,8 @@
 - **Remediation counts**: distribution of `status`.
 - **Evidence source mix**: counts by `evidenceSource`.
 - **Stale automated count**: findings with `AUTOMATED_AXE` where `lastVerifiedAt` is null or older than the latest **completed** org scan, unless job pipelines are degraded (then all automated findings count as stale for messaging).
+- **Recurrence intelligence**: recurring fingerprint counts (`distinctScanRunsObserved > 1`), regressed-open counters (`reopenedCount > 0` and workflow status unresolved), and top recurring `ruleId` hotspots.
+- **Managed-service queue pressure**: unresolved review-task counters derived from `ReviewTask` rows linked to org-scoped suggestions (`unresolved`, `overdue72h`, `manualAuditPending`).
 
 ## What we do **not** show
 
@@ -16,6 +18,7 @@
 ## APIs
 
 - `GET /api/findings/summary` — JSON operational summary; requires `reports:view`. Returns `503` with a safe envelope if org-scoped DB reads are blocked by platform health.
+- `GET /api/findings/summary` includes deterministic recurrence and review-pressure sections so exports and operator workflows can prioritize repeat risk and aging manual-review backlog.
 - `GET /api/reports` — export; requires `reports:export`. Includes `platformTruth` flags so consumers know if workers/pipelines were healthy at generation time.
 
 ## Degraded behavior
