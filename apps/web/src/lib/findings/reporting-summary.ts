@@ -22,6 +22,21 @@ export type FindingsOperationalSummary = {
   };
   severityCounts: { critical: number; serious: number; moderate: number; minor: number };
   evidenceSourceMix: { automatedAxe: number; manualReview: number; imported: number };
+  recurrence: {
+    recurringAcrossScanRuns: number;
+    regressedOpenFindings: number;
+    improvedOpenBacklog: number;
+    topRecurringRuleHotspots: Array<{
+      ruleId: string;
+      recurringFindings: number;
+      criticalOpenFindings: number;
+    }>;
+  };
+  reviewQueue: {
+    unresolved: number;
+    overdue72h: number;
+    manualAuditPending: number;
+  };
   staleAutomationCount: number;
   automationFreshnessNote: string;
 };
@@ -52,6 +67,13 @@ export async function buildFindingsOperationalSummary(
     manualReview,
     imported,
     latestScan,
+    recurringAcrossScanRuns,
+    regressedOpenFindings,
+    improvedOpenBacklog,
+    recurringHotspotsRaw,
+    unresolvedReviewTasks,
+    overdueReviewTasks,
+    manualAuditPendingTasks,
   ] = await Promise.all([
     prisma.canonicalFinding.count({ where: base }),
     prisma.canonicalFinding.count({ where: { ...base, status: 'OPEN' } }),
@@ -83,7 +105,109 @@ export async function buildFindingsOperationalSummary(
       orderBy: { completedAt: 'desc' },
       select: { completedAt: true },
     }),
+    prisma.canonicalFinding.count({
+      where: { ...base, distinctScanRunsObserved: { gt: 1 } },
+    }),
+    prisma.canonicalFinding.count({
+      where: {
+        ...base,
+        reopenedCount: { gt: 0 },
+        status: { in: ['OPEN', 'ACKNOWLEDGED', 'IN_PROGRESS'] },
+      },
+    }),
+    prisma.canonicalFinding.count({
+      where: {
+        ...base,
+        distinctScanRunsAbsentWhenOpen: { gt: 0 },
+        status: { in: ['OPEN', 'ACKNOWLEDGED', 'IN_PROGRESS'] },
+      },
+    }),
+    prisma.canonicalFinding.groupBy({
+      by: ['ruleId'],
+      where: {
+        ...base,
+        distinctScanRunsObserved: { gt: 1 },
+      },
+      _count: { _all: true },
+      orderBy: {
+        _count: { ruleId: 'desc' },
+      },
+      take: 5,
+    }),
+    prisma.reviewTask.count({
+      where: {
+        status: { in: ['PENDING', 'IN_PROGRESS'] },
+        suggestion: {
+          OR: [
+            {
+              finding: {
+                site: { workspace: { organizationId } },
+              },
+            },
+            {
+              cluster: {
+                site: { workspace: { organizationId } },
+              },
+            },
+          ],
+        },
+      },
+    }),
+    prisma.reviewTask.count({
+      where: {
+        status: { in: ['PENDING', 'IN_PROGRESS'] },
+        createdAt: { lt: new Date(Date.now() - 72 * 3_600_000) },
+        suggestion: {
+          OR: [
+            {
+              finding: {
+                site: { workspace: { organizationId } },
+              },
+            },
+            {
+              cluster: {
+                site: { workspace: { organizationId } },
+              },
+            },
+          ],
+        },
+      },
+    }),
+    prisma.reviewTask.count({
+      where: {
+        type: 'MANUAL_AUDIT',
+        status: { in: ['PENDING', 'IN_PROGRESS'] },
+        suggestion: {
+          OR: [
+            {
+              finding: {
+                site: { workspace: { organizationId } },
+              },
+            },
+            {
+              cluster: {
+                site: { workspace: { organizationId } },
+              },
+            },
+          ],
+        },
+      },
+    }),
   ]);
+
+  const criticalOpenByRule = await prisma.canonicalFinding.groupBy({
+    by: ['ruleId'],
+    where: {
+      ...base,
+      impact: 'CRITICAL',
+      status: 'OPEN',
+      ruleId: { in: recurringHotspotsRaw.map((row) => row.ruleId) },
+    },
+    _count: { _all: true },
+  });
+  const criticalOpenByRuleMap = new Map(
+    criticalOpenByRule.map((row) => [row.ruleId, row._count._all]),
+  );
 
   let staleAutomationCount = 0;
   if (latestScan?.completedAt && jobPipelinesHealthy) {
@@ -129,6 +253,21 @@ export async function buildFindingsOperationalSummary(
       minor: minorAll,
     },
     evidenceSourceMix: { automatedAxe, manualReview, imported },
+    recurrence: {
+      recurringAcrossScanRuns,
+      regressedOpenFindings,
+      improvedOpenBacklog,
+      topRecurringRuleHotspots: recurringHotspotsRaw.map((row) => ({
+        ruleId: row.ruleId,
+        recurringFindings: row._count._all,
+        criticalOpenFindings: criticalOpenByRuleMap.get(row.ruleId) ?? 0,
+      })),
+    },
+    reviewQueue: {
+      unresolved: unresolvedReviewTasks,
+      overdue72h: overdueReviewTasks,
+      manualAuditPending: manualAuditPendingTasks,
+    },
     staleAutomationCount,
     automationFreshnessNote,
   };
