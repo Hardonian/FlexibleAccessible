@@ -78,7 +78,9 @@ jobs:
       - name: Generate Prisma Client
         env:
           DATABASE_URL: postgresql://aros_user:aros_password@localhost:5432/aros_test?schema=public
-        run: npm run db:generate
+        run: |
+          npm i @prisma/client --workspace=packages/db --no-save
+          npm run db:generate
 
       - name: Push Schema & Seed
         env:
