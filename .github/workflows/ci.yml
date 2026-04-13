@@ -87,7 +87,10 @@ jobs:
         env:
           DATABASE_URL: postgresql://aros_user:aros_password@localhost:5432/aros_test?schema=public
           REDIS_URL: redis://localhost:6379
-        run: npm run db:push && npm run db:seed
+        run: |
+          npm run db:generate
+          npm run db:push
+          npm run db:seed
 
       - name: Run Core Verification
         env:
