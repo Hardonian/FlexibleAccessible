@@ -14,7 +14,13 @@ export function sanitizeAiCode(codeSnippet: string): string {
   sanitized = sanitized.replace(/<(iframe|object|embed)\b[^>]*\/?>/gi, "");
 
   // Remove inline event handlers.
-  sanitized = sanitized.replace(/\s+on[a-z]+\s*=\s*(".*?"|'.*?'|[^\s>]+)/gi, "");
+  // Apply repeatedly to avoid incomplete multi-character sanitization
+  // where a new `on...=` sequence can appear after a prior replacement.
+  let previous: string;
+  do {
+    previous = sanitized;
+    sanitized = sanitized.replace(/\s+on[a-z]+\s*=\s*(".*?"|'.*?'|[^\s>]+)/gi, "");
+  } while (sanitized !== previous);
 
   // Neutralize dangerous protocols in href/src attributes.
   sanitized = sanitized.replace(
