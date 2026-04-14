@@ -1,6 +1,6 @@
 /**
  * Standardized Result Types
- * 
+ *
  * Unified error handling pattern across all repos.
  * Provides type-safe discriminated unions with consistent metadata.
  */
