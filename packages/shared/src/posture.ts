@@ -271,7 +271,7 @@ export function calculateHealthScore(posture: SystemPosture): HealthScore {
   });
 
   const avgScore =
-    componentScores.reduce((a, b) => a + b, 0) / componentScores.length || 0;
+    componentScores.reduce<number>((a, b) => a + b, 0) / componentScores.length || 0;
 
   return {
     score: Math.round(avgScore),

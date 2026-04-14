@@ -237,4 +237,9 @@ export async function getQueuePosture(): Promise<ComponentPosture> {
       category: 'queue',
     },
     result.ok ? 'ok' : 'failed',
-    result.ok ? 'All queues readable' :
+    result.ok ? 'All queues readable' : (result.error?.message ?? 'Queue depth check failed'),
+    {
+      reasonCodes: result.ok ? [] : (result.metadata.reasonCodes ?? []),
+    }
+  );
+}

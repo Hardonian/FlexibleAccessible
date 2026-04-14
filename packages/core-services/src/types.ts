@@ -275,4 +275,20 @@ export interface PlatformHealthReport {
 /**
  * Converts PlatformHealthReport to standardized SystemPosture
  */
-export function toSystemPosture(report: PlatformHealthReport):
+export function toSystemPosture(report: PlatformHealthReport): SystemPosture {
+  const components = report.services.map(toComponentPosture);
+  const postureLevel = toPostureLevel(report.bootstrap.readiness);
+  const degraded = postureLevel === 'degraded' || postureLevel === 'unhealthy';
+  return {
+    overall: postureLevel,
+    summary: report.bootstrap.blockers.length > 0
+      ? report.bootstrap.blockers[0]!
+      : degraded ? 'Platform degraded' : 'Platform healthy',
+    reasonCodes: report.bootstrap.blockers,
+    components,
+    degraded,
+    degradedReasons: report.bootstrap.warnings,
+    failClosed: !report.bootstrap.installed,
+    checkedAt: report.checkedAt,
+  };
+}
