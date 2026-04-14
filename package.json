@@ -43,7 +43,7 @@
     "@types/node": "^22.10.0",
     "cluster-key-slot": "^1.1.2",
     "lodash.defaults": "^4.2.0",
-    "prettier": "^3.4.0",
+    "prettier": "^3.8.2",
     "redis-errors": "^1.2.0",
     "standard-as-callback": "^2.1.0",
     "turbo": "^2.9.6",
