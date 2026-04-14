@@ -1,7 +1,7 @@
 import { requireSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
-import { AlertTriangle, Inbox } from "lucide-react";
+import { AlertTriangle, ChevronRight, Inbox } from "lucide-react";
 import type { Severity, FindingStatus, EvidenceSource } from "@aros/db";
 import { Prisma } from "@aros/db";
 import { getRoutePlatformTruth } from "@/lib/platform-truth-cache";
@@ -93,16 +93,13 @@ export default async function FindingsPage({
   if (orgRes.kind === "platform_blocked") {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-slate-900">Findings</h1>
+        <PageHeader title="Findings" />
         <RouteReliabilityNotice
           variant="error"
           title="Findings require a working database"
           showSystemLink={canViewSystem}
         >
-          <p>
-            Findings cannot be loaded until core data services are healthy. See
-            the banner above for status.
-          </p>
+          <p>Findings cannot be loaded until core data services are healthy.</p>
         </RouteReliabilityNotice>
       </div>
     );
@@ -111,7 +108,7 @@ export default async function FindingsPage({
   if (orgRes.kind === "error") {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-slate-900">Findings</h1>
+        <PageHeader title="Findings" />
         <RouteReliabilityNotice
           variant="error"
           title="Could not verify organization"
@@ -126,7 +123,7 @@ export default async function FindingsPage({
   if (orgRes.kind === "none") {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-slate-900">Findings</h1>
+        <PageHeader title="Findings" />
         <RouteReliabilityNotice
           variant="info"
           title="No organization membership"
@@ -141,34 +138,22 @@ export default async function FindingsPage({
   const limit = 20;
   const skip = (page - 1) * limit;
 
-  const buildFindingsWhere = (
-    organizationId: string,
-  ): any => {
+  const buildFindingsWhere = (organizationId: string): any => {
     const where: any = {
       site: {
         workspace: { organizationId },
         ...(params.siteId ? { id: params.siteId } : {}),
       },
     };
-
-    if (params.severity) {
-      where.impact = params.severity as Severity;
-    }
-    if (params.status) {
-      where.status = params.status as FindingStatus;
-    }
-    if (params.ruleId) {
-      where.ruleId = params.ruleId;
-    }
+    if (params.severity) where.impact = params.severity as Severity;
+    if (params.status) where.status = params.status as FindingStatus;
+    if (params.ruleId) where.ruleId = params.ruleId;
     if (
       params.evidenceSource &&
-      ["AUTOMATED_AXE", "MANUAL_REVIEW", "IMPORTED"].includes(
-        params.evidenceSource,
-      )
+      ["AUTOMATED_AXE", "MANUAL_REVIEW", "IMPORTED"].includes(params.evidenceSource)
     ) {
       where.evidenceSource = params.evidenceSource as EvidenceSource;
     }
-
     return where;
   };
 
@@ -218,15 +203,13 @@ export default async function FindingsPage({
   if (!listResult.ok) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-slate-900">Findings</h1>
+        <PageHeader title="Findings" />
         <RouteReliabilityNotice
           variant="error"
           title="Findings list unavailable"
           showSystemLink={canViewSystem}
         >
-          <p>
-            Could not load findings from the database ({listResult.message}).
-          </p>
+          <p>Could not load findings from the database ({listResult.message}).</p>
         </RouteReliabilityNotice>
       </div>
     );
@@ -239,21 +222,10 @@ export default async function FindingsPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Findings</h1>
-          <p className="text-slate-500 mt-1">
-            {total} deduplicated finding{total === 1 ? "" : "s"} in your
-            organization (not a legal conformance score).
-          </p>
-          {filterSummary.hasFilters && (
-            <p className="text-sm text-slate-600 mt-2" aria-live="polite">
-              <span className="font-medium text-slate-700">Filtered by:</span>{" "}
-              {filterSummary.parts.join(" · ")}
-            </p>
-          )}
-        </div>
-      </div>
+      <PageHeader
+        title="Findings"
+        description={`${total.toLocaleString()} deduplicated finding${total === 1 ? "" : "s"} — not a legal conformance score.`}
+      />
 
       {!platformTruth.flags.jobPipelinesHealthy && (
         <RouteReliabilityNotice
@@ -262,49 +234,31 @@ export default async function FindingsPage({
           showSystemLink={canViewSystem}
         >
           <p>
-            Findings still reflect stored organization data, but workers or
-            queues are degraded. Automated evidence freshness is shown as
-            degraded until pipelines recover.
+            Findings still reflect stored data, but workers or queues are degraded.
+            Automated evidence freshness is shown as degraded until pipelines recover.
           </p>
         </RouteReliabilityNotice>
       )}
 
+      {/* ── Filter bar ──────────────────────────────────────────────────── */}
       <div className="card">
-        <form className="flex flex-wrap gap-4" method="GET">
-          {params.siteId ? (
-            <input type="hidden" name="siteId" value={params.siteId} />
-          ) : null}
-          {params.ruleId ? (
-            <input type="hidden" name="ruleId" value={params.ruleId} />
-          ) : null}
-          <div>
-            <label htmlFor="severity-filter" className="label">
-              Severity
-            </label>
-            <select
-              id="severity-filter"
-              name="severity"
-              className="input"
-              defaultValue={params.severity ?? ""}
-            >
-              <option value="">All</option>
+        <form className="flex flex-wrap items-end gap-4" method="GET">
+          {params.siteId ? <input type="hidden" name="siteId" value={params.siteId} /> : null}
+          {params.ruleId ? <input type="hidden" name="ruleId" value={params.ruleId} /> : null}
+          <div className="min-w-[8rem]">
+            <label htmlFor="severity-filter" className="label">Severity</label>
+            <select id="severity-filter" name="severity" className="input" defaultValue={params.severity ?? ""}>
+              <option value="">All severities</option>
               <option value="CRITICAL">Critical</option>
               <option value="SERIOUS">Serious</option>
               <option value="MODERATE">Moderate</option>
               <option value="MINOR">Minor</option>
             </select>
           </div>
-          <div>
-            <label htmlFor="status-filter" className="label">
-              Status
-            </label>
-            <select
-              id="status-filter"
-              name="status"
-              className="input"
-              defaultValue={params.status ?? ""}
-            >
-              <option value="">All</option>
+          <div className="min-w-[9rem]">
+            <label htmlFor="status-filter" className="label">Status</label>
+            <select id="status-filter" name="status" className="input" defaultValue={params.status ?? ""}>
+              <option value="">All statuses</option>
               <option value="OPEN">Open</option>
               <option value="ACKNOWLEDGED">Acknowledged</option>
               <option value="IN_PROGRESS">In progress</option>
@@ -314,39 +268,47 @@ export default async function FindingsPage({
               <option value="WONT_FIX">Won&apos;t fix / accepted risk</option>
             </select>
           </div>
-          <div>
-            <label htmlFor="source-filter" className="label">
-              Evidence source
-            </label>
-            <select
-              id="source-filter"
-              name="evidenceSource"
-              className="input"
-              defaultValue={params.evidenceSource ?? ""}
-            >
-              <option value="">All</option>
+          <div className="min-w-[9rem]">
+            <label htmlFor="source-filter" className="label">Evidence source</label>
+            <select id="source-filter" name="evidenceSource" className="input" defaultValue={params.evidenceSource ?? ""}>
+              <option value="">All sources</option>
               <option value="AUTOMATED_AXE">Automated (axe)</option>
               <option value="MANUAL_REVIEW">Manual review</option>
               <option value="IMPORTED">Imported</option>
             </select>
           </div>
-          <div className="flex items-end">
-            <button type="submit" className="btn-secondary">
-              Filter
-            </button>
+          <div className="flex gap-2">
+            <button type="submit" className="btn-secondary">Apply filters</button>
+            {filterSummary.hasFilters && (
+              <Link
+                href={
+                  (params.siteId || params.ruleId
+                    ? `/findings${buildFindingsQueryString({ siteId: params.siteId, ruleId: params.ruleId })}`
+                    : "/findings") as any
+                }
+                className="btn-ghost"
+              >
+                Clear
+              </Link>
+            )}
           </div>
         </form>
+        {filterSummary.hasFilters && (
+          <p className="mt-3 text-xs text-slate-500" aria-live="polite">
+            <span className="font-medium text-slate-600">Filtered by:</span>{" "}
+            {filterSummary.parts.join(" · ")}
+          </p>
+        )}
       </div>
 
+      {/* ── Finding list ─────────────────────────────────────────────────── */}
       {findings.length === 0 ? (
         <EmptyState
           icon={total === 0 ? Inbox : AlertTriangle}
-          title={
-            total === 0 ? "No findings yet" : "No findings match your filters"
-          }
+          title={total === 0 ? "No findings yet" : "No findings match your filters"}
           description={
             total === 0
-              ? "There are no findings for this organization yet. Add a site and run a scan to get started."
+              ? "Add a site and run a scan to start discovering accessibility issues."
               : "Try clearing filters or changing the page."
           }
           action={
@@ -354,10 +316,7 @@ export default async function FindingsPage({
               <Link
                 href={
                   (params.siteId || params.ruleId
-                    ? `/findings${buildFindingsQueryString({
-                        siteId: params.siteId,
-                        ruleId: params.ruleId,
-                      })}`
+                    ? `/findings${buildFindingsQueryString({ siteId: params.siteId, ruleId: params.ruleId })}`
                     : "/findings") as any
                 }
                 className="btn-secondary text-sm"
@@ -373,7 +332,7 @@ export default async function FindingsPage({
           className="card"
         />
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {findings.map((finding) => (
             <FindingRow
               key={finding.id}
@@ -386,6 +345,7 @@ export default async function FindingsPage({
         </div>
       )}
 
+      {/* ── Pagination ───────────────────────────────────────────────────── */}
       {totalPages > 1 && (
         <nav
           className="flex items-center justify-center gap-2"
@@ -394,23 +354,20 @@ export default async function FindingsPage({
           {page > 1 && (
             <Link
               href={`/findings${findingsListQueryString(params, page - 1)}` as any}
-              className="btn-secondary text-sm min-h-[44px]"
-              aria-label={`Go to previous page, currently on page ${page} of ${totalPages}`}
+              className="btn-secondary text-sm"
+              aria-label={`Previous page (page ${page - 1} of ${totalPages})`}
             >
               Previous
             </Link>
           )}
-          <span
-            className="text-sm text-slate-500 px-3 py-2"
-            aria-current="page"
-          >
-            Page {page} of {totalPages}
+          <span className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm tabular-nums text-slate-600 shadow-sm" aria-current="page">
+            {page} / {totalPages}
           </span>
           {page < totalPages && (
             <Link
               href={`/findings${findingsListQueryString(params, page + 1)}` as any}
-              className="btn-secondary text-sm min-h-[44px]"
-              aria-label={`Go to next page, currently on page ${page} of ${totalPages}`}
+              className="btn-secondary text-sm"
+              aria-label={`Next page (page ${page + 1} of ${totalPages})`}
             >
               Next
             </Link>
@@ -420,6 +377,14 @@ export default async function FindingsPage({
     </div>
   );
 }
+
+/** Severity → left-border accent color */
+const severityBorderClass: Record<string, string> = {
+  CRITICAL: "border-l-red-500",
+  SERIOUS:  "border-l-orange-500",
+  MODERATE: "border-l-amber-400",
+  MINOR:    "border-l-slate-300",
+};
 
 function FindingRow({
   finding,
@@ -468,16 +433,13 @@ function FindingRow({
   });
   const proofCompletenessScore =
     Object.values(proofSummary.completeness).filter(Boolean).length;
-  const changeLabelMap: Record<
-    (typeof proofSummary)["changedSinceLastRun"],
-    string
-  > = {
-    newly_detected: "New this lifecycle",
-    regressed: "Regressed",
-    persistent: "Persistent",
-    improved_open_backlog: "Absent in scans (open)",
-    not_comparable: "Cross-run not comparable",
-    unknown: "Unknown",
+  const changeLabelMap: Record<(typeof proofSummary)["changedSinceLastRun"], string> = {
+    newly_detected:       "New",
+    regressed:            "Regressed",
+    persistent:           "Persistent",
+    improved_open_backlog:"Absent in scans",
+    not_comparable:       "Not comparable",
+    unknown:              "Unknown",
   };
   const changeLabel = changeLabelMap[proofSummary.changedSinceLastRun];
 
@@ -498,159 +460,136 @@ function FindingRow({
       : null,
     finding.cluster ? `Cluster: ${finding.cluster.name}.` : null,
     `Proof completeness score ${proofCompletenessScore} out of 5.`,
-    `Change signal: ${changeLabel}. Comparison basis: ${proofSummary.comparisonBasis.replaceAll("_", " ")}.`,
-    proofSummary.comparisonLimitations.length > 0
-      ? `Limits: ${proofSummary.comparisonLimitations.join(" ")}`
-      : null,
-    `Scan-run recurrence: observed in ${proofSummary.recurrence.distinctScanRunsObserved} completed run(s); absent while open backlog in ${proofSummary.recurrence.distinctScanRunsAbsentWhenOpen} run(s).`,
+    `Change signal: ${changeLabel}.`,
+    `Scan-run recurrence: observed in ${proofSummary.recurrence.distinctScanRunsObserved} completed run(s).`,
     `Triage score ${priority.score.toFixed(0)}. ${priority.reasons.join(" ")}`,
-    familySummary
-      ? `Rule family: ${familySummary.totalFindings} total findings, ${familySummary.activeFindings} active; ${familySummary.newlyDetectedFindings} newly detected, ${familySummary.persistentFindings} persistent${
-          familySummary.regressedFindings > 0
-            ? `; ${familySummary.regressedFindings} regressed`
-            : ""
-        }${
-          familySummary.recurringAcrossScanRunsFindings > 0
-            ? `; ${familySummary.recurringAcrossScanRunsFindings} recurring across scan runs`
-            : ""
-        }.`
-      : null,
     `First seen ${finding.firstSeenAt.toLocaleDateString()}.`,
-    familySummary?.firstSeenAt
-      ? `Family first seen ${familySummary.firstSeenAt.toLocaleDateString()}.`
-      : null,
-    finding.lastVerifiedAt
-      ? `Last verified ${finding.lastVerifiedAt.toLocaleDateString()}.`
-      : null,
-    familySummary?.lastSeenAt
-      ? `Family last seen ${familySummary.lastSeenAt.toLocaleDateString()}.`
-      : null,
-    proofSummary.lineage.scanRunId
-      ? `Lineage scan run ${proofSummary.lineage.scanRunId}.`
-      : null,
-    finding.wcagTags.length > 0
-      ? `WCAG tags: ${finding.wcagTags.join(", ")}.`
-      : null,
+    finding.lastVerifiedAt ? `Last verified ${finding.lastVerifiedAt.toLocaleDateString()}.` : null,
+    finding.wcagTags.length > 0 ? `WCAG tags: ${finding.wcagTags.join(", ")}.` : null,
   ].filter(Boolean) as string[];
 
   const metaId = `finding-${finding.id}-extended`;
+  const borderClass = severityBorderClass[finding.impact] ?? "border-l-slate-300";
 
   return (
-    <article className="card p-0 overflow-hidden transition-shadow hover:shadow-[var(--shadow-card-hover)] motion-reduce:transition-none">
+    <article
+      className={`overflow-hidden rounded-xl border border-l-4 border-slate-200 bg-white transition-shadow hover:shadow-[0_4px_8px_-2px_rgb(15_23_42/0.10)] motion-reduce:transition-none ${borderClass}`}
+      style={{ boxShadow: "0 1px 3px 0 rgb(15 23 42 / 0.06), 0 1px 2px -1px rgb(15 23 42 / 0.04)" }}
+    >
       <Link
         href={`/findings/${finding.id}`}
-        className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 rounded-lg"
+        className="block px-5 py-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600"
         aria-describedby={metaId}
       >
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <SeverityChip severity={finding.impact} size="sm" />
-              <span className="font-mono text-xs text-slate-500 truncate max-w-[min(100%,12rem)]">
-                {finding.ruleId}
-              </span>
-              {finding.cluster ? (
-                <span className="text-xs font-medium text-violet-800 truncate max-w-[10rem]">
-                  {finding.cluster.name}
-                </span>
-              ) : null}
-            </div>
-            <p className="mt-2 text-sm font-medium text-slate-900">
-              {finding.description}
-            </p>
-            <p className="mt-2 text-xs text-slate-500">
-              {finding.site.name} · {finding._count.occurrences} occurrence
-              {finding._count.occurrences === 1 ? "" : "s"}
-              {freshness && freshness.freshness !== "current"
-                ? ` · ${freshness.badgeLabel}`
-                : ""}
-            </p>
-          </div>
-          <div className="shrink-0 pt-0.5">
-            <StatusBadge status={finding.status} />
-            <span
-              className={`badge ${
-                proofCompletenessScore >= 4
-                  ? "bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-200"
-                  : "bg-amber-50 text-amber-900 ring-1 ring-inset ring-amber-200"
-              }`}
-              title="Summary of whether key proof fields are present for this finding."
-            >
-              Proof {proofCompletenessScore}/5
+        {/* Top row: severity + rule + cluster */}
+        <div className="flex flex-wrap items-center gap-2">
+          <SeverityChip severity={finding.impact} size="sm" />
+          <span className="font-mono text-xs text-slate-500 truncate max-w-[min(100%,12rem)]">
+            {finding.ruleId}
+          </span>
+          {finding.cluster ? (
+            <span className="rounded-full bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-800 ring-1 ring-inset ring-violet-200 truncate max-w-[10rem]">
+              {finding.cluster.name}
             </span>
-            <span className="badge bg-slate-50 text-slate-700 ring-1 ring-inset ring-slate-200">
-              {changeLabel}
-            </span>
-          </div>
+          ) : null}
         </div>
+
+        {/* Description */}
+        <p className="mt-2 text-sm font-medium text-slate-900 leading-snug">
+          {finding.description}
+        </p>
+
+        {/* Meta row */}
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+          <span>{finding.site.name}</span>
+          <span aria-hidden="true">·</span>
+          <span>{finding._count.occurrences} occurrence{finding._count.occurrences === 1 ? "" : "s"}</span>
+          {freshness && freshness.freshness !== "current" && (
+            <>
+              <span aria-hidden="true">·</span>
+              <span className="text-amber-700">{freshness.badgeLabel}</span>
+            </>
+          )}
+          <span aria-hidden="true" className="ml-auto" />
+          <ChevronRight className="h-3 w-3 text-slate-300" aria-hidden="true" />
+        </div>
+
+        {/* Badge row */}
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <StatusBadge status={finding.status} />
+          <span
+            className={`badge ring-1 ring-inset text-xs ${
+              proofCompletenessScore >= 4
+                ? "bg-emerald-50 text-emerald-800 ring-emerald-200"
+                : "bg-amber-50 text-amber-900 ring-amber-200"
+            }`}
+            title="Proof completeness: presence of key evidence fields."
+          >
+            Proof {proofCompletenessScore}/5
+          </span>
+          <span
+            className={`badge ring-1 ring-inset text-xs ${
+              changeLabel === "Regressed"
+                ? "bg-red-50 text-red-800 ring-red-200"
+                : changeLabel === "New"
+                  ? "bg-brand-50 text-brand-800 ring-brand-200"
+                  : changeLabel === "Persistent"
+                    ? "bg-slate-100 text-slate-700 ring-slate-200"
+                    : "bg-slate-100 text-slate-600 ring-slate-200"
+            }`}
+          >
+            {changeLabel}
+          </span>
+        </div>
+
         <p id={metaId} className="sr-only">
           {extendedDescriptionParts.join(" ")}
         </p>
       </Link>
+
+      {/* Expandable meta disclosure */}
       <FindingMetaDisclosure>
-        <dl className="grid gap-2 sm:grid-cols-2">
+        <dl className="grid gap-2 text-xs sm:grid-cols-2">
           <div>
-            <dt className="text-xs font-medium text-slate-500">First seen</dt>
-            <dd>{finding.firstSeenAt.toLocaleDateString()}</dd>
+            <dt className="font-medium text-slate-500">First seen</dt>
+            <dd className="text-slate-900">{finding.firstSeenAt.toLocaleDateString()}</dd>
           </div>
           {finding.lastVerifiedAt ? (
             <div>
-              <dt className="text-xs font-medium text-slate-500">
-                Last verified
-              </dt>
-              <dd>{finding.lastVerifiedAt.toLocaleDateString()}</dd>
+              <dt className="font-medium text-slate-500">Last verified</dt>
+              <dd className="text-slate-900">{finding.lastVerifiedAt.toLocaleDateString()}</dd>
             </div>
           ) : null}
           {familySummary ? (
             <>
               <div>
-                <dt className="text-xs font-medium text-slate-500">Rule family</dt>
-                <dd>
-                  {familySummary.totalFindings} total ·{" "}
-                  {familySummary.activeFindings} active
-                  {familySummary.regressedFindings > 0
-                    ? ` · ${familySummary.regressedFindings} regressed`
-                    : ""}
+                <dt className="font-medium text-slate-500">Rule family</dt>
+                <dd className="text-slate-900">
+                  {familySummary.totalFindings} total · {familySummary.activeFindings} active
+                  {familySummary.regressedFindings > 0 ? ` · ${familySummary.regressedFindings} regressed` : ""}
                 </dd>
               </div>
               <div>
-                <dt className="text-xs font-medium text-slate-500">Family trend</dt>
-                <dd>
-                  {familySummary.newlyDetectedFindings} new ·{" "}
-                  {familySummary.persistentFindings} persistent
+                <dt className="font-medium text-slate-500">Family trend</dt>
+                <dd className="text-slate-900">
+                  {familySummary.newlyDetectedFindings} new · {familySummary.persistentFindings} persistent
                   {familySummary.recurringAcrossScanRunsFindings > 0
                     ? ` · ${familySummary.recurringAcrossScanRunsFindings} multi-run`
                     : ""}
                 </dd>
               </div>
-              {familySummary.firstSeenAt ? (
-                <div>
-                  <dt className="text-xs font-medium text-slate-500">
-                    Family first seen
-                  </dt>
-                  <dd>{familySummary.firstSeenAt.toLocaleDateString()}</dd>
-                </div>
-              ) : null}
-              {familySummary.lastSeenAt ? (
-                <div>
-                  <dt className="text-xs font-medium text-slate-500">
-                    Family last seen
-                  </dt>
-                  <dd>{familySummary.lastSeenAt.toLocaleDateString()}</dd>
-                </div>
-              ) : null}
             </>
           ) : null}
           {proofSummary.lineage.scanRunId ? (
             <div className="sm:col-span-2">
-              <dt className="text-xs font-medium text-slate-500">Lineage scan</dt>
-              <dd className="font-mono text-xs">{proofSummary.lineage.scanRunId}</dd>
+              <dt className="font-medium text-slate-500">Lineage scan</dt>
+              <dd className="font-mono text-slate-700">{proofSummary.lineage.scanRunId}</dd>
             </div>
           ) : null}
           {finding.wcagTags.length > 0 ? (
             <div className="sm:col-span-2">
-              <dt className="text-xs font-medium text-slate-500">WCAG tags</dt>
-              <dd>{finding.wcagTags.join(", ")}</dd>
+              <dt className="font-medium text-slate-500">WCAG tags</dt>
+              <dd className="text-slate-900">{finding.wcagTags.join(", ")}</dd>
             </div>
           ) : null}
         </dl>

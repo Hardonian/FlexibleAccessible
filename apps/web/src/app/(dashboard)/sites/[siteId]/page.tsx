@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { requireSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
+import { ChevronRight, Clock, Globe, Layers, RefreshCw } from "lucide-react";
 import { hasPermission } from "@aros/config";
 import { getRoutePlatformTruth } from "@/lib/platform-truth-cache";
 import {
@@ -12,12 +13,13 @@ import { RouteReliabilityNotice } from "@/components/reliability/route-reliabili
 import {
   StatusBadge,
   EmptyState,
+  MetricCard,
   SeverityChip,
   ProcessBadge,
   type SeverityLevel,
 } from "@aros/ui";
 import { ScanNowButton } from "./scan-now-button";
-import { ScanSiteActionState, scanSiteInitialState } from "./scan-action-state";
+import { scanSiteInitialState } from "./scan-action-state";
 import { getAutomationEvidenceFreshnessDescriptor } from "@/lib/findings/evidence-freshness";
 import {
   scanEnqueueFailureOperatorHint,
@@ -335,52 +337,35 @@ export default async function SiteDetailPage({
   return (
     <div className="space-y-6">
       {verificationLoadError ? (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          Could not load live verification queue status ({verificationLoadError}
-          ). Scan history below still reflects stored runs.
-        </div>
+        <RouteReliabilityNotice variant="warning" title="Verification queue status unavailable">
+          <p>Could not load live verification queue status ({verificationLoadError}). Scan history below still reflects stored runs.</p>
+        </RouteReliabilityNotice>
       ) : null}
-      {verificationStatus?.status === "pending" ||
-      verificationStatus?.status === "running" ? (
-        <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-          {verificationStatus.status === "pending"
-            ? "Verification pending"
-            : "Verification in progress"}
-          : automated evidence refreshes when this scan finishes (queued at{" "}
-          {verificationStatus.createdAt?.toLocaleString() ?? "unknown"}).
-        </div>
+      {(verificationStatus?.status === "pending" || verificationStatus?.status === "running") ? (
+        <RouteReliabilityNotice variant="info" title={verificationStatus.status === "pending" ? "Verification pending" : "Verification in progress"}>
+          <p>Automated evidence refreshes when this scan finishes (queued at {verificationStatus.createdAt?.toLocaleString() ?? "unknown"}).</p>
+        </RouteReliabilityNotice>
       ) : null}
       {showSiteFailedEnqueueBanner ? (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-          <span className="font-medium">Verification could not be queued.</span>{" "}
-          {scanEnqueueFailureOperatorHint(
-            verificationStatus.enqueueFailureCode,
-          )}
-          {verificationStatus.errorDetail
-            ? ` ${verificationStatus.errorDetail}`
-            : ""}{" "}
-          Use Queue verification scan once Redis and workers are healthy.
-        </div>
+        <RouteReliabilityNotice variant="warning" title="Verification could not be queued">
+          <p>
+            {scanEnqueueFailureOperatorHint(verificationStatus.enqueueFailureCode)}
+            {verificationStatus.errorDetail ? ` ${verificationStatus.errorDetail}` : ""}{" "}
+            Use Queue verification scan once Redis and workers are healthy.
+          </p>
+        </RouteReliabilityNotice>
       ) : null}
       {postCrawlEnqueueHint.show && postCrawlEnqueueHint.message ? (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 space-y-3">
+        <RouteReliabilityNotice variant="warning" title="Post-crawl scan kickoff issue">
           <p>{postCrawlEnqueueHint.message}</p>
-          {canStartScan &&
-          postCrawlKickoffFailed &&
-          postCrawlEnqueueHint.crawlRunId ? (
-            <form action={retryPostCrawlScanKickoffAction}>
+          {canStartScan && postCrawlKickoffFailed && postCrawlEnqueueHint.crawlRunId ? (
+            <form action={retryPostCrawlScanKickoffAction} className="mt-3">
               <input type="hidden" name="siteId" value={siteId} />
-              <input
-                type="hidden"
-                name="crawlRunId"
-                value={postCrawlEnqueueHint.crawlRunId}
-              />
-              <button type="submit" className="btn-secondary text-sm">
-                Retry scan kickoff
-              </button>
+              <input type="hidden" name="crawlRunId" value={postCrawlEnqueueHint.crawlRunId} />
+              <button type="submit" className="btn-secondary text-sm">Retry scan kickoff</button>
             </form>
           ) : null}
-        </div>
+        </RouteReliabilityNotice>
       ) : null}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
@@ -437,115 +422,94 @@ export default async function SiteDetailPage({
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="card">
-          <p className="text-sm text-slate-500">Pages Discovered</p>
-          <p className="text-2xl font-bold text-slate-900">
-            {site._count.pages}
-          </p>
+      {/* ── Summary metrics ────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <MetricCard label="Pages discovered" value={site._count.pages} icon={Globe} variant="brand" accent as="article" />
+        <MetricCard label="Total crawls"     value={site._count.crawlRuns} icon={RefreshCw} variant="neutral" accent as="article" />
+        <MetricCard label="Total scans"      value={site._count.scanRuns} icon={Layers} variant="neutral" accent as="article" />
+        <MetricCard
+          label="Open findings"
+          value={findings.length}
+          icon={RefreshCw}
+          variant={findings.length > 0 ? "critical" : "success"}
+          accent
+          as="article"
+        />
+      </div>
+
+      {/* ── Crawl automation ───────────────────────────────────────────── */}
+      <section className="card" aria-labelledby="crawl-automation-heading">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100" aria-hidden="true">
+            <Clock className="h-3.5 w-3.5 text-slate-500" />
+          </span>
+          <h2 id="crawl-automation-heading" className="section-heading">Crawl automation</h2>
         </div>
-        <div className="card">
-          <p className="text-sm text-slate-500">Total Crawls</p>
-          <p className="text-2xl font-bold text-slate-900">
-            {site._count.crawlRuns}
-          </p>
-        </div>
-        <div className="card">
-          <p className="text-sm text-slate-500">Total Scans</p>
-          <p className="text-2xl font-bold text-slate-900">
-            {site._count.scanRuns}
-          </p>
-        </div>
-        <div className="card">
-          <p className="text-sm text-slate-500">Open Findings</p>
-          <p className="text-2xl font-bold text-slate-900">{findings.length}</p>
-        </div>
-        <div className="card sm:col-span-2 lg:col-span-4">
-          <p className="text-sm text-slate-500">Recurring crawl automation</p>
-          <div className="mt-2 grid gap-2 text-sm text-slate-700 sm:grid-cols-3">
-            <p><span className="font-medium text-slate-900">Cadence:</span> {cadenceLabel}</p>
-            <p><span className="font-medium text-slate-900">Last successful crawl:</span> {lastSuccessfulCrawl?.completedAt?.toLocaleString() ?? "Never"}</p>
-            <p><span className="font-medium text-slate-900">Next scheduled run (UTC window end):</span> {scheduleNextRunAt?.toLocaleString() ?? "Not scheduled"}</p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Cadence</p>
+            <p className="mt-0.5 text-sm font-semibold text-slate-900">{cadenceLabel}</p>
           </div>
-          {scheduleBlockedHint ? (
-            <p className="mt-2 text-xs text-amber-700">Blocked: {scheduleBlockedHint}</p>
-          ) : null}
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Last successful crawl</p>
+            <p className="mt-0.5 text-sm font-semibold text-slate-900">
+              {lastSuccessfulCrawl?.completedAt?.toLocaleString() ?? "Never"}
+            </p>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Next scheduled run</p>
+            <p className="mt-0.5 text-sm font-semibold text-slate-900">
+              {scheduleNextRunAt?.toLocaleString() ?? "Not scheduled"}
+            </p>
+          </div>
         </div>
-      </div>
+        {scheduleBlockedHint ? (
+          <p className="mt-3 text-xs font-medium text-amber-700">Blocked: {scheduleBlockedHint}</p>
+        ) : null}
+      </section>
 
-      {/* Severity Breakdown */}
-      <div className="card">
-        <h2 className="text-lg font-semibold text-slate-900 mb-4">
-          Findings by Severity
-        </h2>
-        <div className="flex flex-wrap gap-6">
-          <SeverityBlock
-            label="Critical"
-            count={findingsBySeverity.critical}
-            severity="CRITICAL"
-          />
-          <SeverityBlock
-            label="Serious"
-            count={findingsBySeverity.serious}
-            severity="SERIOUS"
-          />
-          <SeverityBlock
-            label="Moderate"
-            count={findingsBySeverity.moderate}
-            severity="MODERATE"
-          />
-          <SeverityBlock
-            label="Minor"
-            count={findingsBySeverity.minor}
-            severity="MINOR"
-          />
+      {/* ── Severity breakdown ─────────────────────────────────────────── */}
+      <section className="card" aria-labelledby="severity-breakdown-heading">
+        <h2 id="severity-breakdown-heading" className="section-heading mb-4">Findings by severity</h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <SeverityBlock label="Critical" count={findingsBySeverity.critical} severity="CRITICAL" />
+          <SeverityBlock label="Serious"  count={findingsBySeverity.serious}  severity="SERIOUS"  />
+          <SeverityBlock label="Moderate" count={findingsBySeverity.moderate} severity="MODERATE" />
+          <SeverityBlock label="Minor"    count={findingsBySeverity.minor}    severity="MINOR"    />
         </div>
-      </div>
+        {/* Visual severity bar */}
+        {findings.length > 0 && (
+          <div className="mt-4" aria-hidden="true">
+            <SeverityBar
+              critical={findingsBySeverity.critical}
+              serious={findingsBySeverity.serious}
+              moderate={findingsBySeverity.moderate}
+              minor={findingsBySeverity.minor}
+            />
+          </div>
+        )}
+      </section>
 
-      {/* Recent Crawls */}
+      {/* ── Recent crawls ──────────────────────────────────────────────── */}
       <div className="card">
         <h2 className="section-heading mb-4">Recent crawls</h2>
         {recentCrawls.length === 0 ? (
-          <p className="text-sm text-slate-500" role="status">
-            No crawls yet.
-          </p>
+          <EmptyState
+            icon={RefreshCw}
+            title="No crawls yet"
+            description="Start a crawl to begin discovering pages for accessibility scanning."
+          />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto -mx-6 px-6">
+            <table className="data-table">
               <caption className="sr-only">Recent crawl runs</caption>
               <thead>
-                <tr className="border-b border-slate-200">
-                  <th
-                    scope="col"
-                    className="pb-2 text-left font-medium text-slate-500"
-                  >
-                    Status
-                  </th>
-                  <th
-                    scope="col"
-                    className="pb-2 text-right font-medium text-slate-500"
-                  >
-                    Pages
-                  </th>
-                  <th
-                    scope="col"
-                    className="pb-2 text-left font-medium text-slate-500"
-                  >
-                    After crawl
-                  </th>
-                  <th
-                    scope="col"
-                    className="pb-2 text-right font-medium text-slate-500"
-                  >
-                    Started
-                  </th>
-                  <th
-                    scope="col"
-                    className="pb-2 text-right font-medium text-slate-500"
-                  >
-                    Completed
-                  </th>
+                <tr>
+                  <th scope="col">Status</th>
+                  <th scope="col" className="text-right">Pages</th>
+                  <th scope="col">After crawl</th>
+                  <th scope="col" className="text-right">Started</th>
+                  <th scope="col" className="text-right">Completed</th>
                 </tr>
               </thead>
               <tbody>
@@ -559,23 +523,17 @@ export default async function SiteDetailPage({
                         )
                       : null;
                   return (
-                    <tr key={crawl.id} className="border-b border-slate-100">
-                      <td className="py-2">
-                        <ProcessBadge status={crawl.status} />
+                    <tr key={crawl.id}>
+                      <td><ProcessBadge status={crawl.status} /></td>
+                      <td className="text-right tabular-nums">{crawl.pagesCrawled}</td>
+                      <td className="max-w-xs text-xs">
+                        {afterSummary ?? <span className="text-slate-400">—</span>}
                       </td>
-                      <td className="py-2 text-right text-slate-600">
-                        {crawl.pagesCrawled}
+                      <td className="text-right text-xs text-slate-500 tabular-nums">
+                        {crawl.startedAt?.toLocaleString() ?? "—"}
                       </td>
-                      <td className="py-2 text-left text-slate-600 text-xs max-w-xs">
-                        {afterSummary ?? (
-                          <span className="text-slate-400">—</span>
-                        )}
-                      </td>
-                      <td className="py-2 text-right text-slate-500">
-                        {crawl.startedAt?.toLocaleString() ?? "-"}
-                      </td>
-                      <td className="py-2 text-right text-slate-500">
-                        {crawl.completedAt?.toLocaleString() ?? "-"}
+                      <td className="text-right text-xs text-slate-500 tabular-nums">
+                        {crawl.completedAt?.toLocaleString() ?? "—"}
                       </td>
                     </tr>
                   );
@@ -586,55 +544,27 @@ export default async function SiteDetailPage({
         )}
       </div>
 
-      {/* Recent Scans */}
+      {/* ── Recent scans ───────────────────────────────────────────────── */}
       <div className="card">
         <h2 className="section-heading mb-4">Recent verification scans</h2>
         {recentScans.length === 0 ? (
-          <p className="text-sm text-slate-500" role="status">
-            No scans yet.
-          </p>
+          <EmptyState
+            icon={Layers}
+            title="No scans yet"
+            description="Run a verification scan after crawling to find accessibility issues."
+          />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto -mx-6 px-6">
+            <table className="data-table">
               <caption className="sr-only">Recent scan runs</caption>
               <thead>
-                <tr className="border-b border-slate-200">
-                  <th
-                    scope="col"
-                    className="pb-2 text-left font-medium text-slate-500"
-                  >
-                    Status
-                  </th>
-                  <th
-                    scope="col"
-                    className="pb-2 text-right font-medium text-slate-500"
-                  >
-                    Pages scanned
-                  </th>
-                  <th
-                    scope="col"
-                    className="pb-2 text-right font-medium text-slate-500"
-                  >
-                    Violations
-                  </th>
-                  <th
-                    scope="col"
-                    className="pb-2 text-left font-medium text-slate-500"
-                  >
-                    Proof snapshot
-                  </th>
-                  <th
-                    scope="col"
-                    className="pb-2 text-right font-medium text-slate-500"
-                  >
-                    Changed
-                  </th>
-                  <th
-                    scope="col"
-                    className="pb-2 text-right font-medium text-slate-500"
-                  >
-                    Started
-                  </th>
+                <tr>
+                  <th scope="col">Status</th>
+                  <th scope="col" className="text-right">Pages</th>
+                  <th scope="col" className="text-right">Violations</th>
+                  <th scope="col">Proof snapshot</th>
+                  <th scope="col" className="text-right">Δ</th>
+                  <th scope="col" className="text-right">Started</th>
                 </tr>
               </thead>
               <tbody>
@@ -645,84 +575,78 @@ export default async function SiteDetailPage({
                     : null;
                   const proofSnapshot = proofByScanRunId[scan.id];
                   return (
-                  <tr key={scan.id} className="border-b border-slate-100">
-                    <td className="py-2">
-                      <ProcessBadge status={scan.status} />
-                    </td>
-                    <td className="py-2 text-right text-slate-600">
-                      {scan.pagesScanned}
-                      {scan.totalPages > 0 ? ` / ${scan.totalPages}` : ""}
-                    </td>
-                    <td className="py-2 text-right text-slate-600">
-                      {scan.violationsFound}
-                    </td>
-                    <td className="py-2 text-left text-slate-600 text-xs">
-                      {proofSnapshot ? (
-                        <span>
-                          {proofSnapshot.complete} complete · {proofSnapshot.incomplete} incomplete
-                          {proofSnapshot.regressed > 0
-                            ? ` · ${proofSnapshot.regressed} regressed`
-                            : ""}
-                        </span>
-                      ) : (
-                        <span className="text-slate-400">No linked finding lineage yet</span>
-                      )}
-                    </td>
-                    <td className="py-2 text-right text-slate-600">
-                      {change == null ? (
-                        <span className="text-slate-400">—</span>
-                      ) : change > 0 ? (
-                        <span className="text-red-700">+{change}</span>
-                      ) : change < 0 ? (
-                        <span className="text-emerald-700">{change}</span>
-                      ) : (
-                        <span className="text-slate-500">0</span>
-                      )}
-                    </td>
-                    <td className="py-2 text-right text-slate-500">
-                      {scan.startedAt?.toLocaleString() ?? "-"}
-                    </td>
-                  </tr>
-                )})}
+                    <tr key={scan.id}>
+                      <td><ProcessBadge status={scan.status} /></td>
+                      <td className="text-right tabular-nums">
+                        {scan.pagesScanned}{scan.totalPages > 0 ? ` / ${scan.totalPages}` : ""}
+                      </td>
+                      <td className="text-right tabular-nums font-medium">{scan.violationsFound}</td>
+                      <td className="text-xs">
+                        {proofSnapshot ? (
+                          <span>
+                            <span className="text-emerald-700 font-medium">{proofSnapshot.complete}✓</span>
+                            {" · "}
+                            <span className="text-amber-700">{proofSnapshot.incomplete} incomplete</span>
+                            {proofSnapshot.regressed > 0 && (
+                              <span className="text-red-700"> · {proofSnapshot.regressed} regressed</span>
+                            )}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400">No lineage yet</span>
+                        )}
+                      </td>
+                      <td className="text-right tabular-nums font-semibold">
+                        {change == null ? (
+                          <span className="text-slate-400">—</span>
+                        ) : change > 0 ? (
+                          <span className="text-red-700">+{change}</span>
+                        ) : change < 0 ? (
+                          <span className="text-emerald-700">{change}</span>
+                        ) : (
+                          <span className="text-slate-500">0</span>
+                        )}
+                      </td>
+                      <td className="text-right text-xs text-slate-500 tabular-nums">
+                        {scan.startedAt?.toLocaleString() ?? "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
       </div>
 
-      {/* Open Findings */}
+      {/* ── Open findings ──────────────────────────────────────────────── */}
       <div className="card">
-        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between">
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="section-heading">Open findings</h2>
           <Link
             href={`/findings?siteId=${siteId}`}
-            className="text-sm font-medium text-brand-700 underline-offset-2 hover:underline"
+            className="flex items-center gap-1 text-sm font-medium text-brand-700 underline-offset-2 hover:underline"
           >
             View all for this site
+            <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
           </Link>
         </div>
         {findings.length === 0 ? (
-          <p className="text-sm text-slate-500">
-            No open findings. Queue a verification scan (or wait for one after
-            crawl) to discover issues.
-          </p>
+          <EmptyState
+            icon={Globe}
+            variant="success"
+            title="No open findings"
+            description="Queue a verification scan to discover accessibility issues."
+          />
         ) : (
-          <ul className="space-y-2" role="list">
+          <ul className="divide-y divide-slate-100" role="list">
             {findings.slice(0, 10).map((finding) => (
-              <li
-                key={finding.id}
-                className="flex items-center justify-between py-2 border-b border-slate-100"
-              >
-                <div>
-                  <span className="mr-2 inline-block align-middle">
-                    <SeverityChip severity={finding.impact} size="sm" />
-                  </span>
-                  <span className="text-sm text-slate-900">
-                    {finding.description}
-                  </span>
+              <li key={finding.id} className="flex items-center justify-between gap-3 py-2.5">
+                <div className="flex min-w-0 items-center gap-2">
+                  <SeverityChip severity={finding.impact} size="sm" />
+                  <span className="truncate text-sm text-slate-900">{finding.description}</span>
                 </div>
-                <span className="text-xs text-slate-500">
-                  {finding.occurrenceCount} occurrences
+                <span className="shrink-0 text-xs tabular-nums text-slate-500">
+                  {finding.occurrenceCount} occ.
                 </span>
               </li>
             ))}
@@ -742,8 +666,16 @@ function SeverityBlock({
   count: number;
   severity: SeverityLevel;
 }) {
+  const accentByLevel: Record<SeverityLevel, string> = {
+    CRITICAL: "border-l-red-500",
+    SERIOUS:  "border-l-orange-500",
+    MODERATE: "border-l-amber-400",
+    MINOR:    "border-l-slate-300",
+  };
   return (
-    <div className="min-w-[5.5rem]">
+    <div
+      className={`rounded-xl border border-l-4 border-slate-200 bg-white p-3 shadow-[0_1px_2px_0_rgb(15_23_42/0.04)] ${accentByLevel[severity]}`}
+    >
       <SeverityChip severity={severity} size="sm" />
       <p
         className="mt-2 text-2xl font-bold tabular-nums text-slate-900"
@@ -751,7 +683,42 @@ function SeverityBlock({
       >
         {count}
       </p>
-      <p className="text-sm text-slate-500">{label} open</p>
+      <p className="text-xs text-slate-500 mt-0.5">{label} open</p>
+    </div>
+  );
+}
+
+/** Visual proportional bar showing severity distribution */
+function SeverityBar({
+  critical,
+  serious,
+  moderate,
+  minor,
+}: {
+  critical: number;
+  serious: number;
+  moderate: number;
+  minor: number;
+}) {
+  const total = critical + serious + moderate + minor;
+  if (total === 0) return null;
+
+  const pct = (n: number) => `${((n / total) * 100).toFixed(1)}%`;
+
+  return (
+    <div className="flex h-2 overflow-hidden rounded-full bg-slate-100">
+      {critical > 0 && (
+        <div className="bg-red-500 transition-all" style={{ width: pct(critical) }} />
+      )}
+      {serious > 0 && (
+        <div className="bg-orange-500 transition-all" style={{ width: pct(serious) }} />
+      )}
+      {moderate > 0 && (
+        <div className="bg-amber-400 transition-all" style={{ width: pct(moderate) }} />
+      )}
+      {minor > 0 && (
+        <div className="bg-slate-300 transition-all" style={{ width: pct(minor) }} />
+      )}
     </div>
   );
 }

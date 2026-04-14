@@ -1,7 +1,17 @@
 import { requireSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
-import { ArrowRight, Globe, Sparkles } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  CheckCircle,
+  Clock,
+  Globe,
+  Layers,
+  MessageSquare,
+  Sparkles,
+  Zap,
+} from "lucide-react";
 import { getRoutePlatformTruth } from "@/lib/platform-truth-cache";
 import {
   resolveDashboardOrgMembership,
@@ -9,7 +19,7 @@ import {
 } from "@/lib/route-data-boundary";
 import { RouteReliabilityNotice } from "@/components/reliability/route-reliability-notice";
 import { hasPermission } from "@aros/config";
-import { EmptyState, StatusBadge } from "@aros/ui";
+import { EmptyState, MetricCard, StatusBadge } from "@aros/ui";
 import { buildOnboardingStatus } from "@/lib/onboarding-status";
 import { getEntitlementState } from "@/lib/auth-guard";
 import { pageTitle } from "@/lib/product-brand";
@@ -41,7 +51,7 @@ export default async function DashboardPage() {
   if (orgRes.kind === "platform_blocked") {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
+        <PageHeader title="Dashboard" />
         <RouteReliabilityNotice
           variant="error"
           title="This page needs a working database"
@@ -49,8 +59,7 @@ export default async function DashboardPage() {
         >
           <p>
             Organization data cannot be loaded safely right now. Fix core
-            dependencies first, then refresh. The banner above summarizes what
-            is wrong.
+            dependencies first, then refresh.
           </p>
         </RouteReliabilityNotice>
       </div>
@@ -60,7 +69,7 @@ export default async function DashboardPage() {
   if (orgRes.kind === "error") {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
+        <PageHeader title="Dashboard" />
         <RouteReliabilityNotice
           variant="error"
           title="Data temporarily unavailable"
@@ -75,7 +84,7 @@ export default async function DashboardPage() {
   if (orgRes.kind === "none") {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
+        <PageHeader title="Dashboard" />
         <RouteReliabilityNotice variant="info" title="No organization found">
           <p>
             You do not have an organization membership yet. Contact an
@@ -186,7 +195,7 @@ export default async function DashboardPage() {
   if (!statsResult.ok || !statsResult.data) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
+        <PageHeader title="Dashboard" />
         <RouteReliabilityNotice
           variant="error"
           title="Dashboard metrics unavailable"
@@ -224,7 +233,8 @@ export default async function DashboardPage() {
 
   const latestCrawl = recentCrawls[0] ?? null;
   const freshness = deriveFreshnessLabel(latestCrawl?.createdAt ?? null);
-  const comparability = deriveComparabilityLabel(recentCrawls.map((crawl) => crawl.status));
+  const freshnessVariant = deriveFreshnessVariant(latestCrawl?.createdAt ?? null);
+  const comparability = deriveComparabilityLabel(recentCrawls.map((c) => c.status));
   const automationHealth =
     platformTruth.flags.workerRunning &&
     platformTruth.flags.jobPipelinesHealthy &&
@@ -256,16 +266,18 @@ export default async function DashboardPage() {
       {/* Free-plan upgrade banner */}
       {!entitlement.hasPaidAccess && (
         <div
-          className="flex flex-col gap-3 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+          className="flex flex-col gap-3 rounded-xl border border-brand-200 bg-gradient-to-r from-brand-50 to-white px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between"
           role="status"
           aria-label="Free plan notice"
         >
           <div className="flex items-start gap-3">
-            <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" aria-hidden="true" />
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-100">
+              <Sparkles className="h-4 w-4 text-brand-600" aria-hidden="true" />
+            </span>
             <div>
               <p className="text-sm font-semibold text-brand-900">You are on the Free plan</p>
               <p className="mt-0.5 text-xs text-brand-700">
-                Private workspace, scans, findings, exports, and automation require an active paid subscription.
+                Private scans, findings, exports, and automation require an active subscription.
               </p>
             </div>
           </div>
@@ -283,14 +295,14 @@ export default async function DashboardPage() {
         description={`Operational overview for ${orgName}.`}
       />
 
-      {/* Activation hub — prominent when workspace is not started */}
+      {/* ── Activation hub ─────────────────────────────────────────────── */}
       {isFirstRun ? (
         <section
           className="overflow-hidden rounded-2xl border border-brand-200 bg-gradient-to-br from-white to-brand-50/40"
           aria-labelledby="activation-hub-heading"
         >
           <div className="px-6 py-6 sm:px-8">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-700">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-600">
               Start here
             </p>
             <h2
@@ -299,11 +311,10 @@ export default async function DashboardPage() {
             >
               Set up your first private workspace
             </h2>
-            <p className="mt-2 max-w-2xl text-sm text-slate-600">
-              Add a site, run your first private scan, and start building an evidence record that your team can stand behind.
-              Every step below unlocks the next.
+            <p className="mt-1.5 max-w-2xl text-sm text-slate-500">
+              Add a site, run your first private scan, and build an evidence record your team can stand behind.
             </p>
-            <ol className="mt-5 space-y-3" aria-label="Activation steps">
+            <ol className="mt-5 space-y-2.5" aria-label="Activation steps">
               {onboarding.stages.map((stage, i) => (
                 <li
                   key={stage.id}
@@ -355,13 +366,13 @@ export default async function DashboardPage() {
             <h2 id="onboarding-status-heading" className="section-heading">
               Workspace readiness
             </h2>
-            <span className="badge w-fit bg-slate-50 text-slate-800 ring-1 ring-inset ring-slate-200">
+            <span className="badge w-fit bg-slate-50 text-slate-700 ring-1 ring-inset ring-slate-200">
               {onboarding.stage.replaceAll("_", " ")}
             </span>
           </div>
           {onboarding.stage !== "first_value_reached" && (
             <p className="text-sm text-slate-600">
-              Next step:{" "}
+              Next:{" "}
               <Link href={onboarding.nextStep.href as any} className="font-medium text-brand-700 underline underline-offset-2">
                 {onboarding.nextStep.label}
               </Link>
@@ -370,22 +381,36 @@ export default async function DashboardPage() {
                 : "."}
             </p>
           )}
-          <ol className="space-y-2" aria-label="Onboarding checklist">
+          <ol className="space-y-1.5" aria-label="Onboarding checklist">
             {onboarding.stages.map((stage) => (
               <li key={stage.id} className="flex items-start justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2">
-                <div>
-                  <p className="text-sm font-medium text-slate-900">{stage.label}</p>
-                  {stage.blockerReason && (
-                    <p className="text-xs text-amber-700">{stage.blockerReason}</p>
-                  )}
+                <div className="flex items-start gap-2">
+                  <span
+                    className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
+                      stage.complete
+                        ? "bg-emerald-500 text-white"
+                        : stage.blocked
+                          ? "bg-amber-200 text-amber-900"
+                          : "bg-slate-200 text-slate-600"
+                    }`}
+                    aria-hidden="true"
+                  >
+                    {stage.complete ? "✓" : ""}
+                  </span>
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">{stage.label}</p>
+                    {stage.blockerReason && (
+                      <p className="text-xs text-amber-700">{stage.blockerReason}</p>
+                    )}
+                  </div>
                 </div>
                 <span
-                  className={`badge ${
+                  className={`badge shrink-0 ${
                     stage.complete
-                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                      ? "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200"
                       : stage.blocked
-                        ? "bg-amber-50 text-amber-700 border border-amber-200"
-                        : "bg-slate-100 text-slate-700 border border-slate-200"
+                        ? "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200"
+                        : "bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200"
                   }`}
                 >
                   {stage.complete ? "Complete" : stage.blocked ? "Blocked" : "Pending"}
@@ -396,70 +421,134 @@ export default async function DashboardPage() {
         </section>
       )}
 
-      {/* Priority actions — only show when there's meaningful data */}
+      {/* ── Priority actions ─────────────────────────────────────────────── */}
       {(openFindings > 0 || pendingReviews > 0) && (
-        <section className="card space-y-3" aria-labelledby="priority-actions-heading">
-          <h2 id="priority-actions-heading" className="section-heading">Needs attention</h2>
+        <section aria-labelledby="priority-actions-heading">
+          <h2 id="priority-actions-heading" className="sr-only">Needs attention</h2>
           <div className="flex flex-wrap gap-3">
             {openFindings > 0 && (
               <Link
                 href="/findings?status=OPEN"
-                className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-800 transition-colors hover:bg-red-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-1"
+                className="group flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800 transition-all hover:bg-red-100 hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-1"
               >
-                {openFindings} open finding{openFindings !== 1 ? "s" : ""}
-                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-100 group-hover:bg-red-200 transition-colors" aria-hidden="true">
+                  <AlertTriangle className="h-4 w-4 text-red-600" />
+                </span>
+                <div>
+                  <p className="font-semibold">{openFindings.toLocaleString()} open finding{openFindings !== 1 ? "s" : ""}</p>
+                  <p className="text-xs font-normal text-red-700">Review and triage</p>
+                </div>
+                <ArrowRight className="ml-auto h-3.5 w-3.5 shrink-0" aria-hidden="true" />
               </Link>
             )}
             {pendingReviews > 0 && (
               <Link
                 href="/reviews"
-                className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-medium text-amber-800 transition-colors hover:bg-amber-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-1"
+                className="group flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800 transition-all hover:bg-amber-100 hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-1"
               >
-                {pendingReviews} pending review{pendingReviews !== 1 ? "s" : ""}
-                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 group-hover:bg-amber-200 transition-colors" aria-hidden="true">
+                  <MessageSquare className="h-4 w-4 text-amber-600" />
+                </span>
+                <div>
+                  <p className="font-semibold">{pendingReviews.toLocaleString()} pending review{pendingReviews !== 1 ? "s" : ""}</p>
+                  <p className="text-xs font-normal text-amber-700">Manual verification needed</p>
+                </div>
+                <ArrowRight className="ml-auto h-3.5 w-3.5 shrink-0" aria-hidden="true" />
               </Link>
             )}
           </div>
         </section>
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Sites" value={sitesCount} href="/sites" />
-        <StatCard label="Open Findings" value={openFindings} href="/findings" />
-        <StatCard
-          label="Issue Clusters"
-          value={clustersCount}
-          href="/clusters"
+      {/* ── Key metrics ──────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <MetricCard
+          label="Sites"
+          value={sitesCount}
+          icon={Globe}
+          variant={sitesCount === 0 ? "neutral" : "brand"}
+          accent
+          subLabel="monitored targets"
+          as="article"
         />
-        <StatCard
-          label="Pending Reviews"
+        <MetricCard
+          label="Open findings"
+          value={openFindings}
+          icon={AlertTriangle}
+          variant={openFindings > 0 ? "critical" : "success"}
+          accent
+          subLabel={openFindings > 0 ? "need attention" : "all clear"}
+          as="article"
+        />
+        <MetricCard
+          label="Issue clusters"
+          value={clustersCount}
+          icon={Layers}
+          variant="neutral"
+          accent
+          subLabel="grouped patterns"
+          as="article"
+        />
+        <MetricCard
+          label="Pending reviews"
           value={pendingReviews}
-          href="/reviews"
+          icon={MessageSquare}
+          variant={pendingReviews > 0 ? "warning" : "neutral"}
+          accent
+          subLabel={pendingReviews > 0 ? "awaiting action" : "queue clear"}
+          as="article"
         />
       </div>
 
+      {/* ── Assurance posture ────────────────────────────────────────────── */}
       <section className="card space-y-4" aria-labelledby="assurance-posture-heading">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h2 id="assurance-posture-heading" className="section-heading">
             Assurance posture
           </h2>
-          <span className="badge w-fit bg-slate-50 text-slate-800 ring-1 ring-inset ring-slate-200">
+          <span
+            className={`badge w-fit ring-1 ring-inset ${
+              automationHealth === "Automated"
+                ? "bg-emerald-50 text-emerald-800 ring-emerald-200"
+                : "bg-amber-50 text-amber-800 ring-amber-200"
+            }`}
+          >
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${automationHealth === "Automated" ? "bg-emerald-500" : "bg-amber-500"}`}
+              aria-hidden="true"
+            />
             {automationHealth}
           </span>
         </div>
-        <p className="text-sm text-slate-600">
-          Evidence freshness is <span className="font-medium text-slate-800">{freshness}</span>. Scan comparability is <span className="font-medium text-slate-800">{comparability}</span>.
-          {latestCrawl
-            ? " A fresh crawl and scan after each code change keeps evidence current."
-            : " Run your first crawl to establish an evidence baseline."}
-        </p>
         <div className="grid gap-3 sm:grid-cols-3">
-          <TruthTile label="Evidence freshness" value={freshness} />
-          <TruthTile label="Scan comparability" value={comparability} />
-          <TruthTile label="Automation lane" value={automationHealth} />
+          <PostureTile
+            label="Evidence freshness"
+            value={freshness}
+            variant={freshnessVariant}
+            icon={Clock}
+          />
+          <PostureTile
+            label="Scan comparability"
+            value={comparability}
+            variant={
+              comparability.startsWith("Comparable")
+                ? "success"
+                : comparability.startsWith("Not comparable")
+                  ? "warning"
+                  : "neutral"
+            }
+            icon={CheckCircle}
+          />
+          <PostureTile
+            label="Automation lane"
+            value={automationHealth}
+            variant={automationHealth === "Automated" ? "success" : "warning"}
+            icon={Zap}
+          />
         </div>
       </section>
 
+      {/* ── Quick actions ────────────────────────────────────────────────── */}
       <div className="card">
         <h2 className="section-heading mb-4">Quick actions</h2>
         <div className="flex flex-wrap gap-3">
@@ -475,6 +564,7 @@ export default async function DashboardPage() {
         </div>
       </div>
 
+      {/* ── Recent crawls ────────────────────────────────────────────────── */}
       <div className="card">
         <h2 className="section-heading mb-4">Recent crawls</h2>
         {recentCrawls.length === 0 ? (
@@ -490,52 +580,29 @@ export default async function DashboardPage() {
           />
         ) : (
           <div className="overflow-x-auto -mx-6 px-6">
-            <table className="w-full text-sm">
+            <table className="data-table">
               <caption className="sr-only">Recent crawl runs</caption>
               <thead>
-                <tr className="border-b border-slate-200">
-                  <th
-                    scope="col"
-                    className="pb-2 text-left font-medium text-slate-500"
-                  >
-                    Site
-                  </th>
-                  <th
-                    scope="col"
-                    className="pb-2 text-left font-medium text-slate-500"
-                  >
-                    Status
-                  </th>
-                  <th
-                    scope="col"
-                    className="pb-2 text-right font-medium text-slate-500"
-                  >
-                    Pages
-                  </th>
-                  <th
-                    scope="col"
-                    className="pb-2 text-right font-medium text-slate-500"
-                  >
-                    Date
-                  </th>
+                <tr>
+                  <th scope="col">Site</th>
+                  <th scope="col">Status</th>
+                  <th scope="col" className="text-right">Pages</th>
+                  <th scope="col" className="text-right">Date</th>
                 </tr>
               </thead>
               <tbody>
                 {recentCrawls.map((crawl) => (
-                  <tr
-                    key={crawl.id}
-                    className="border-b border-slate-100 hover:bg-slate-50"
-                  >
-                    <td className="py-3 font-medium text-slate-900">
+                  <tr key={crawl.id}>
+                    <td className="font-medium text-slate-900">
                       {crawl.site.name}
                     </td>
-                    <td className="py-3">
+                    <td>
                       <StatusBadge status={crawl.status} />
                     </td>
-                    <td className="py-3 text-right text-slate-600">
+                    <td className="text-right tabular-nums text-slate-600">
                       {crawl.pagesCrawled}/{crawl.pagesFound}
                     </td>
-                    <td className="py-3 text-right text-slate-500">
+                    <td className="text-right text-slate-500">
                       <time dateTime={crawl.createdAt.toISOString()}>
                         {crawl.createdAt.toLocaleDateString()}
                       </time>
@@ -551,52 +618,54 @@ export default async function DashboardPage() {
   );
 }
 
-function StatCard({
+/** Assurance posture tile with colored left-border and icon */
+function PostureTile({
   label,
   value,
-  href,
+  variant,
+  icon: Icon,
 }: {
   label: string;
-  value: number;
-  href: string;
+  value: string;
+  variant: "success" | "warning" | "neutral" | "brand";
+  icon: React.ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
 }) {
-  const destinationLabel = `${label}: ${value.toLocaleString()}. Open ${label} details.`;
+  const styles = {
+    success: { border: "border-l-emerald-400", icon: "text-emerald-500", text: "text-emerald-900" },
+    warning: { border: "border-l-amber-400",   icon: "text-amber-500",   text: "text-amber-900"   },
+    neutral: { border: "border-l-slate-300",   icon: "text-slate-400",   text: "text-slate-900"   },
+    brand:   { border: "border-l-brand-400",   icon: "text-brand-500",   text: "text-brand-900"   },
+  }[variant];
+
   return (
-    <Link
-      href={href as any}
-      aria-label={destinationLabel}
-      className="card hover:shadow-md transition-shadow block focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 rounded-xl"
-    >
-      <p className="text-sm text-slate-500">{label}</p>
-      <p className="mt-1 text-3xl font-bold text-slate-900">{value.toLocaleString()}</p>
-      <p className="mt-2 text-xs font-medium text-brand-700">Open</p>
-    </Link>
-  );
-}
-
-
-
-function TruthTile({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-      <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-1 text-sm font-semibold text-slate-900">{value}</p>
+    <div className={`flex items-start gap-3 rounded-lg border border-l-4 border-slate-200 bg-white px-3 py-3 shadow-[0_1px_2px_0_rgb(15_23_42/0.04)] ${styles.border}`}>
+      <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${styles.icon}`} aria-hidden={true} />
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+        <p className={`mt-0.5 text-sm font-semibold ${styles.text}`}>{value}</p>
+      </div>
     </div>
   );
 }
 
 function deriveFreshnessLabel(createdAt: Date | null): string {
   if (!createdAt) return "Missing evidence";
-
   const ageHours = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60);
   if (ageHours <= 24) return "Verified window (≤24h)";
   if (ageHours <= 72) return "Fresh (≤72h)";
   return "Stale (>72h)";
 }
 
+function deriveFreshnessVariant(createdAt: Date | null): "success" | "warning" | "neutral" {
+  if (!createdAt) return "warning";
+  const ageHours = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60);
+  if (ageHours <= 72) return "success";
+  return "warning";
+}
+
 function deriveComparabilityLabel(statuses: string[]): string {
   if (statuses.length < 2) return "Not comparable yet";
-  if (statuses.some((status) => status !== "COMPLETED")) {
+  if (statuses.some((s) => s !== "COMPLETED")) {
     return "Not comparable (incomplete run in recent history)";
   }
   return "Comparable baseline available";
