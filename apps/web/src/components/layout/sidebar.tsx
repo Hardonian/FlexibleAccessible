@@ -26,6 +26,43 @@ interface SidebarProps {
   };
 }
 
+/** Accessible SVG shield-checkmark logomark for the product identity */
+function ProductMark({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 28 28"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      {/* Shield body */}
+      <path
+        d="M14 2.5L4 7v7c0 5.5 4.3 10.7 10 12 5.7-1.3 10-6.5 10-12V7L14 2.5z"
+        fill="currentColor"
+        className="text-brand-600"
+        opacity="0.15"
+      />
+      <path
+        d="M14 2.5L4 7v7c0 5.5 4.3 10.7 10 12 5.7-1.3 10-6.5 10-12V7L14 2.5z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+        className="text-brand-600"
+      />
+      {/* Checkmark */}
+      <path
+        d="M9.5 14l3 3 6-6"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="text-brand-700"
+      />
+    </svg>
+  );
+}
+
 export function Sidebar({
   orgs,
   user,
@@ -45,20 +82,25 @@ export function Sidebar({
       role="navigation"
       aria-label="Main navigation"
     >
+      {/* Product identity mark */}
       <div className="flex h-14 items-center border-b border-[rgb(var(--color-border))] px-4">
         <Link
           href="/dashboard"
-          className="flex flex-col leading-tight focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 rounded"
+          className="flex items-center gap-2.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 rounded"
         >
-          <span className="text-lg font-semibold tracking-tight text-brand-800">
-            {PRODUCT_DISPLAY_NAME}
-          </span>
-          <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
-            Ops console
-          </span>
+          <ProductMark className="h-7 w-7 shrink-0" />
+          <div className="flex flex-col leading-tight">
+            <span className="text-[15px] font-semibold tracking-tight text-slate-900">
+              {PRODUCT_DISPLAY_NAME}
+            </span>
+            <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
+              Ops console
+            </span>
+          </div>
         </Link>
       </div>
 
+      {/* Org switcher */}
       <div className="border-b border-[rgb(var(--color-border))] p-3">
         <label htmlFor="org-select" className="sr-only">
           Select organization
@@ -91,8 +133,9 @@ export function Sidebar({
         </form>
       </div>
 
+      {/* Navigation */}
       <nav className="flex-1 overflow-y-auto p-3">
-        <ul className="space-y-1" role="list">
+        <ul className="space-y-0.5" role="list">
           {DASHBOARD_NAV_ITEMS.map((item) => {
             const isLocked = item.premium && !hasPaidAccess;
             const isActive =
@@ -107,14 +150,17 @@ export function Sidebar({
                     isLocked
                       ? "text-slate-400 hover:bg-slate-50 hover:text-slate-500"
                       : isActive
-                        ? "bg-brand-50 text-brand-700"
+                        ? "bg-brand-50 text-brand-700 shadow-[inset_0_0_0_1px_rgb(var(--tw-shadow-color))] shadow-brand-100"
                         : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                   }`}
                   aria-current={isActive ? "page" : undefined}
                   aria-label={isLocked ? `${item.label} — requires paid plan` : undefined}
                 >
                   {Icon && (
-                    <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                    <Icon
+                      className={`h-4 w-4 shrink-0 ${isActive ? "text-brand-600" : ""}`}
+                      aria-hidden="true"
+                    />
                   )}
                   <span className="flex-1">{item.label}</span>
                   {isLocked && (
@@ -125,7 +171,7 @@ export function Sidebar({
             );
           })}
           {canViewSystem && hasPaidAccess && (
-            <li className="space-y-1">
+            <li className="space-y-0.5">
               <Link
                 href="/system"
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
@@ -144,7 +190,7 @@ export function Sidebar({
                 System
               </Link>
               <ul
-                className="ml-5 space-y-1 border-l border-slate-200 pl-2"
+                className="ml-5 space-y-0.5 border-l border-slate-200 pl-2"
                 role="list"
               >
                 <li>
@@ -165,11 +211,12 @@ export function Sidebar({
           )}
         </ul>
 
-        <div className="mt-6">
-          <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+        {/* Settings section */}
+        <div className="mt-5">
+          <div className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
             Settings
           </div>
-          <ul className="mt-1 space-y-1" role="list">
+          <ul className="space-y-0.5" role="list">
             <li>
               <Link
                 href="/settings/billing"
@@ -228,11 +275,12 @@ export function Sidebar({
           </ul>
         </div>
 
+        {/* Upgrade CTA for free plan */}
         {!hasPaidAccess && (
           <div className="mt-4 px-1">
             <Link
               href="/settings/billing"
-              className="flex items-center gap-2 rounded-lg border border-brand-100 bg-brand-50 px-3 py-2 text-xs font-semibold text-brand-700 transition-colors hover:bg-brand-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-1"
+              className="flex items-center gap-2 rounded-lg border border-brand-200 bg-gradient-to-r from-brand-50 to-brand-50/60 px-3 py-2.5 text-xs font-semibold text-brand-700 transition-colors hover:from-brand-100 hover:to-brand-50 hover:border-brand-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-1"
             >
               <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
               Upgrade to unlock workspace
@@ -250,9 +298,13 @@ export function Sidebar({
         )}
       </nav>
 
+      {/* User identity footer */}
       <div className="border-t border-slate-200 p-3">
         <div className="flex items-center gap-3 rounded-lg px-3 py-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-sm font-medium text-brand-700">
+          <div
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-400 to-brand-600 text-sm font-semibold text-white shadow-sm"
+            aria-hidden="true"
+          >
             {(user.name ?? user.email).charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0 flex-1">
