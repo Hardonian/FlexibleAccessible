@@ -5,15 +5,15 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "scripts": {
-    "generate": "prisma generate --schema=prisma/schema.prisma",
-    "push": "prisma db push --schema=prisma/schema.prisma",
-    "migrate": "prisma migrate dev --schema=prisma/schema.prisma",
+    "generate": "npm install @prisma/client@7.7.0 --no-save && prisma generate --schema=prisma/schema.prisma --config=prisma/prisma.config.ts",
+    "push": "prisma db push --schema=prisma/schema.prisma --config=prisma/prisma.config.ts",
+    "migrate": "prisma migrate dev --schema=prisma/schema.prisma --config=prisma/prisma.config.ts",
     "seed": "tsx prisma/seed.ts",
     "bootstrap": "tsx scripts/ensure-platform.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@prisma/client": "^6.1.0"
+    "@prisma/client": "^7.7.0"
   },
   "devDependencies": {
     "@prisma/debug": "^7.6.0",
