@@ -75,16 +75,22 @@ jobs:
       - name: npm audit (high and critical must be zero)
         run: npm audit --audit-level=high
 
-      - name: Generate Prisma Client
+      - name: Generate Prisma Client (advisory on PR)
+        continue-on-error: ${{ github.event_name == 'pull_request' }}
         env:
           DATABASE_URL: postgresql://aros_user:aros_password@localhost:5432/aros_test?schema=public
-        run: npm run db:generate
+        run: |
+          npm install
+          npm run db:generate
 
       - name: Push Schema & Seed
         env:
           DATABASE_URL: postgresql://aros_user:aros_password@localhost:5432/aros_test?schema=public
           REDIS_URL: redis://localhost:6379
-        run: npm run db:push && npm run db:seed
+        run: |
+          npm run db:generate
+          npm run db:push
+          npm run db:seed
 
       - name: Run Core Verification
         env:
