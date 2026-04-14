@@ -42,7 +42,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.1",
-    "@csstools/css-calc": "^3.1.1",
+    "@csstools/css-calc": "^3.2.0",
     "@csstools/css-color-parser": "^4.0.2",
     "@ducanh2912/next-pwa": "^10.2.6",
     "@eslint/eslintrc": "^3.2.0",
