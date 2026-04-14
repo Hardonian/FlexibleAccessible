@@ -1,13 +1,16 @@
 import { requireSession } from '@/lib/session';
 import { prisma } from '@/lib/db';
 import Link from 'next/link';
+import { Layers, ArrowRight } from 'lucide-react';
 import { getRoutePlatformTruth } from '@/lib/platform-truth-cache';
 import { resolveDashboardOrgMembership, runOrgScopedQuery } from '@/lib/route-data-boundary';
 import { RouteReliabilityNotice } from '@/components/reliability/route-reliability-notice';
 import { hasPermission } from '@aros/config';
+import { EmptyState } from '@aros/ui';
+import { PageHeader } from '@/components/layout/page-header';
+import { pageTitle } from '@/lib/product-brand';
 
-export const metadata = { title: 'Issue Clusters' };
-
+export const metadata = { title: pageTitle('Issue Clusters') };
 
 type ClusterListItem = {
   id: string;
@@ -18,6 +21,20 @@ type ClusterListItem = {
   pageCount: number;
   site: { name: string; domain: string };
   _count: { findings: number; suggestions: number };
+};
+
+const severityBorder: Record<string, string> = {
+  CRITICAL: 'border-l-red-500',
+  SERIOUS:  'border-l-orange-500',
+  MODERATE: 'border-l-amber-400',
+  MINOR:    'border-l-slate-300',
+};
+
+const severityBadge: Record<string, string> = {
+  CRITICAL: 'badge-critical',
+  SERIOUS:  'badge-serious',
+  MODERATE: 'badge-moderate',
+  MINOR:    'badge-minor',
 };
 
 export default async function ClustersPage() {
@@ -44,7 +61,7 @@ export default async function ClustersPage() {
   if (orgRes.kind === 'platform_blocked') {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-slate-900">Issue Clusters</h1>
+        <PageHeader title="Issue clusters" />
         <RouteReliabilityNotice variant="error" title="Clusters require a working database" showSystemLink={canViewSystem}>
           <p>Cluster data cannot be loaded until core data services are healthy.</p>
         </RouteReliabilityNotice>
@@ -55,7 +72,7 @@ export default async function ClustersPage() {
   if (orgRes.kind === 'error') {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-slate-900">Issue Clusters</h1>
+        <PageHeader title="Issue clusters" />
         <RouteReliabilityNotice variant="error" title="Could not verify organization" showSystemLink={canViewSystem}>
           <p>{orgRes.message}</p>
         </RouteReliabilityNotice>
@@ -66,7 +83,7 @@ export default async function ClustersPage() {
   if (orgRes.kind === 'none') {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-slate-900">Issue Clusters</h1>
+        <PageHeader title="Issue clusters" />
         <RouteReliabilityNotice variant="info" title="No organization membership">
           <p>You need an organization to view clusters.</p>
         </RouteReliabilityNotice>
@@ -88,7 +105,7 @@ export default async function ClustersPage() {
   if (!clustersResult.ok) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-slate-900">Issue Clusters</h1>
+        <PageHeader title="Issue clusters" />
         <RouteReliabilityNotice variant="error" title="Could not load clusters" showSystemLink={canViewSystem}>
           <p>{clustersResult.message}</p>
         </RouteReliabilityNotice>
@@ -100,68 +117,58 @@ export default async function ClustersPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Issue Clusters</h1>
-        <p className="text-slate-500 mt-1">
-          Grouped accessibility issues by component pattern. Fix once, resolve everywhere.
-        </p>
-      </div>
+      <PageHeader
+        title="Issue clusters"
+        description="Grouped accessibility issues by component pattern. Fix once, resolve everywhere."
+      />
 
       {clusters.length === 0 ? (
-        <div className="card py-10 px-6">
-          <div className="mx-auto max-w-md text-center">
-            <h3 className="text-base font-semibold text-slate-900">No issue clusters yet</h3>
-            <p className="mt-2 text-sm leading-relaxed text-slate-500">
-              Issue clusters group related findings by component or selector pattern.
-              Fix a cluster once and resolve the same issue across every affected page —
-              higher leverage than fixing individual occurrences.
-            </p>
-            <Link href="/sites" className="btn-primary mt-6 inline-block text-sm">
+        <EmptyState
+          icon={Layers}
+          title="No issue clusters yet"
+          description="Clusters group related findings by component or selector pattern. Fix a cluster once and resolve the same issue across every affected page — higher leverage than individual fixes."
+          action={
+            <Link href="/sites" className="btn-primary">
               Run a scan to discover patterns
             </Link>
-          </div>
-        </div>
+          }
+        />
       ) : (
         <div className="space-y-3">
           {clusters.map((cluster: ClusterListItem) => (
             <Link
               key={cluster.id}
               href={`/clusters/${cluster.id}`}
-              className="card hover:shadow-md transition-shadow block"
+              className={`group flex items-start justify-between gap-4 overflow-hidden rounded-xl border border-l-4 border-slate-200 bg-white p-4 shadow-[0_1px_2px_0_rgb(15_23_42/0.04)] transition-shadow hover:shadow-md ${severityBorder[cluster.severity] ?? 'border-l-slate-300'}`}
             >
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span
-                      className={`badge ${
-                        cluster.severity === 'CRITICAL'
-                          ? 'badge-critical'
-                          : cluster.severity === 'SERIOUS'
-                            ? 'badge-serious'
-                            : cluster.severity === 'MODERATE'
-                              ? 'badge-moderate'
-                              : 'badge-minor'
-                      }`}
-                    >
-                      {cluster.severity.toLowerCase()}
-                    </span>
-                    <span className="text-xs text-slate-400">{cluster.site.name}</span>
-                  </div>
-                  <h3 className="text-sm font-semibold text-slate-900">{cluster.name}</h3>
-                  {cluster.description && <p className="text-sm text-slate-500 mt-1">{cluster.description}</p>}
-                  {cluster.selectorPattern && (
-                    <code className="mt-2 block text-xs bg-slate-100 px-2 py-1 rounded text-slate-600">
-                      {cluster.selectorPattern}
-                    </code>
-                  )}
-                </div>
-                <div className="text-right text-sm">
-                  <p className="font-semibold text-slate-900">{cluster.pageCount} pages</p>
-                  <p className="text-slate-500">{cluster._count.findings} findings</p>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className={`badge ${severityBadge[cluster.severity] ?? 'badge-minor'}`}>
+                    {cluster.severity.toLowerCase()}
+                  </span>
+                  <span className="text-xs text-slate-400">{cluster.site.name}</span>
                   {cluster._count.suggestions > 0 && (
-                    <p className="text-brand-600">{cluster._count.suggestions} suggestions</p>
+                    <span className="badge bg-brand-50 text-brand-700 ring-1 ring-inset ring-brand-200">
+                      {cluster._count.suggestions} fix{cluster._count.suggestions !== 1 ? 'es' : ''}
+                    </span>
                   )}
                 </div>
+                <p className="text-sm font-semibold text-slate-900 group-hover:text-brand-700 transition-colors">
+                  {cluster.name}
+                </p>
+                {cluster.description && (
+                  <p className="mt-1 text-xs text-slate-500 line-clamp-1">{cluster.description}</p>
+                )}
+                {cluster.selectorPattern && (
+                  <code className="mt-1.5 block w-fit rounded bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
+                    {cluster.selectorPattern}
+                  </code>
+                )}
+              </div>
+              <div className="shrink-0 text-right text-sm">
+                <p className="font-semibold tabular-nums text-slate-900">{cluster.pageCount} pages</p>
+                <p className="text-xs text-slate-500">{cluster._count.findings} findings</p>
+                <ArrowRight className="ml-auto mt-2 h-4 w-4 text-slate-300 group-hover:text-brand-500 transition-colors" aria-hidden="true" />
               </div>
             </Link>
           ))}

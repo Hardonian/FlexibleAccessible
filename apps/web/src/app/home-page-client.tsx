@@ -164,6 +164,22 @@ export function HomePageClient() {
               Compare plans
             </Link>
           </div>
+
+          <div className="mt-12 flex flex-wrap items-center justify-center gap-6 text-sm text-slate-500 border-t border-slate-200 pt-8">
+            {[
+              "Source-first — no overlays",
+              "WCAG 2.1 + 2.2 rules",
+              "Exportable audit trail",
+              "Reviewer-controlled operational truth",
+            ].map((item) => (
+              <span key={item} className="flex items-center gap-2">
+                <svg className="h-4 w-4 text-emerald-500 shrink-0" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                  <path fillRule="evenodd" d="M12.354 4.354a.5.5 0 010 .707l-5.5 5.5a.5.5 0 01-.708 0l-2.5-2.5a.5.5 0 11.708-.707L6.5 9.293l5.146-5.147a.5.5 0 01.708.001z" clipRule="evenodd" />
+                </svg>
+                {item}
+              </span>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -257,8 +273,8 @@ npx @aros/cli scan --site example.com`}</pre>
                   key={service.title}
                   className="rounded-xl border border-[rgb(var(--color-border))] bg-[rgb(var(--color-surface-elevated))] p-6 shadow-sm"
                 >
-                  <div className="mb-3 text-brand-700" aria-hidden="true">
-                    <Icon className="h-8 w-8" strokeWidth={1.75} />
+                  <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-brand-50 text-brand-700" aria-hidden="true">
+                    <Icon className="h-5 w-5" strokeWidth={1.75} />
                   </div>
                   <h3 className="text-lg font-semibold text-slate-900">
                     {service.title}
@@ -348,8 +364,8 @@ npx @aros/cli scan --site example.com`}</pre>
                 key={feature.title}
                 className="card border-[rgb(var(--color-border))] transition-shadow hover:shadow-[var(--shadow-card-hover)]"
               >
-                <div className="mb-3 text-brand-700" aria-hidden="true">
-                  <Icon className="h-8 w-8" strokeWidth={1.75} />
+                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-brand-50 text-brand-700" aria-hidden="true">
+                  <Icon className="h-5 w-5" strokeWidth={1.75} />
                 </div>
                 <h3 className="text-lg font-semibold text-slate-900">
                   {feature.title}
@@ -402,12 +418,9 @@ npx @aros/cli scan --site example.com`}</pre>
                     key={f}
                     className="flex items-start gap-2 text-sm text-slate-600"
                   >
-                    <span
-                      className="mt-0.5 text-brand-700"
-                      aria-hidden="true"
-                    >
-                      &#10003;
-                    </span>
+                    <svg className="mt-0.5 h-4 w-4 shrink-0 text-brand-700" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                      <path fillRule="evenodd" d="M12.354 4.354a.5.5 0 010 .707l-5.5 5.5a.5.5 0 01-.708 0l-2.5-2.5a.5.5 0 11.708-.707L6.5 9.293l5.146-5.147a.5.5 0 01.708.001z" clipRule="evenodd" />
+                    </svg>
                     {f}
                   </li>
                 ))}

@@ -11,7 +11,10 @@ import { EntitlementWall } from "@/components/monetization/entitlement-wall";
 import { getEntitlementState } from "@/lib/auth-guard";
 import { hasPermission } from "@aros/config";
 
-export const metadata = { title: "Settings" };
+import { pageTitle } from "@/lib/product-brand";
+import { PageHeader } from "@/components/layout/page-header";
+
+export const metadata = { title: pageTitle("Settings") };
 
 export default async function SettingsPage() {
   const user = await requireSession();
@@ -38,7 +41,7 @@ export default async function SettingsPage() {
   if (orgRes.kind === "platform_blocked") {
     return (
       <div className="space-y-6 max-w-4xl">
-        <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
+        <PageHeader title="Settings" />
         <RouteReliabilityNotice
           variant="error"
           title="Settings require a working database"
@@ -56,7 +59,7 @@ export default async function SettingsPage() {
   if (orgRes.kind === "error") {
     return (
       <div className="space-y-6 max-w-4xl">
-        <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
+        <PageHeader title="Settings" />
         <RouteReliabilityNotice
           variant="error"
           title="Could not verify organization"
@@ -71,7 +74,7 @@ export default async function SettingsPage() {
   if (orgRes.kind === "none") {
     return (
       <div className="space-y-6 max-w-4xl">
-        <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
+        <PageHeader title="Settings" />
         <RouteReliabilityNotice
           variant="info"
           title="No organization membership"
@@ -105,7 +108,7 @@ export default async function SettingsPage() {
   if (!orgResult.ok || !orgResult.data?.organization) {
     return (
       <div className="space-y-6 max-w-4xl">
-        <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
+        <PageHeader title="Settings" />
         <RouteReliabilityNotice
           variant="error"
           title="Could not load organization"
@@ -126,10 +129,23 @@ export default async function SettingsPage() {
   const subscription = org.subscription;
   const entitlement = getEntitlementState(subscription);
 
+  // Pre-fetch AI stats in parallel so the JSX has no inline awaits
+  const aiStats = subscription?.aiEnabled
+    ? await Promise.all([
+        prisma.aiUsageLog.aggregate({ where: { organizationId: org.id }, _sum: { totalTokens: true } }),
+        prisma.aiUsageLog.count({ where: { organizationId: org.id } }),
+        prisma.aiUsageLog.aggregate({ where: { organizationId: org.id }, _sum: { cost: true } }),
+      ]).then(([tokens, count, cost]) => ({
+        totalTokens: tokens._sum.totalTokens ?? 0,
+        count,
+        totalCost: cost._sum.cost ?? 0,
+      }))
+    : null;
+
   if (!entitlement.hasPaidAccess) {
     return (
       <div className="space-y-6 max-w-4xl">
-        <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
+        <PageHeader title="Settings" />
         <EntitlementWall
           subscription={subscription}
           entitlement={entitlement}
@@ -387,14 +403,7 @@ export default async function SettingsPage() {
                 Tokens Consumed
               </p>
               <p className="mt-1 text-2xl font-bold text-slate-900">
-                {(
-                  (
-                    await prisma.aiUsageLog.aggregate({
-                      where: { organizationId: org.id },
-                      _sum: { totalTokens: true },
-                    })
-                  )._sum.totalTokens ?? 0
-                ).toLocaleString()}
+                {aiStats!.totalTokens.toLocaleString()}
               </p>
               <div className="mt-2 text-[10px] text-slate-400">
                 Limit: {subscription.aiTokenLimit.toLocaleString()}
@@ -406,9 +415,7 @@ export default async function SettingsPage() {
                 AI Suggestions
               </p>
               <p className="mt-1 text-2xl font-bold text-slate-900">
-                {await prisma.aiUsageLog.count({
-                  where: { organizationId: org.id },
-                })}
+                {aiStats!.count.toLocaleString()}
               </p>
               <div className="mt-2 text-[10px] text-slate-400">
                 Draft generations logged (review before ship)
@@ -420,15 +427,7 @@ export default async function SettingsPage() {
                 Estimated provider cost
               </p>
               <p className="mt-1 text-2xl font-bold text-slate-900">
-                $
-                {(
-                  (
-                    await prisma.aiUsageLog.aggregate({
-                      where: { organizationId: org.id },
-                      _sum: { cost: true },
-                    })
-                  )._sum.cost ?? 0
-                ).toFixed(2)}
+                ${aiStats!.totalCost.toFixed(2)}
               </p>
               <div className="mt-2 text-[10px] text-slate-500">
                 Internal meter only—not a savings or ROI claim
@@ -443,37 +442,23 @@ export default async function SettingsPage() {
           <h2 className="text-lg font-semibold text-slate-900">Team Members</h2>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="data-table">
+            <caption className="sr-only">Organization members</caption>
             <thead>
-              <tr className="border-b border-slate-200">
-                <th
-                  scope="col"
-                  className="pb-2 text-left font-medium text-slate-500"
-                >
-                  Name
-                </th>
-                <th
-                  scope="col"
-                  className="pb-2 text-left font-medium text-slate-500"
-                >
-                  Email
-                </th>
-                <th
-                  scope="col"
-                  className="pb-2 text-left font-medium text-slate-500"
-                >
-                  Role
-                </th>
+              <tr>
+                <th scope="col">Name</th>
+                <th scope="col">Email</th>
+                <th scope="col">Role</th>
               </tr>
             </thead>
             <tbody>
               {org.memberships.map((m) => (
-                <tr key={m.id} className="border-b border-slate-100">
-                  <td className="py-2 font-medium text-slate-900">
+                <tr key={m.id}>
+                  <td className="font-medium text-slate-900">
                     {m.user.name ?? "Unnamed"}
                   </td>
-                  <td className="py-2 text-slate-600">{m.user.email}</td>
-                  <td className="py-2">
+                  <td>{m.user.email}</td>
+                  <td>
                     <span className="badge bg-slate-100 text-slate-700">
                       {m.role.toLowerCase()}
                     </span>

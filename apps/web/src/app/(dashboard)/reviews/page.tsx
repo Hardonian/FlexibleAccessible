@@ -2,13 +2,16 @@ import { requireSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import type { Prisma } from "@aros/db";
 import Link from "next/link";
+import { MessageSquare } from "lucide-react";
 import { updateReviewAction } from "./actions";
 import { getRoutePlatformTruth } from "@/lib/platform-truth-cache";
 import { resolveDashboardOrgMembership } from "@/lib/route-data-boundary";
 import { RouteReliabilityNotice } from "@/components/reliability/route-reliability-notice";
 import { hasPermission } from "@aros/config";
-import { StatusBadge } from "@aros/ui";
+import { EmptyState, StatusBadge } from "@aros/ui";
 import { TruthBadge } from "@/components/truth/truth-badge";
+import { PageHeader } from "@/components/layout/page-header";
+import { pageTitle } from "@/lib/product-brand";
 import {
   REVIEW_REASON_META,
   getReviewAgeHours,
@@ -16,7 +19,7 @@ import {
   groupReviewQueueTasks,
 } from "@/lib/review-operations";
 
-export const metadata = { title: "Reviews" };
+export const metadata = { title: pageTitle("Reviews") };
 
 const GROUP_LABELS = {
   overdue: "Overdue unresolved",
@@ -69,7 +72,7 @@ export default async function ReviewsPage({
   if (orgRes.kind === "platform_blocked") {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-slate-900">Review Queue</h1>
+        <PageHeader title="Review queue" />
         <RouteReliabilityNotice
           variant="error"
           title="Reviews require a working database"
@@ -87,7 +90,7 @@ export default async function ReviewsPage({
   if (orgRes.kind === "error") {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-slate-900">Review Queue</h1>
+        <PageHeader title="Review queue" />
         <RouteReliabilityNotice
           variant="error"
           title="Could not verify organization"
@@ -102,7 +105,7 @@ export default async function ReviewsPage({
   if (orgRes.kind === "none") {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-slate-900">Review Queue</h1>
+        <PageHeader title="Review queue" />
         <RouteReliabilityNotice
           variant="info"
           title="No organization membership"
@@ -156,7 +159,7 @@ export default async function ReviewsPage({
   if (loadError) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-slate-900">Review Queue</h1>
+        <PageHeader title="Review queue" />
         <RouteReliabilityNotice
           variant="error"
           title="Review queue unavailable"
@@ -190,13 +193,10 @@ export default async function ReviewsPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Review Queue</h1>
-          <p className="text-slate-500 mt-1">
-            {pendingCount} pending · {inProgressCount} in progress · {unresolvedCount} unresolved · {resolvedCount} resolved
-          </p>
-        </div>
+      <PageHeader
+        title="Review queue"
+        description={`${pendingCount} pending · ${inProgressCount} in progress · ${unresolvedCount} unresolved · ${resolvedCount} resolved`}
+      >
         <div className="flex flex-wrap gap-2">
           <Link href="/docs/reviews-and-manual-verification" className="btn-secondary text-xs">
             Review docs
@@ -205,11 +205,11 @@ export default async function ReviewsPage({
             Trust posture
           </Link>
         </div>
-      </div>
+      </PageHeader>
 
-      <div className="rounded-lg border border-orange-200 bg-orange-50 p-4 text-sm text-orange-900">
-        Automation surfaces likely issues and draft remediation; reviewer decisions establish operational truth for this queue.
-      </div>
+      <RouteReliabilityNotice variant="warning" title="Reviewer decisions establish operational truth">
+        <p>Automation surfaces likely issues and draft remediation; reviewer decisions establish operational truth for this queue.</p>
+      </RouteReliabilityNotice>
 
       {reviewError && (
         <RouteReliabilityNotice variant="error" title="Review update failed">
@@ -218,12 +218,11 @@ export default async function ReviewsPage({
       )}
 
       {tasks.length === 0 ? (
-        <div className="card text-center py-12 space-y-3">
-          <p className="text-slate-500">No review tasks yet.</p>
-          <p className="text-xs text-slate-400">
-            New manual-review tasks appear when findings or suggestions require human judgment.
-          </p>
-        </div>
+        <EmptyState
+          icon={MessageSquare}
+          title="No review tasks yet"
+          description="Manual-review tasks appear when findings or suggestions require human judgment. Run a scan and open a finding to trigger a review task."
+        />
       ) : (
         <div className="space-y-8">
           {(Object.keys(groupedTasks) as Array<keyof typeof groupedTasks>).map((groupKey) => {
@@ -258,7 +257,7 @@ export default async function ReviewsPage({
                         : `${task._count.evidence} automation artifact(s), ${task._count.controlPlaneEvidence} control-plane artifact(s)`;
 
                     return (
-                      <article key={task.id} className="card space-y-4">
+                      <article key={task.id} className={`card space-y-4${groupKey === "overdue" ? " border-l-4 border-l-red-500" : groupKey === "active" ? " border-l-4 border-l-amber-400" : ""}`}>
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1 space-y-2">
                             <div className="flex items-center gap-2 flex-wrap">
@@ -396,7 +395,7 @@ function ReviewActionForm({
         id={`${taskId}-${status}-note`}
         name="note"
         placeholder={notePlaceholder}
-        className="input h-8 w-64 text-xs"
+        className="input h-8 w-full sm:w-64 text-xs"
         maxLength={2000}
       />
       <button type="submit" className="btn-secondary text-xs">

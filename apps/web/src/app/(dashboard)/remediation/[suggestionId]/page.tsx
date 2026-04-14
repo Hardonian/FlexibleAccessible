@@ -14,6 +14,10 @@ import { getRoutePlatformTruth } from "@/lib/platform-truth-cache";
 import { resolveDashboardOrgMembership } from "@/lib/route-data-boundary";
 import { sanitizeAiCode } from "@/lib/sanitizer";
 import { AiUpsell } from "@/components/monetization/ai-upsell";
+import { PageHeader } from "@/components/layout/page-header";
+import { pageTitle } from "@/lib/product-brand";
+
+export const metadata = { title: pageTitle("Remediation Suggestion") };
 
 export default async function SuggestionDetailPage({
   params,
@@ -31,12 +35,13 @@ export default async function SuggestionDetailPage({
   if (orgRes.kind !== "ok") {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-slate-900">
-          Remediation Suggestion
-        </h1>
+        <PageHeader title="Remediation suggestion" />
         <RouteReliabilityNotice variant="error" title="Cannot load suggestion">
           <p>Organization context unavailable.</p>
         </RouteReliabilityNotice>
+        <Link href="/remediation" className="btn-secondary text-sm">
+          Back to remediation
+        </Link>
       </div>
     );
   }
@@ -119,18 +124,17 @@ export default async function SuggestionDetailPage({
   return (
     <div className="space-y-6">
       <div>
-        <div className="flex items-center gap-2 text-sm text-slate-500 mb-1">
+        <nav className="flex items-center gap-2 text-sm text-slate-500 mb-2" aria-label="Breadcrumb">
           <Link
             href="/remediation"
-            className="hover:text-brand-600 focus-visible:outline-brand-600 rounded px-1 -mx-1"
+            className="hover:text-brand-600 focus-visible:outline-brand-600 rounded transition-colors"
           >
             Remediation
           </Link>
-          <span>/</span>
-        </div>
-        <h1 className="text-2xl font-bold text-slate-900">
-          Remediation Suggestion
-        </h1>
+          <span aria-hidden="true">/</span>
+          <span className="text-slate-900 font-medium truncate max-w-xs">Suggestion</span>
+        </nav>
+        <PageHeader title="Remediation suggestion" />
       </div>
 
       {errorMessage && (

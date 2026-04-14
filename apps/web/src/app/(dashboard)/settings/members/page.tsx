@@ -13,8 +13,10 @@ import { getEntitlementState } from "@/lib/auth-guard";
 import { hasPermission } from "@aros/config";
 import { MembersList } from "./members-list";
 import { TruthBadge } from "@/components/truth/truth-badge";
+import { PageHeader } from "@/components/layout/page-header";
+import { pageTitle } from "@/lib/product-brand";
 
-export const metadata = { title: "Members" };
+export const metadata = { title: pageTitle("Members") };
 
 export default async function MembersPage() {
   const user = await requireSession();
@@ -41,7 +43,7 @@ export default async function MembersPage() {
   if (orgRes.kind === "platform_blocked") {
     return (
       <div className="space-y-6 max-w-4xl">
-        <h1 className="text-2xl font-bold text-slate-900">Members</h1>
+        <PageHeader title="Members" />
         <RouteReliabilityNotice
           variant="error"
           title="Members require a working database"
@@ -59,7 +61,7 @@ export default async function MembersPage() {
   if (orgRes.kind === "error") {
     return (
       <div className="space-y-6 max-w-4xl">
-        <h1 className="text-2xl font-bold text-slate-900">Members</h1>
+        <PageHeader title="Members" />
         <RouteReliabilityNotice
           variant="error"
           title="Could not verify organization"
@@ -74,7 +76,7 @@ export default async function MembersPage() {
   if (orgRes.kind === "none") {
     return (
       <div className="space-y-6 max-w-4xl">
-        <h1 className="text-2xl font-bold text-slate-900">Members</h1>
+        <PageHeader title="Members" />
         <RouteReliabilityNotice
           variant="info"
           title="No organization membership"
@@ -113,7 +115,7 @@ export default async function MembersPage() {
   if (!orgResult.ok || !orgResult.data?.organization) {
     return (
       <div className="space-y-6 max-w-4xl">
-        <h1 className="text-2xl font-bold text-slate-900">Members</h1>
+        <PageHeader title="Members" />
         <RouteReliabilityNotice
           variant="error"
           title="Could not load organization"
@@ -166,7 +168,7 @@ export default async function MembersPage() {
   if (!entitlement.hasPaidAccess) {
     return (
       <div className="space-y-6 max-w-4xl">
-        <h1 className="text-2xl font-bold text-slate-900">Members</h1>
+        <PageHeader title="Members" />
         <EntitlementWall
           subscription={subscription}
           entitlement={entitlement}
@@ -193,12 +195,10 @@ export default async function MembersPage() {
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Members</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Manage team members and their roles in your organization.
-        </p>
-      </div>
+      <PageHeader
+        title="Members"
+        description="Manage team members and their roles in your organization."
+      />
 
       <div className="card">
         <div className="flex items-center justify-between gap-2">

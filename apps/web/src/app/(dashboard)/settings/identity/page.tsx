@@ -10,8 +10,10 @@ import {
   removeVerifiedDomainAction,
   updateIdentityPolicyAction,
 } from "./actions";
+import { PageHeader } from "@/components/layout/page-header";
+import { pageTitle } from "@/lib/product-brand";
 
-export const metadata = { title: "Identity & access" };
+export const metadata = { title: pageTitle("Identity & access") };
 
 export default async function IdentitySettingsPage() {
   const user = await requireSession();
@@ -21,7 +23,7 @@ export default async function IdentitySettingsPage() {
   if (orgRes.kind !== "ok") {
     return (
       <div className="space-y-4 max-w-4xl">
-        <h1 className="text-2xl font-bold text-slate-900">Identity &amp; access</h1>
+        <PageHeader title="Identity & access" />
         <RouteReliabilityNotice variant="error" title="Organization is unavailable">
           <p>Unable to resolve organization context for identity settings.</p>
         </RouteReliabilityNotice>
@@ -35,7 +37,7 @@ export default async function IdentitySettingsPage() {
   } catch {
     return (
       <div className="space-y-4 max-w-4xl">
-        <h1 className="text-2xl font-bold text-slate-900">Identity &amp; access</h1>
+        <PageHeader title="Identity & access" />
         <RouteReliabilityNotice variant="error" title="Admin access required">
           <p>Only organization administrators can view or change identity policy.</p>
         </RouteReliabilityNotice>
@@ -79,7 +81,7 @@ export default async function IdentitySettingsPage() {
           <input type="hidden" name="organizationId" value={orgId} />
           <label className="block text-sm text-slate-700">
             Login mode
-            <select name="loginMode" defaultValue={snapshot.policy.loginMode} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+            <select name="loginMode" defaultValue={snapshot.policy.loginMode} className="input mt-1 w-full">
               <option value="PASSWORD_AND_SSO">Password and SSO</option>
               <option value="SSO_ONLY">SSO only (fail-closed)</option>
               <option value="PASSWORD_ONLY">Password only</option>
@@ -87,17 +89,17 @@ export default async function IdentitySettingsPage() {
           </label>
           <label className="block text-sm text-slate-700">
             SSO configuration status
-            <select name="ssoConfigStatus" defaultValue={snapshot.policy.ssoConfigStatus} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+            <select name="ssoConfigStatus" defaultValue={snapshot.policy.ssoConfigStatus} className="input mt-1 w-full">
               <option value="DISABLED">Disabled</option>
               <option value="INCOMPLETE">Incomplete</option>
               <option value="CONFIGURED">Configured</option>
             </select>
           </label>
           <div className="grid gap-3 md:grid-cols-2">
-            <label className="block text-sm text-slate-700">IdP issuer URL<input name="ssoIssuerUrl" defaultValue={snapshot.policy.ssoIssuerUrl ?? ""} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" /></label>
-            <label className="block text-sm text-slate-700">SSO entrypoint<input name="ssoEntryPoint" defaultValue={snapshot.policy.ssoEntryPoint ?? ""} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" /></label>
-            <label className="block text-sm text-slate-700">Metadata URL<input name="ssoMetadataUrl" defaultValue={snapshot.policy.ssoMetadataUrl ?? ""} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" /></label>
-            <label className="block text-sm text-slate-700">SCIM base URL (optional)<input name="scimBaseUrl" defaultValue={snapshot.policy.scimBaseUrl ?? ""} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" /></label>
+            <label className="block text-sm text-slate-700">IdP issuer URL<input name="ssoIssuerUrl" defaultValue={snapshot.policy.ssoIssuerUrl ?? ""} className="input mt-1 w-full" /></label>
+            <label className="block text-sm text-slate-700">SSO entrypoint<input name="ssoEntryPoint" defaultValue={snapshot.policy.ssoEntryPoint ?? ""} className="input mt-1 w-full" /></label>
+            <label className="block text-sm text-slate-700">Metadata URL<input name="ssoMetadataUrl" defaultValue={snapshot.policy.ssoMetadataUrl ?? ""} className="input mt-1 w-full" /></label>
+            <label className="block text-sm text-slate-700">SCIM base URL (optional)<input name="scimBaseUrl" defaultValue={snapshot.policy.scimBaseUrl ?? ""} className="input mt-1 w-full" /></label>
           </div>
           <label className="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" name="enforceVerifiedDomains" defaultChecked={snapshot.policy.enforceVerifiedDomains} /> Enforce verified email domains for invites and provisioning</label>
           <label className="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" name="allowJitProvisioning" defaultChecked={snapshot.policy.allowJitProvisioning} /> Allow JIT provisioning (only if domain checks pass)</label>
@@ -109,7 +111,7 @@ export default async function IdentitySettingsPage() {
         <h2 className="text-lg font-semibold text-slate-900">Verified domains</h2>
         <form action={addVerifiedDomainAction} className="flex flex-col gap-3 md:flex-row md:items-end">
           <input type="hidden" name="organizationId" value={orgId} />
-          <label className="block flex-1 text-sm text-slate-700">Domain<input name="domain" placeholder="example.com" className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" /></label>
+          <label className="block flex-1 text-sm text-slate-700">Domain<input name="domain" placeholder="example.com" className="input mt-1 w-full" /></label>
           <label className="flex items-center gap-2 text-sm text-slate-700 md:pb-2"><input type="checkbox" name="markVerified" defaultChecked /> Mark verified now</label>
           <button className="btn-secondary" type="submit">Add domain</button>
         </form>

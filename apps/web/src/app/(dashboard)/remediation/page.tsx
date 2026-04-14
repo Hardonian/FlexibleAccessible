@@ -1,6 +1,7 @@
 import { requireSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
+import { Wrench, ArrowRight } from "lucide-react";
 import { getRoutePlatformTruth } from "@/lib/platform-truth-cache";
 import {
   resolveDashboardOrgMembership,
@@ -8,9 +9,11 @@ import {
 } from "@/lib/route-data-boundary";
 import { RouteReliabilityNotice } from "@/components/reliability/route-reliability-notice";
 import { hasPermission } from "@aros/config";
-import { StatusBadge } from "@aros/ui";
+import { EmptyState, StatusBadge, ConfidenceBar } from "@aros/ui";
+import { PageHeader } from "@/components/layout/page-header";
+import { pageTitle } from "@/lib/product-brand";
 
-export const metadata = { title: "Remediation" };
+export const metadata = { title: pageTitle("Remediation") };
 
 export default async function RemediationPage() {
   const user = await requireSession();
@@ -36,9 +39,7 @@ export default async function RemediationPage() {
   if (orgRes.kind === "platform_blocked") {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-slate-900">
-          Remediation Suggestions
-        </h1>
+        <PageHeader title="Remediation suggestions" />
         <RouteReliabilityNotice
           variant="error"
           title="Remediation data requires a working database"
@@ -55,9 +56,7 @@ export default async function RemediationPage() {
   if (orgRes.kind === "error") {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-slate-900">
-          Remediation Suggestions
-        </h1>
+        <PageHeader title="Remediation suggestions" />
         <RouteReliabilityNotice
           variant="error"
           title="Could not verify organization"
@@ -72,9 +71,7 @@ export default async function RemediationPage() {
   if (orgRes.kind === "none") {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-slate-900">
-          Remediation Suggestions
-        </h1>
+        <PageHeader title="Remediation suggestions" />
         <RouteReliabilityNotice
           variant="info"
           title="No organization membership"
@@ -115,9 +112,7 @@ export default async function RemediationPage() {
   if (!suggestionsResult.ok) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-slate-900">
-          Remediation Suggestions
-        </h1>
+        <PageHeader title="Remediation suggestions" />
         <RouteReliabilityNotice
           variant="error"
           title="Could not load suggestions"
@@ -134,75 +129,67 @@ export default async function RemediationPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">
-          Remediation Suggestions
-        </h1>
+        <PageHeader title="Remediation suggestions" />
         <p className="text-slate-500 mt-1">
           AI-generated fix suggestions. Review before applying.
         </p>
       </div>
 
-      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-        All suggestions are AI-generated drafts and require human review before export or application.
-        Source-first means fixing the actual broken element — not adding an overlay.
-        Automated analysis cannot guarantee full WCAG conformance; expert manual audit may still be required.
-      </div>
+      <RouteReliabilityNotice variant="warning" title="AI-generated drafts — review required">
+        <p>
+          All suggestions require human review before export or application.
+          Source-first means fixing the actual broken element — not adding an overlay.
+          Automated analysis cannot guarantee full WCAG conformance; expert manual audit may still be required.
+        </p>
+      </RouteReliabilityNotice>
 
       {suggestions.length === 0 ? (
-        <div className="card py-10 px-6">
-          <div className="mx-auto max-w-md text-center">
-            <h3 className="text-base font-semibold text-slate-900">No remediation suggestions yet</h3>
-            <p className="mt-2 text-sm leading-relaxed text-slate-500">
-              Source-first remediation suggestions are AI-drafted code fixes generated from your findings.
-              Each suggestion targets the actual broken element — not an overlay workaround — and must be reviewed by a human before it is safe to apply.
-            </p>
-            <div className="mt-6 flex flex-col items-center gap-2">
-              <Link href="/sites" className="btn-primary text-sm">
+        <EmptyState
+          icon={Wrench}
+          title="No remediation suggestions yet"
+          description="Source-first remediation suggestions are AI-drafted code fixes generated from your findings. Each targets the actual broken element — not an overlay — and must be reviewed before applying."
+          action={
+            <div className="flex flex-col items-center gap-2">
+              <Link href="/sites" className="btn-primary">
                 Go to sites and run a scan
               </Link>
-              <p className="text-xs text-slate-400">
-                After a scan completes, open any finding to generate a suggestion.
-              </p>
+              <p className="text-xs text-slate-400">After a scan, open any finding to generate a suggestion.</p>
             </div>
-          </div>
-        </div>
+          }
+        />
       ) : (
         <div className="space-y-3">
-          {suggestions.map((s) => (
-            <Link
-              key={s.id}
-              href={`/remediation/${s.id}`}
-              className="card hover:shadow-md transition-shadow block"
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="badge bg-blue-100 text-blue-800">
+          {suggestions.map((s) => {
+            return (
+              <Link
+                key={s.id}
+                href={`/remediation/${s.id}`}
+                className="group flex items-start justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                    <span className="badge bg-brand-50 text-brand-700 ring-1 ring-inset ring-brand-200">
                       {s.type.toLowerCase().replace("_", " ")}
                     </span>
                     <StatusBadge status={s.status} />
                     {s.cluster && (
-                      <span className="text-xs text-purple-600">
+                      <span className="badge bg-violet-50 text-violet-700 ring-1 ring-inset ring-violet-200">
                         {s.cluster.name}
                       </span>
                     )}
                   </div>
-                  <p className="text-sm font-medium text-slate-900">
+                  <p className="text-sm font-semibold text-slate-900 group-hover:text-brand-700 transition-colors line-clamp-1">
                     {s.finding?.description ?? s.rationale.slice(0, 100)}
                   </p>
-                  <p className="text-xs text-slate-500 mt-1 line-clamp-2">
-                    {s.rationale}
-                  </p>
+                  <p className="mt-0.5 text-xs text-slate-500 line-clamp-1">{s.rationale}</p>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm font-medium text-slate-900">
-                    {Math.round(s.confidence * 100)}%
-                  </p>
-                  <p className="text-xs text-slate-500">confidence</p>
+                <div className="shrink-0 text-right space-y-1.5">
+                  <ConfidenceBar value={s.confidence} />
+                  <ArrowRight className="ml-auto h-4 w-4 text-slate-300 group-hover:text-brand-500 transition-colors" aria-hidden="true" />
                 </div>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>
