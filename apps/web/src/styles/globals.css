@@ -38,6 +38,64 @@
     @apply outline-2 outline-offset-2 outline-brand-600;
   }
 
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-background:     15  23  42;   /* slate-900 */
+      --color-foreground:    226 232 240;   /* slate-200 */
+      --color-muted:         148 163 184;   /* slate-400 */
+      --color-border:         30  41  59;   /* slate-800 */
+      --color-card:           22  31  46;   /* ~slate-850 */
+      --color-surface-elevated: 22 31 46;
+      --color-accent:         20 184 166;   /* teal-500 */
+      --color-canvas:          8  15  30;   /* deepest bg */
+      --color-app-canvas:      8  15  30;
+      --color-app-elevated:   15  23  42;   /* slate-900 */
+      --shadow-card:          0 1px 3px 0 rgb(0 0 0 / 0.40), 0 1px 2px -1px rgb(0 0 0 / 0.30);
+      --shadow-card-hover:    0 4px 8px -2px rgb(0 0 0 / 0.50), 0 2px 4px -2px rgb(0 0 0 / 0.35);
+      --shadow-elevated:      0 4px 12px -2px rgb(0 0 0 / 0.50), 0 2px 4px -2px rgb(0 0 0 / 0.35);
+    }
+
+    body {
+      color-scheme: dark;
+    }
+
+    /* Inputs pick up dark surface automatically via CSS variables */
+    .input {
+      @apply border-slate-700 bg-slate-900 text-slate-100 placeholder:text-slate-500 focus:border-brand-400 focus:ring-brand-400/20 disabled:bg-slate-800 disabled:text-slate-400;
+    }
+
+    /* Cards & metric tiles pick up dark surface */
+    .card {
+      border-color: rgb(var(--color-border));
+      background-color: rgb(var(--color-card));
+    }
+
+    /* Data tables on dark */
+    .data-table thead tr {
+      @apply border-slate-700;
+    }
+    .data-table thead th {
+      @apply text-slate-400;
+    }
+    .data-table tbody tr {
+      @apply border-slate-800 hover:bg-slate-800/50;
+    }
+    .data-table tbody td {
+      @apply text-slate-300;
+    }
+
+    /* Section headings */
+    .page-title {
+      @apply text-slate-100;
+    }
+    .section-heading {
+      @apply text-slate-100;
+    }
+    .page-description {
+      @apply text-slate-400;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     * {
       animation-duration: 0.01ms !important;

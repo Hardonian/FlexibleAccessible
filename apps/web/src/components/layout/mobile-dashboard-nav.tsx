@@ -14,6 +14,41 @@ import { switchOrgAction } from "./switch-org-action";
 import { AiUsageIndicator } from "../system/ai-usage-indicator";
 import { PRODUCT_DISPLAY_NAME } from "@/lib/product-brand";
 
+/** Accessible SVG shield-checkmark logomark — mirrors sidebar ProductMark */
+function ProductMark({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 28 28"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M14 2.5L4 7v7c0 5.5 4.3 10.7 10 12 5.7-1.3 10-6.5 10-12V7L14 2.5z"
+        fill="currentColor"
+        className="text-brand-600"
+        opacity="0.15"
+      />
+      <path
+        d="M14 2.5L4 7v7c0 5.5 4.3 10.7 10 12 5.7-1.3 10-6.5 10-12V7L14 2.5z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+        className="text-brand-600"
+      />
+      <path
+        d="M9.5 14l3 3 6-6"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="text-brand-700"
+      />
+    </svg>
+  );
+}
+
 interface MobileDashboardNavProps {
   orgs: OrgInfo[];
   user: { id: string; email: string; name: string | null };
@@ -114,10 +149,18 @@ export function MobileDashboardNav({
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-[rgb(var(--color-border))] px-4">
           <Link
             href="/dashboard"
-            className="text-lg font-semibold tracking-tight text-brand-800"
+            className="flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 rounded"
             onClick={closeMobileNav}
           >
-            {PRODUCT_DISPLAY_NAME}
+            <ProductMark className="h-6 w-6 shrink-0" />
+            <div className="flex flex-col leading-tight">
+              <span className="text-[14px] font-semibold tracking-tight text-slate-900">
+                {PRODUCT_DISPLAY_NAME}
+              </span>
+              <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
+                Ops console
+              </span>
+            </div>
           </Link>
           <button
             type="button"
@@ -313,7 +356,10 @@ export function MobileDashboardNav({
 
         <div className="border-t border-[rgb(var(--color-border))] p-3">
           <div className="flex items-center gap-3 rounded-lg px-3 py-2">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-100 text-sm font-medium text-brand-700">
+            <div
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-400 to-brand-600 text-sm font-semibold text-white shadow-sm"
+              aria-hidden="true"
+            >
               {(user.name ?? user.email).charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">

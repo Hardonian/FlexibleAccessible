@@ -975,6 +975,16 @@ export default async function FindingDetailPage({
 
         {/* Right Column: Operator Action & Audit Ledger */}
         <div className="w-full lg:w-96 shrink-0 space-y-6 lg:sticky lg:top-6">
+          {/* Proof completeness scorecard */}
+          <ProofScorecard
+            triageScore={triagePriority.score}
+            triageReasons={triagePriority.reasons}
+            scanRunsObserved={proofSummary.recurrence.distinctScanRunsObserved}
+            changeSignal={changeSignalLabel[proofSummary.changedSinceLastRun]}
+            occurrenceCount={finding.occurrenceCount}
+            evidenceSource={finding.evidenceSource}
+          />
+
           {/* Remediation Action Panel */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 sm:p-6">
             <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2">
@@ -1304,6 +1314,126 @@ export default async function FindingDetailPage({
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Visual proof completeness scorecard for the right sidebar */
+function ProofScorecard({
+  triageScore,
+  triageReasons,
+  scanRunsObserved,
+  changeSignal,
+  occurrenceCount,
+  evidenceSource,
+}: {
+  triageScore: number;
+  triageReasons: string[];
+  scanRunsObserved: number;
+  changeSignal: string;
+  occurrenceCount: number;
+  evidenceSource: string;
+}) {
+  // Triage score: lower = higher priority. Clamp display to 0-100.
+  const priorityPct = Math.max(0, Math.min(100, 100 - triageScore));
+  const priorityColor =
+    priorityPct >= 70
+      ? { bar: "bg-red-500", text: "text-red-700", label: "High priority" }
+      : priorityPct >= 40
+        ? { bar: "bg-amber-400", text: "text-amber-700", label: "Medium priority" }
+        : { bar: "bg-emerald-400", text: "text-emerald-700", label: "Lower priority" };
+
+  // Observation bar — cap at 20 for display purposes
+  const obsDisplay = Math.min(scanRunsObserved, 20);
+  const obsPct = obsDisplay === 0 ? 0 : (obsDisplay / 20) * 100;
+
+  const sourceLabel =
+    evidenceSource === "AUTOMATED_AXE"
+      ? "axe-core automated"
+      : evidenceSource === "MANUAL_REVIEW"
+        ? "manual review"
+        : "imported";
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4">
+      <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+        <Activity className="h-3.5 w-3.5" aria-hidden="true" />
+        Proof signals
+      </h3>
+
+      {/* Triage priority bar */}
+      <div>
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-xs text-slate-500">Triage priority</span>
+          <span className={`text-xs font-semibold ${priorityColor.text}`}>
+            {priorityColor.label}
+          </span>
+        </div>
+        <div
+          className="h-2 w-full overflow-hidden rounded-full bg-slate-100"
+          role="meter"
+          aria-label={`Triage priority: ${priorityColor.label}`}
+          aria-valuenow={priorityPct}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
+          <div
+            className={`h-full rounded-full transition-all ${priorityColor.bar}`}
+            style={{ width: `${priorityPct}%` }}
+          />
+        </div>
+        {triageReasons.length > 0 && (
+          <ul className="mt-2 space-y-0.5">
+            {triageReasons.slice(0, 3).map((r) => (
+              <li key={r} className="flex items-start gap-1.5 text-[11px] text-slate-500">
+                <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-300" aria-hidden="true" />
+                {r}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* Scan observations bar */}
+      <div>
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-xs text-slate-500">Scan runs observed</span>
+          <span className="text-xs font-semibold tabular-nums text-slate-700">
+            {scanRunsObserved.toLocaleString()}
+          </span>
+        </div>
+        <div
+          className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100"
+          role="meter"
+          aria-label={`Observed in ${scanRunsObserved} scan runs`}
+          aria-valuenow={obsDisplay}
+          aria-valuemin={0}
+          aria-valuemax={20}
+        >
+          <div
+            className="h-full rounded-full bg-brand-400 transition-all"
+            style={{ width: `${obsPct}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Key-value signal row */}
+      <dl className="divide-y divide-slate-100 text-xs">
+        <div className="flex items-center justify-between py-2">
+          <dt className="text-slate-500">Change signal</dt>
+          <dd className="font-medium text-slate-800 text-right max-w-[55%] leading-snug">
+            {changeSignal}
+          </dd>
+        </div>
+        <div className="flex items-center justify-between py-2">
+          <dt className="text-slate-500">Occurrences</dt>
+          <dd className="font-semibold tabular-nums text-slate-900">{occurrenceCount.toLocaleString()}</dd>
+        </div>
+        <div className="flex items-center justify-between py-2">
+          <dt className="text-slate-500">Evidence source</dt>
+          <dd className="font-medium text-slate-800">{sourceLabel}</dd>
+        </div>
+      </dl>
     </div>
   );
 }
