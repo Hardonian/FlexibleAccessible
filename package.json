@@ -40,10 +40,10 @@
     "@axe-core/playwright": "^4.11.1",
     "@ioredis/commands": "^1.6.0",
     "@playwright/experimental-ct-react": "^1.58.2",
-    "@types/node": "^22.10.0",
+    "@types/node": "^25.6.0",
     "cluster-key-slot": "^1.1.2",
     "lodash.defaults": "^4.2.0",
-    "prettier": "^3.4.0",
+    "prettier": "^3.8.2",
     "redis-errors": "^1.2.0",
     "standard-as-callback": "^2.1.0",
     "turbo": "^2.9.6",
@@ -53,7 +53,7 @@
     "node": ">=20.0.0"
   },
   "dependencies": {
-    "@hono/node-server": "^1.19.13",
+    "@hono/node-server": "^1.19.14",
     "hono": "^4.12.12",
     "next": "^16.2.3",
     "nodemailer": "^8.0.5"
