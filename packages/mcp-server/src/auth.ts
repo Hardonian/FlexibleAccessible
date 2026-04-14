@@ -1,5 +1,6 @@
 import { prisma } from "@aros/db";
 import { abuseRateLimit } from "@aros/shared";
+import bcrypt from "bcrypt";
 
 export interface ApiKeyRecord {
   id: string;
@@ -19,12 +20,8 @@ export async function validateApiKey(
 ): Promise<ApiKeyRecord | null> {
   if (!apiKey) return null;
 
-  const keyHash = await hashKey(apiKey);
-  const cached = keyCache.get(keyHash);
-  if (cached && cached.expiresAt > Date.now()) return cached.record;
-
-  const dbKey = await prisma.apiKey.findUnique({
-    where: { keyHash, isActive: true },
+  const activeKeys = await prisma.apiKey.findMany({
+    where: { isActive: true },
     select: {
       id: true,
       organizationId: true,
@@ -36,20 +33,30 @@ export async function validateApiKey(
     },
   });
 
-  if (!dbKey) return null;
+  for (const dbKey of activeKeys) {
+    const cached = keyCache.get(dbKey.id);
+    if (cached && cached.expiresAt > Date.now()) {
+      if (await bcrypt.compare(apiKey, dbKey.keyHash)) return cached.record;
+      continue;
+    }
 
-  const record: ApiKeyRecord = {
-    id: dbKey.id,
-    organizationId: dbKey.organizationId,
-    keyHash: dbKey.keyHash,
-    name: dbKey.name,
-    scopes: dbKey.scopes as string[],
-    rateLimitPerMinute: dbKey.rateLimitPerMinute,
-    isActive: dbKey.isActive,
-  };
+    if (await bcrypt.compare(apiKey, dbKey.keyHash)) {
+      const record: ApiKeyRecord = {
+        id: dbKey.id,
+        organizationId: dbKey.organizationId,
+        keyHash: dbKey.keyHash,
+        name: dbKey.name,
+        scopes: dbKey.scopes as string[],
+        rateLimitPerMinute: dbKey.rateLimitPerMinute,
+        isActive: dbKey.isActive,
+      };
 
-  keyCache.set(keyHash, { record, expiresAt: Date.now() + CACHE_TTL_MS });
-  return record;
+      keyCache.set(dbKey.id, { record, expiresAt: Date.now() + CACHE_TTL_MS });
+      return record;
+    }
+  }
+
+  return null;
 }
 
 export function hasScope(key: ApiKeyRecord, scope: string): boolean {
@@ -85,7 +92,4 @@ export async function checkRateLimit(
   };
 }
 
-async function hashKey(key: string): Promise<string> {
-  const crypto = await import("crypto");
-  return crypto.createHash("sha256").update(key).digest("hex");
-}
+
