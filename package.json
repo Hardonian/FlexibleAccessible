@@ -46,7 +46,7 @@
     "prettier": "^3.4.0",
     "redis-errors": "^1.2.0",
     "standard-as-callback": "^2.1.0",
-    "turbo": "^2.7.4",
+    "turbo": "^2.9.6",
     "typescript": "^5.7.0"
   },
   "engines": {
