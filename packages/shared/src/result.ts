@@ -132,7 +132,7 @@ export function map<T, U>(result: StandardResult<T>, fn: (data: T) => U): Standa
   if (isSuccess(result)) {
     return success(fn(result.data), result.metadata);
   }
-  return result as StandardResult<U>;
+  return result as unknown as StandardResult<U>;
 }
 
 /**
@@ -145,7 +145,7 @@ export function flatMap<T, U>(
   if (isSuccess(result)) {
     return fn(result.data);
   }
-  return result as StandardResult<U>;
+  return result as unknown as StandardResult<U>;
 }
 
 /**
