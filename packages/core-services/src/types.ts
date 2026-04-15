@@ -275,4 +275,13 @@ export interface PlatformHealthReport {
 /**
  * Converts PlatformHealthReport to standardized SystemPosture
  */
-export function toSystemPosture(report: PlatformHealthReport):
+export function toSystemPosture(report: PlatformHealthReport): SystemPosture {
+  const components = report.services.map(toComponentPosture);
+  const definitions: ComponentDefinition[] = report.services.map(s => ({
+    id: s.id,
+    name: s.name,
+    criticality: toComponentCriticality(s.criticality),
+    category: s.category,
+  }));
+  return aggregatePosture(components, definitions);
+}
