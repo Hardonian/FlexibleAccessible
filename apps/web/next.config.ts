@@ -45,6 +45,7 @@ const nextConfig: NextConfig = {
     "@aros/ui",
     "@aros/stakeholders",
     "@aros/scan-engine",
+    "@aros/mcp-server",
   ],
   serverExternalPackages: ["bullmq"],
   experimental: {
