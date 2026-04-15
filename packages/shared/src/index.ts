@@ -1,8 +1,8 @@
 /**
  * @hardonian/shared
- * 
+ *
  * Standardized patterns across MEL, Settler, and FlexibleAccessible
- * 
+ *
  * - result: Type-safe error handling with StandardResult<T>
  * - posture: Health and degradation tracking with SystemPosture
  * - verification: Verification lifecycle with evidence collection
@@ -115,6 +115,75 @@ export {
   type SecureHandler,
   type SecurityMiddleware,
 } from './auth';
+
+// Error classes
+export { AppError, ApiError } from './errors';
+
+// String utilities
+export { slugify, truncate, pluralize } from './strings';
+
+// Queue names and helpers
+export {
+  SCAN_QUEUE_NAME,
+  VISUAL_REVIEW_QUEUE_NAME,
+  getSharedScanQueue,
+} from './scan-queue';
+
+// Redis connection
+export { bullmqConnectionOptions, getRedisClient } from './redis-connection';
+
+// Abuse rate limiting
+export {
+  abuseRateLimit,
+  type AbuseRateLimitMode,
+  type AbuseRateLimitOutcome,
+} from './abuse-rate-limit';
+
+// Logging
+export {
+  LogLevel,
+  type LogEntry,
+  apiLogger,
+  authLogger,
+  billingLogger,
+  scanLogger,
+  workerLogger,
+  dbLogger,
+  createRequestLogger,
+} from './logger';
+
+// Fingerprinting
+export {
+  createFingerprint,
+  normalizeSelector,
+  createDomFingerprint,
+  selectorSimilarity,
+} from './fingerprint';
+
+// Finding lifecycle
+export {
+  FINDING_STATUSES,
+  OPERATOR_ALLOWED_TRANSITIONS,
+  type FindingStatusValue,
+  type AutomationEvidenceFreshness,
+  canOperatorTransition,
+  shouldReopenOnAutomatedDetection,
+  deriveAutomationEvidenceFreshness,
+} from './finding-lifecycle';
+
+// WCAG
+export { type WcagLevel, wcagCriteriaMap, getWcagLevel } from './wcag';
+
+// Pagination
+export {
+  type PaginationParams,
+  type PaginatedResult,
+  paginationSchema,
+  buildPaginationMeta,
+} from './pagination';
+
+// Password utilities
+export { hashPassword, verifyPassword, generateToken } from './password';
 
 // Version
 export const VERSION = '1.0.0';

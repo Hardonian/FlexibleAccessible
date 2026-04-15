@@ -20,11 +20,10 @@ import {
   aggregatePosture,
   determineReadiness,
   calculateHealthScore,
-  toComponentState,
-  toComponentCriticality,
   buildComponentPosture,
   DEFAULT_DEGRADATION_THRESHOLDS,
 } from '@aros/shared';
+import { toComponentState, toComponentCriticality } from './types';
 
 const WORKER_STALE_MS = 120_000;
 const FAILED_JOBS_WARNING = 25;

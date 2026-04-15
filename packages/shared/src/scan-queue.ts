@@ -4,6 +4,9 @@ import { bullmqConnectionOptions } from './redis-connection.js';
 /** BullMQ queue name for site verification scans (must match worker consumer). */
 export const SCAN_QUEUE_NAME = 'scan' as const;
 
+/** BullMQ queue name for visual review jobs (must match worker consumer). */
+export const VISUAL_REVIEW_QUEUE_NAME = 'visual-review' as const;
+
 let sharedScanQueue: Queue | null = null;
 
 /**
