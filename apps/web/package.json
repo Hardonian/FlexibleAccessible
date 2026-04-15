@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "prebuild": "node ../../scripts/check-prisma-client-drift.mjs && node ./scripts/generate-pwa-icons.mjs",
+    "prebuild": "npm run db:generate --prefix=../.. && node ../../scripts/check-prisma-client-drift.mjs && node ./scripts/generate-pwa-icons.mjs",
     "icons": "node ./scripts/generate-pwa-icons.mjs",
     "dev": "npm run icons && next dev",
     "build": "next build",

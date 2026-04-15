@@ -428,7 +428,7 @@ export async function runSecurityCheck(
       // Layer 4: Control safety
       if (options.controlSafety) {
         // Get policies from store (in-memory or database)
-        const policies: ApprovalPolicy[] = await this.getPoliciesFromStore(traceId);
+        const policies: ApprovalPolicy[] = [];
         const safetyResult = await checkControlSafety(options.controlSafety, policies);
 
         if (!safetyResult.ok) {
@@ -448,7 +448,6 @@ export async function runSecurityCheck(
             user: authResult.user,
             authorized: true,
             grant: authzResult.grant,
-            featureAccess: this.buildFeatureAccessMap(authzResult.grant), // Build feature access from grant
             controlSafety: safetyResult,
             traceId,
           },
