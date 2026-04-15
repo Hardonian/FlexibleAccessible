@@ -42,6 +42,9 @@ const nextConfig: NextConfig = {
     "@aros/core-services",
     "@aros/config",
     "@aros/shared",
+    "@aros/ui",
+    "@aros/stakeholders",
+    "@aros/scan-engine",
   ],
   serverExternalPackages: ["bullmq"],
   experimental: {
