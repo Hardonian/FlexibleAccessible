@@ -633,7 +633,7 @@ export default async function SiteDetailPage({
         {findings.length === 0 ? (
           <EmptyState
             icon={Globe}
-            variant="success"
+            variant="brand"
             title="No open findings"
             description="Queue a verification scan to discover accessibility issues."
           />

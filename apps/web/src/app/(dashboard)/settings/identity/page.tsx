@@ -31,7 +31,7 @@ export default async function IdentitySettingsPage() {
     );
   }
 
-  const orgId = orgRes.membership.organizationId;
+  const orgId = orgRes.organizationId;
   try {
     await requireOrgAccess(orgId, "org:manage");
   } catch {
@@ -77,7 +77,7 @@ export default async function IdentitySettingsPage() {
 
       <section className="card space-y-4">
         <h2 className="text-lg font-semibold text-slate-900">Auth policy</h2>
-        <form action={updateIdentityPolicyAction} className="space-y-4">
+        <form action={updateIdentityPolicyAction as unknown as (formData: FormData) => void} className="space-y-4">
           <input type="hidden" name="organizationId" value={orgId} />
           <label className="block text-sm text-slate-700">
             Login mode
@@ -109,7 +109,7 @@ export default async function IdentitySettingsPage() {
 
       <section className="card space-y-4">
         <h2 className="text-lg font-semibold text-slate-900">Verified domains</h2>
-        <form action={addVerifiedDomainAction} className="flex flex-col gap-3 md:flex-row md:items-end">
+        <form action={addVerifiedDomainAction as unknown as (formData: FormData) => void} className="flex flex-col gap-3 md:flex-row md:items-end">
           <input type="hidden" name="organizationId" value={orgId} />
           <label className="block flex-1 text-sm text-slate-700">Domain<input name="domain" placeholder="example.com" className="input mt-1 w-full" /></label>
           <label className="flex items-center gap-2 text-sm text-slate-700 md:pb-2"><input type="checkbox" name="markVerified" defaultChecked /> Mark verified now</label>

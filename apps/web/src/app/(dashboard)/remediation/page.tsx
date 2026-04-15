@@ -124,7 +124,8 @@ export default async function RemediationPage() {
     );
   }
 
-  const suggestions = suggestionsResult.data;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const suggestions = suggestionsResult.data as any[];
 
   return (
     <div className="space-y-6">

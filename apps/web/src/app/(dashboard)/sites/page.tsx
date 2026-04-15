@@ -142,8 +142,8 @@ export default async function SitesPage() {
   }
 
   const { sites, openFindingCounts, subscription } = sitesResult.data;
-  const openFindingsBySiteId = new Map(
-    openFindingCounts.map((row) => [row.siteId, row._count._all]),
+  const openFindingsBySiteId = new Map<string, number>(
+    openFindingCounts.map((row) => [row.siteId, row._count._all as number]),
   );
   const entitlement = getEntitlementState(subscription);
 

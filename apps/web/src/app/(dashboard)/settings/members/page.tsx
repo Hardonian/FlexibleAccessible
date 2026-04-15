@@ -112,7 +112,7 @@ export default async function MembersPage() {
     }),
   );
 
-  if (!orgResult.ok || !orgResult.data?.organization) {
+  if (!orgResult.ok || !(orgResult.data as any)?.organization) {
     return (
       <div className="space-y-6 max-w-4xl">
         <PageHeader title="Members" />
@@ -131,7 +131,8 @@ export default async function MembersPage() {
     );
   }
 
-  const membership = orgResult.data;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const membership = orgResult.data as any;
   const org = membership.organization;
   const subscription = org.subscription;
   const entitlement = getEntitlementState(subscription);
@@ -143,7 +144,7 @@ export default async function MembersPage() {
       where: { organizationId: orgId, action: "member:invite_pending" },
     }),
   );
-  const pendingInvites = pendingInviteCount.ok ? pendingInviteCount.data : 0;
+  const pendingInvites = pendingInviteCount.ok ? (pendingInviteCount.data as number) : 0;
   const recentAuditResult = canViewAudit
     ? await runOrgScopedQuery(orgRes, (orgId) =>
         prisma.auditLog.findMany({
@@ -160,7 +161,8 @@ export default async function MembersPage() {
         }),
       )
     : null;
-  const recentAudit = recentAuditResult && recentAuditResult.ok ? recentAuditResult.data : [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recentAudit = recentAuditResult && recentAuditResult.ok ? (recentAuditResult.data as any[]) : [];
   const seatsUsed = org.memberships.length + pendingInvites;
   const seatCap = subscription?.maxSeats ?? 1;
   const seatsAtOrOverCap = seatsUsed >= seatCap;

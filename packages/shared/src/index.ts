@@ -116,6 +116,86 @@ export {
   type SecurityMiddleware,
 } from './auth';
 
+// Errors
+export { AppError, ApiError } from './errors';
+
+// Abuse rate limiting
+export {
+  type AbuseRateLimitMode,
+  type AbuseRateLimitOutcome,
+  abuseRateLimit,
+} from './abuse-rate-limit';
+
+// String utilities
+export { slugify, truncate, pluralize } from './strings';
+
+// Redis connection
+export { bullmqConnectionOptions, getRedisClient } from './redis-connection';
+
+// Scan queue
+export {
+  SCAN_QUEUE_NAME,
+  VISUAL_REVIEW_QUEUE_NAME,
+  getSharedScanQueue,
+} from './scan-queue';
+
+// Logger
+export {
+  LogLevel,
+  type LogEntry,
+  apiLogger,
+  authLogger,
+  billingLogger,
+  scanLogger,
+  workerLogger,
+  dbLogger,
+  createRequestLogger,
+} from './logger';
+
+// Finding lifecycle
+export {
+  FINDING_STATUSES,
+  type FindingStatusValue,
+  OPERATOR_ALLOWED_TRANSITIONS,
+  canOperatorTransition,
+  shouldReopenOnAutomatedDetection,
+  type AutomationEvidenceFreshness,
+  deriveAutomationEvidenceFreshness,
+} from './finding-lifecycle';
+
+// AI usage
+export {
+  type AiUsageDetails,
+  logAiUsage,
+  checkAiEntitlement,
+} from './ai-usage';
+
+// WCAG
+export {
+  type WcagLevel,
+  wcagCriteriaMap,
+  getWcagLevel,
+} from './wcag';
+
+// Pagination
+export {
+  type PaginationParams,
+  type PaginatedResult,
+  paginationSchema,
+  buildPaginationMeta,
+} from './pagination';
+
+// Fingerprint
+export {
+  createFingerprint,
+  normalizeSelector,
+  createDomFingerprint,
+  selectorSimilarity,
+} from './fingerprint';
+
+// Crypto
+export { generateToken, hashPassword, verifyPassword } from './crypto';
+
 // Version
 export const VERSION = '1.0.0';
 

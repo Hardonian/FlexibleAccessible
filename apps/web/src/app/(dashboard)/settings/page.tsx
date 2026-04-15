@@ -105,7 +105,7 @@ export default async function SettingsPage() {
     }),
   );
 
-  if (!orgResult.ok || !orgResult.data?.organization) {
+  if (!orgResult.ok || !(orgResult.data as any)?.organization) {
     return (
       <div className="space-y-6 max-w-4xl">
         <PageHeader title="Settings" />
@@ -124,7 +124,8 @@ export default async function SettingsPage() {
     );
   }
 
-  const membership = orgResult.data;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const membership = orgResult.data as any;
   const org = membership.organization;
   const subscription = org.subscription;
   const entitlement = getEntitlementState(subscription);
