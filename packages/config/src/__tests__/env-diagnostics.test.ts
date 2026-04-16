@@ -5,7 +5,7 @@ describe('parseEnvDiagnostics', () => {
   it('valid when required keys present', () => {
     const d = parseEnvDiagnostics({
       DATABASE_URL: 'postgresql://localhost:5432/db',
-      NEXTAUTH_SECRET: '0123456789abcdef',
+      NEXTAUTH_SECRET: 'test-secret-for-ci-only',
       NEXTAUTH_URL: 'http://localhost:3000',
       NODE_ENV: 'test',
     });
