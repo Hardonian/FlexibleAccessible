@@ -5,7 +5,7 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "scripts": {
-    "generate": "npm install @prisma/client@7.7.0 --no-save && prisma generate --schema=prisma/schema.prisma --config=prisma/prisma.config.ts",
+    "generate": "prisma generate --schema=prisma/schema.prisma --config=prisma/prisma.config.ts",
     "push": "prisma db push --schema=prisma/schema.prisma --config=prisma/prisma.config.ts",
     "migrate": "prisma migrate dev --schema=prisma/schema.prisma --config=prisma/prisma.config.ts",
     "seed": "tsx prisma/seed.ts",
