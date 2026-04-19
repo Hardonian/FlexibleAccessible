@@ -30,8 +30,8 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_USER: aros_user
-          POSTGRES_PASSWORD: aros_password
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
           POSTGRES_DB: aros_test
         ports:
           - 5432:5432
@@ -77,7 +77,7 @@ jobs:
 
       - name: Push Schema & Seed
         env:
-          DATABASE_URL: postgresql://aros_user:aros_password@localhost:5432/aros_test?schema=public
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/aros_test?schema=public
           REDIS_URL: redis://localhost:6379
         run: |
           npm run db:generate
@@ -86,19 +86,19 @@ jobs:
 
       - name: Run Core Verification
         env:
-          DATABASE_URL: postgresql://aros_user:aros_password@localhost:5432/aros_test?schema=public
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/aros_test?schema=public
           REDIS_URL: redis://localhost:6379
         run: npm run verify:core
 
       - name: Run Touched Route Safety Checks
         env:
-          DATABASE_URL: postgresql://aros_user:aros_password@localhost:5432/aros_test?schema=public
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/aros_test?schema=public
           REDIS_URL: redis://localhost:6379
         run: npm run verify:touched-routes
 
       - name: Run Tenant Boundary + Integration Verification
         env:
-          DATABASE_URL: postgresql://aros_user:aros_password@localhost:5432/aros_test?schema=public
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/aros_test?schema=public
           REDIS_URL: redis://localhost:6379
         run: npm run verify:tenant-boundary && npm run test:integration
 
@@ -107,7 +107,7 @@ jobs:
 
       - name: Run Playwright E2E Tests
         env:
-          DATABASE_URL: postgresql://aros_user:aros_password@localhost:5432/aros_test?schema=public
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/aros_test?schema=public
           REDIS_URL: redis://localhost:6379
         run: npm run test:e2e
 
