@@ -17,7 +17,7 @@
     "@aros/remediation": "*",
     "@aros/scan-engine": "*",
     "@aros/shared": "*",
-    "bullmq": "^5.73.3"
+    "bullmq": "^5.75.2"
   },
   "devDependencies": {
     "typescript": "^5.7.0",
