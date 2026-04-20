@@ -36,6 +36,15 @@ import {
   History,
 } from "lucide-react";
 
+function isDecisionActive(
+  decision: { status: string; expiresAt: Date | null },
+): boolean {
+  return (
+    decision.status === "ACTIVE" &&
+    (!decision.expiresAt || decision.expiresAt.getTime() >= Date.now())
+  );
+}
+
 export default async function FindingDetailPage({
   params,
   searchParams,
@@ -240,11 +249,7 @@ export default async function FindingDetailPage({
   };
   const latestVerificationRun = finding.verificationRuns[0] ?? null;
   const activeGovernanceDecision =
-    finding.governanceDecisions.find(
-      (decision) =>
-        decision.status === "ACTIVE" &&
-        (!decision.expiresAt || decision.expiresAt.getTime() >= Date.now()),
-    ) ?? null;
+    finding.governanceDecisions.find(isDecisionActive) ?? null;
   const primaryRecipe =
     finding.suggestions.find((suggestion) => suggestion.recipe)?.recipe ?? null;
   const truthStatusTone =

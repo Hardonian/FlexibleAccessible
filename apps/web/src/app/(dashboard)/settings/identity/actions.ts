@@ -11,7 +11,20 @@ interface ActionState {
   error: string | null;
 }
 
-const DOMAIN_REGEX = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i;
+function isValidDomain(value: string): boolean {
+  const labels = value.split(".");
+  if (labels.length < 2) return false;
+  const tld = labels[labels.length - 1];
+  if (!tld || tld.length < 2) return false;
+
+  for (const label of labels) {
+    if (!label || label.length > 63) return false;
+    if (!/^[a-z0-9-]+$/i.test(label)) return false;
+    if (label.startsWith("-") || label.endsWith("-")) return false;
+  }
+
+  return true;
+}
 
 function normalizeUrl(input: string): string | null {
   const trimmed = input.trim();
@@ -113,7 +126,7 @@ export async function addVerifiedDomainAction(
   const markVerified = formData.get("markVerified") === "on";
 
   if (!organizationId) return { success: false, error: "Organization is required." };
-  if (!DOMAIN_REGEX.test(domainRaw)) return { success: false, error: "Enter a valid domain (example.com)." };
+  if (!isValidDomain(domainRaw)) return { success: false, error: "Enter a valid domain (example.com)." };
 
   const ctx = await requireOrgAccess(organizationId, "org:manage");
   const result = await runOrgScopedQuery(ctx, async (orgId) => {

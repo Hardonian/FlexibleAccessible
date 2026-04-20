@@ -8,6 +8,19 @@
  * Migrate to standardized patterns: result.ts, posture.ts, verification.ts, auth.ts
  */
 
+import {
+  aggregatePosture,
+  buildComponentPosture,
+  failure,
+  success,
+  type ComponentCriticality,
+  type ComponentPosture,
+  type ComponentState,
+  type PostureLevel,
+  type StandardResult,
+  type SystemPosture,
+} from '@aros/shared';
+
 // Re-export standardized types for convenience
 export type {
   ResultState,
@@ -276,3 +289,17 @@ export interface PlatformHealthReport {
  * Converts PlatformHealthReport to standardized SystemPosture
  */
 export function toSystemPosture(report: PlatformHealthReport):
+SystemPosture {
+  const components = report.services.map(toComponentPosture);
+  const definitions = report.services.map((service) => ({
+    id: service.id,
+    name: service.name,
+    criticality: toComponentCriticality(service.criticality),
+    category: service.category,
+  }));
+
+  return aggregatePosture(components, definitions, {
+    summary: `Platform readiness: ${report.bootstrap.readiness}`,
+    failClosed: true,
+  });
+}

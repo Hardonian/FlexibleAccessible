@@ -37,6 +37,24 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@aros/shared": [
+        "../../packages/shared/src"
+      ],
+      "@aros/db": [
+        "../../packages/db/src"
+      ],
+      "@aros/config": [
+        "../../packages/config/src"
+      ],
+      "@aros/core-services": [
+        "../../packages/core-services/src"
+      ],
+      "@aros/stakeholders": [
+        "../../packages/stakeholders/src"
+      ],
+      "next": [
+        "./node_modules/next"
       ]
     },
     "noImplicitAny": false

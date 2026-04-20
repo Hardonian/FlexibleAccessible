@@ -116,6 +116,32 @@ export {
   type SecurityMiddleware,
 } from './auth';
 
+export { AppError, ApiError } from './errors';
+export { slugify, truncate, pluralize } from './strings';
+export {
+  createFingerprint,
+  normalizeSelector,
+  createDomFingerprint,
+  selectorSimilarity,
+} from './fingerprint';
+export { abuseRateLimit, type AbuseRateLimitOutcome, type AbuseRateLimitMode } from './abuse-rate-limit';
+export { bullmqConnectionOptions, getRedisClient } from './redis-connection';
+export {
+  SCAN_QUEUE_NAME,
+  VISUAL_REVIEW_QUEUE_NAME,
+  getSharedScanQueue,
+} from './scan-queue';
+export { apiLogger, authLogger, queueLogger } from './logger';
+export {
+  FINDING_STATUSES,
+  type FindingStatusValue,
+  canOperatorTransition,
+  shouldReopenOnAutomatedDetection,
+  type AutomationEvidenceFreshness,
+  deriveAutomationEvidenceFreshness,
+} from './finding-lifecycle';
+export { hashPassword, verifyPassword, generateToken } from './password';
+
 // Version
 export const VERSION = '1.0.0';
 
