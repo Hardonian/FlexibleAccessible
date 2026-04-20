@@ -1,22 +1,17 @@
-import { dirname } from "path";
-import { fileURLToPath } from "url";
-import { FlatCompat } from "@eslint/eslintrc";
+import nextCoreWebVitals from "eslint-config-next/core-web-vitals";
 import securityPlugin from "eslint-plugin-security";
 import vitestPlugin from "eslint-plugin-vitest";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-});
-
 const config = [
+  ...nextCoreWebVitals,
   {
-    ignores: [".next/**"],
+    plugins: {
+      security: securityPlugin,
+    },
+    rules: {
+      ...securityPlugin.configs.recommended.rules,
+    },
   },
-  ...compat.extends("next/core-web-vitals"),
-  securityPlugin.configs.recommended,
   {
     rules: {
       // Disable object injection warning as it is overly noisy in React/Next.js

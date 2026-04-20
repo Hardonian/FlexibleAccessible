@@ -136,16 +136,15 @@ export function PublicScanBody({ domain, initialScan }: Props) {
   }, [domain, scan?.id, initialScan?.id]);
 
   useEffect(() => {
-    if (!initialScan?.id && !scan?.id) {
-      setPolling(false);
-    }
-  }, [initialScan?.id, scan?.id]);
-
-  useEffect(() => {
     if (!polling) return;
-    void fetchScan();
+    const kickoff = setTimeout(() => {
+      void fetchScan();
+    }, 0);
     const interval = setInterval(fetchScan, 2000);
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(kickoff);
+      clearInterval(interval);
+    };
   }, [polling, fetchScan]);
 
   const currentProof =
