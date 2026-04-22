@@ -5,6 +5,13 @@ All notable changes to Accessibility Remediation OS (FlexibleAccessible) will be
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-04-22
+
+### Security
+- Upgraded `hono` to `^4.12.14` (fixes 2 moderate CVEs: GHSA-92pp-h63x-v22m, GHSA-458j-xx4x-4375)
+- Pinned Node 20 via `.nvmrc` for CI consistency
+- Enabled AROS accessibility scan workflow
+
 ## [1.0.0] - 2026-04-09
 
 ### Added
