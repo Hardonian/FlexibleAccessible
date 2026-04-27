@@ -25,7 +25,7 @@
     "node": ">=18"
   },
   "dependencies": {
-    "bullmq": "^5.73.3",
+    "bullmq": "^5.76.2",
     "ioredis": "^5.4.0"
   }
 }
