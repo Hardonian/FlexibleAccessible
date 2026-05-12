@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { AppError } from "@aros/shared";
+import { AppError, apiLogger } from "@aros/shared";
 import { ZodError } from "zod";
 
 export function apiSuccess<T>(data: T, status = 200) {
@@ -45,7 +45,7 @@ export function apiError(error: unknown) {
     );
   }
 
-  console.error("Unhandled API error:", error);
+  apiLogger.error("Unhandled API error", { error });
   return NextResponse.json(
     {
       success: false,
