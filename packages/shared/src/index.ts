@@ -47,6 +47,8 @@ export {
   determineReadiness,
   degradedPosture,
   unhealthyPosture,
+  toComponentState,
+  toComponentCriticality,
 } from './posture';
 
 // Verification types
