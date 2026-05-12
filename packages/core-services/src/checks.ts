@@ -17,13 +17,14 @@ import {
   success, 
   failure,
   buildComponentPosture,
+  generateSecureId,
 } from '@aros/shared';
 
 /**
  * Generate trace ID for observability
  */
 function generateTraceId(): string {
-  return `chk_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  return generateSecureId('chk');
 }
 
 /**

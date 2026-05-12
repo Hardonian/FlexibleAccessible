@@ -6,6 +6,7 @@
  */
 
 import type { StandardResult } from './result';
+import { generateSecureId } from './id-utils';
 
 // ==================== LAYER 1: AUTHENTICATION ====================
 
@@ -499,7 +500,7 @@ export async function runSecurityCheck(
  * Generate trace ID
  */
 function generateTraceId(): string {
-  return `tr_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  return generateSecureId('tr');
 }
 
 // ==================== TENANT ISOLATION ====================
