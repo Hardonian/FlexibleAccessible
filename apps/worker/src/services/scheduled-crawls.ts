@@ -1,6 +1,6 @@
 import { Queue } from "bullmq";
 import type { PrismaClient } from "@aros/db";
-import { bullmqConnectionOptions } from "@aros/shared";
+import { bullmqConnectionOptions, workerLogger } from "@aros/shared";
 import {
   currentScheduleWindow,
   parseSupportedScheduleCron,
@@ -248,12 +248,10 @@ export function startScheduledCrawlLoop(prisma: PrismaClient) {
     try {
       const result = await runScheduledCrawlTick(prisma);
       if (result.enqueued > 0 || result.blocked > 0) {
-        console.log(
-          `[ScheduledCrawl] scanned=${result.scanned} enqueued=${result.enqueued} blocked=${result.blocked}`,
-        );
+        workerLogger.info(`[ScheduledCrawl] scanned=${result.scanned} enqueued=${result.enqueued} blocked=${result.blocked}`);
       }
     } catch (error) {
-      console.error("[ScheduledCrawl] tick failed", error);
+      workerLogger.error("[ScheduledCrawl] tick failed", { error });
     }
   };
 
