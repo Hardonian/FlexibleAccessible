@@ -1,3 +1,4 @@
+import { workerLogger } from "@aros/shared";
 import { PUBLIC_SCAN_EVIDENCE_TTL_MS } from "@aros/config";
 import { Job } from "bullmq";
 import { prisma } from "@aros/db";
@@ -19,7 +20,7 @@ interface PublicScanJobData {
 export async function handlePublicScanJob(job: Job<PublicScanJobData>) {
   const { publicScanResultId, url, maxPages } = job.data;
 
-  console.log(
+  workerLogger.info(
     `[PublicScan] Starting public scan ${publicScanResultId} for ${url}`,
   );
 
@@ -113,7 +114,7 @@ export async function handlePublicScanJob(job: Job<PublicScanJobData>) {
         pagesScanned++;
         await page.close();
       } catch (err) {
-        console.error(`[PublicScan] Error scanning ${pageUrl}:`, err);
+        workerLogger.error(`[PublicScan] Error scanning ${pageUrl}:`, { error: err });
       }
     }
 
@@ -161,11 +162,11 @@ export async function handlePublicScanJob(job: Job<PublicScanJobData>) {
       },
     });
 
-    console.log(
+    workerLogger.info(
       `[PublicScan] Completed ${publicScanResultId}: score=${score}, ${totalViolations} violations across ${pagesScanned} pages`,
     );
   } catch (err) {
-    console.error(`[PublicScan] Failed ${publicScanResultId}:`, err);
+    workerLogger.error(`[PublicScan] Failed ${publicScanResultId}:`, { error: err });
     const failedAt = new Date();
     await prisma.publicScanResult.update({
       where: { id: publicScanResultId },
