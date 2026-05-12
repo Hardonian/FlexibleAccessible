@@ -15,7 +15,6 @@ describe('planTierRank', () => {
   });
 
   it('returns 0 (equivalent to FREE) for unknown tiers', () => {
-    // In plain JS or if types are bypassed, it should fall back to 0
     expect(planTierRank('UNKNOWN_TIER' as PlanTier)).toBe(0);
     expect(planTierRank(undefined as unknown as PlanTier)).toBe(0);
     expect(planTierRank(null as unknown as PlanTier)).toBe(0);
