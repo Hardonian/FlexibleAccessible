@@ -25,7 +25,10 @@
     "node": ">=18"
   },
   "dependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "bcrypt": "^6.0.0",
     "bullmq": "^5.73.3",
-    "ioredis": "^5.4.0"
+    "ioredis": "^5.4.0",
+    "vitest": "^4.1.6"
   }
 }
