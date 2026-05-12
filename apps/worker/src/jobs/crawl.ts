@@ -1,3 +1,4 @@
+import { workerLogger } from '@aros/shared';
 import { Job } from 'bullmq';
 import { prisma, type PostCrawlScanKickoffStatus, type ScanEnqueueFailureCode } from '@aros/db';
 import {
@@ -27,7 +28,7 @@ interface CrawlJobData {
 export async function handleCrawlJob(job: Job<CrawlJobData>) {
   const { crawlRunId, siteId, config } = job.data;
 
-  console.log(`[Crawl] Starting crawl ${crawlRunId} for site ${siteId}`);
+  workerLogger.info(`[Crawl] Starting crawl ${crawlRunId} for site ${siteId}`);
 
   await prisma.crawlRun.update({
     where: { id: crawlRunId },
@@ -87,7 +88,7 @@ export async function handleCrawlJob(job: Job<CrawlJobData>) {
           }
         }
       } catch (err) {
-        console.warn(`[Crawl] Sitemap fetch failed: ${err}`);
+        workerLogger.warn(`[Crawl] Sitemap fetch failed: ${err}`);
       }
     }
 
@@ -220,7 +221,7 @@ export async function handleCrawlJob(job: Job<CrawlJobData>) {
         // Update progress
         await job.updateProgress(Math.round((pagesCrawled / config.maxPages) * 100));
       } catch (err) {
-        console.error(`[Crawl] Error crawling ${normalizedUrl}:`, err);
+        workerLogger.error(`[Crawl] Error crawling ${normalizedUrl}:`, { error: err });
         await prisma.crawlRun.update({
           where: { id: crawlRunId },
           data: { pagesFailed: { increment: 1 } },
@@ -239,7 +240,7 @@ export async function handleCrawlJob(job: Job<CrawlJobData>) {
       },
     });
 
-    console.log(`[Crawl] Completed crawl ${crawlRunId}: ${pagesCrawled} pages crawled`);
+    workerLogger.info(`[Crawl] Completed crawl ${crawlRunId}: ${pagesCrawled} pages crawled`);
 
     const autoScanAfterCrawl = site.crawlConfig?.autoScanAfterCrawl !== false;
 
@@ -267,7 +268,7 @@ export async function handleCrawlJob(job: Job<CrawlJobData>) {
           pagesCrawled === 0 ? 'No pages crawled; auto-scan not attempted.' : null,
       });
     } else if (!autoScanAfterCrawl) {
-      console.log(`[Crawl] Post-crawl scan skipped (autoScanAfterCrawl disabled) crawlRun=${crawlRunId}`);
+      workerLogger.info(`[Crawl] Post-crawl scan skipped (autoScanAfterCrawl disabled) crawlRun=${crawlRunId}`);
       await persistKickoff({
         postCrawlScanKickoffStatus: 'SKIPPED_BY_SETTING',
         postCrawlScanKickoffDetail: 'Automatic verification after crawl is off in site crawl settings.',
@@ -287,22 +288,20 @@ export async function handleCrawlJob(job: Job<CrawlJobData>) {
       );
       if (scanResult.ok) {
         if (scanResult.kind === 'queued') {
-          console.log(
+          workerLogger.info(
             `[Crawl] Post-crawl scan queued: scanRun=${scanResult.scanRunId} job=${scanResult.bullmqJobId}`
           );
         } else if (scanResult.kind === 'deduped') {
-          console.log(`[Crawl] Post-crawl scan skipped (already completed for crawl): ${scanResult.scanRunId}`);
+          workerLogger.info(`[Crawl] Post-crawl scan skipped (already completed for crawl): ${scanResult.scanRunId}`);
         } else {
-          console.log(
+          workerLogger.info(
             `[Crawl] Post-crawl scan coalesced: ${scanResult.scanRunId} status=${scanResult.status}`
           );
         }
         await persistPostCrawlScanKickoffAfterEnqueue(prisma, crawlRunId, scanResult);
       } else if (scanResult.kind === 'queue_unavailable') {
         const reasonCode = classifyScanEnqueueFailure(scanResult.message);
-        console.error(
-          `[Crawl] Post-crawl scan enqueue failed (queue): scanRun=${scanResult.scanRunId} ${scanResult.message}`
-        );
+        workerLogger.error(`[Crawl] Post-crawl scan enqueue failed (queue): scanRun=${scanResult.scanRunId} ${scanResult.message}`);
         await persistPostCrawlScanKickoffAfterEnqueue(prisma, crawlRunId, scanResult);
         await prisma.auditLog
           .create({
@@ -323,19 +322,19 @@ export async function handleCrawlJob(job: Job<CrawlJobData>) {
           .catch(() => undefined);
       } else {
         if (scanResult.kind === 'invalid_target') {
-          console.warn(`[Crawl] Post-crawl scan skipped: ${scanResult.reason}`);
+          workerLogger.warn(`[Crawl] Post-crawl scan skipped: ${scanResult.reason}`);
         } else if (scanResult.kind === 'plan_limit_reached') {
-          console.warn(
+          workerLogger.warn(
             `[Crawl] Post-crawl scan blocked by monthly limit: used=${scanResult.usedThisMonth} limit=${scanResult.monthlyScanLimit}`
           );
         } else {
-          console.error(`[Crawl] Post-crawl scan failed: ${scanResult.message}`);
+          workerLogger.error(`[Crawl] Post-crawl scan failed: ${scanResult.message}`);
         }
         await persistPostCrawlScanKickoffAfterEnqueue(prisma, crawlRunId, scanResult);
       }
     }
   } catch (err) {
-    console.error(`[Crawl] Crawl ${crawlRunId} failed:`, err);
+    workerLogger.error(`[Crawl] Crawl ${crawlRunId} failed:`, { error: err });
     await prisma.crawlRun.update({
       where: { id: crawlRunId },
       data: {
