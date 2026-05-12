@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 /**
  * Verification Flow Types
  *
@@ -448,14 +449,14 @@ export function verifyWebhookSignature(
  * Generate verification ID
  */
 function generateVerificationId(): string {
-  return `ver_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  return `ver_${Date.now()}_${randomBytes(8).toString('hex')}`;
 }
 
 /**
  * Generate evidence ID
  */
 function generateEvidenceId(): string {
-  return `ev_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  return `ev_${Date.now()}_${randomBytes(8).toString('hex')}`;
 }
 
 /**
