@@ -108,6 +108,7 @@ export const billingLogger = new Logger("billing");
 export const scanLogger = new Logger("scan");
 export const workerLogger = new Logger("worker");
 export const dbLogger = new Logger("db");
+export const queueLogger = new Logger("queue");
 
 // Utility function to create request-scoped logger
 export function createRequestLogger(
