@@ -398,4 +398,17 @@ export function unhealthyPosture(
     failClosed: true,
     checkedAt: new Date().toISOString(),
   };
+}export function toComponentState(healthState: string): ComponentState {
+  if (healthState === 'healthy' || healthState === 'ok') return 'ok';
+  if (healthState === 'degraded') return 'degraded';
+  if (healthState === 'unhealthy' || healthState === 'failed') return 'failed';
+  return 'unknown';
+}
+
+export function toComponentCriticality(criticality: string): ComponentCriticality {
+  if (criticality === 'critical') return 'critical';
+  if (criticality === 'high') return 'high';
+  if (criticality === 'medium') return 'medium';
+  if (criticality === 'low') return 'low';
+  return 'optional';
 }
