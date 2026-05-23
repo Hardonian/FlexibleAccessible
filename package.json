@@ -55,6 +55,7 @@
   "dependencies": {
     "@hono/node-server": "^1.19.14",
     "hono": "^4.12.12",
+    "msgpackr": "2.0.1",
     "next": "^16.2.3",
     "nodemailer": "^8.0.5"
   },
