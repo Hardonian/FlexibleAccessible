@@ -21,9 +21,9 @@ export function generateVPAT(scan: AccessibilityScan): VPATReport {
     platform: scan.platform || "Web",
 
     // WCAG 2.1 compliance
-    wcagVersion: "2.1",
-    conformanceLevel: scan.conformanceLevel || "AA",
-
+    wcagVersion: '2.1',
+    conformanceLevel: scan.conformanceLevel || 'AA',
+    
     // Count by severity
     criteria: generateCriteriaReport(scan.findings),
 
