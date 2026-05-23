@@ -119,6 +119,7 @@ export {
 } from './auth';
 
 export { AppError, ApiError } from './errors';
+export { logAiUsage, checkAiEntitlement } from './ai-usage';
 export { slugify, truncate, pluralize } from './strings';
 export {
   createFingerprint,
@@ -133,7 +134,7 @@ export {
   VISUAL_REVIEW_QUEUE_NAME,
   getSharedScanQueue,
 } from './scan-queue';
-export { apiLogger, authLogger, scanLogger, workerLogger } from './logger';
+export { apiLogger, authLogger, queueLogger, workerLogger } from './logger';
 export {
   FINDING_STATUSES,
   type FindingStatusValue,
