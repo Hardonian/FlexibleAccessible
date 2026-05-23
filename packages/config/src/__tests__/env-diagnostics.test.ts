@@ -6,6 +6,7 @@ describe('parseEnvDiagnostics', () => {
     const d = parseEnvDiagnostics({
       DATABASE_URL: 'postgresql://localhost:5432/db',
       NEXTAUTH_SECRET: 'test-secret-for-ci-only',
+      REDIS_URL: 'redis://localhost:6379',
       NEXTAUTH_URL: 'http://localhost:3000',
       NODE_ENV: 'test',
     });
