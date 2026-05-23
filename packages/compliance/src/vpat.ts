@@ -17,7 +17,7 @@ export function generateVPAT(scan: AccessibilityScan): VPATReport {
     
     // WCAG 2.1 compliance
     wcagVersion: '2.1',
-    wcag conformanceLevel: scan.conformanceLevel || 'AA',
+    conformanceLevel: scan.conformanceLevel || 'AA',
     
     // Count by severity
     criteria: generateCriteriaReport(scan.findings),
@@ -125,7 +125,7 @@ export function exportAsHTML(report: VPATReport): string {
   <p><strong>Version:</strong> ${report.productVersion}</p>
   <p><strong>Vendor:</strong> ${report.vendorName}</p>
   <p><strong>WCAG Version:</strong> ${report.wcagVersion}</p>
-  <p><strong>Conformance Level:</strong> ${report.wcag conformanceLevel}</p>
+  <p><strong>Conformance Level:</strong> ${report.conformanceLevel}</p>
   <p><strong>Generated:</strong> ${report.generatedAt}</p>
 
   <h2>Criteria Results</h2>

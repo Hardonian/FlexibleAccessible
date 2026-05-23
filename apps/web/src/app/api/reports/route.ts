@@ -14,6 +14,7 @@ import {
   recordReportExportUsage,
   USAGE_METRIC_REPORT_EXPORT,
 } from "@/lib/usage/report-export-usage";
+import { apiLogger } from "@aros/shared";
 
 export async function GET(request: Request) {
   try {
@@ -218,7 +219,7 @@ export async function GET(request: Request) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    console.error("Report generation error:", error);
+    apiLogger.error("Report generation error", { error });
     return NextResponse.json(
       { error: "Failed to generate report" },
       { status: 500 },

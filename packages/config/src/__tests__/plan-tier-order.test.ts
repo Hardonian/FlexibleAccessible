@@ -59,4 +59,28 @@ describe('planMeetsMinimum', () => {
     expect(planMeetsMinimum('FREE', 'INVALID_TIER' as PlanTier)).toBe(true); // FREE >= FREE
     expect(planMeetsMinimum('STARTER', 'INVALID_TIER' as PlanTier)).toBe(true); // STARTER >= FREE
   });
+
+  it.each([
+    ['FREE', 'FREE', true],
+    ['FREE', 'STARTER', false],
+    ['FREE', 'PROFESSIONAL', false],
+    ['FREE', 'ENTERPRISE', false],
+    ['STARTER', 'FREE', true],
+    ['STARTER', 'STARTER', true],
+    ['STARTER', 'PROFESSIONAL', false],
+    ['STARTER', 'ENTERPRISE', false],
+    ['PROFESSIONAL', 'FREE', true],
+    ['PROFESSIONAL', 'STARTER', true],
+    ['PROFESSIONAL', 'PROFESSIONAL', true],
+    ['PROFESSIONAL', 'ENTERPRISE', false],
+    ['ENTERPRISE', 'FREE', true],
+    ['ENTERPRISE', 'STARTER', true],
+    ['ENTERPRISE', 'PROFESSIONAL', true],
+    ['ENTERPRISE', 'ENTERPRISE', true],
+  ] as const)(
+    'when actual is %s and minimum is %s, it returns %s',
+    (actual: PlanTier, minimum: PlanTier, expected: boolean) => {
+      expect(planMeetsMinimum(actual, minimum)).toBe(expected);
+    }
+  );
 });
