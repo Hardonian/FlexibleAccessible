@@ -246,20 +246,3 @@ export function calculateServiceHealthScore(
   return calculateHealthScore(posture);
 }
 
-// ==================== MIGRATION GUIDE ====================
-//
-// BEFORE (Legacy):
-//   const { readiness, blockers, warnings } = deriveReadinessFromServices(services);
-//   const { degraded, totalFailed } = queueFailurePressure(snapshot);
-//
-// AFTER (Standardized):
-//   const posture = buildSystemPostureFromServices(services, { queueSnapshot: snapshot });
-//   const { ready, blockers, warnings } = determineReadiness(posture);
-//   const healthScore = calculateHealthScore(posture);
-//   
-//   // Access standardized fields:
-//   posture.overall        // 'healthy' | 'degraded' | 'unhealthy'
-//   posture.degraded       // boolean
-//   posture.degradedReasons // string[]
-//   posture.components     // ComponentPosture[]
-//   posture.failClosed     // boolean (always true

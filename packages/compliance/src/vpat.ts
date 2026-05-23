@@ -1,33 +1,38 @@
 // Package vpat generates Voluntary Product Accessibility Templates (VPAT)
-import type { AccessibilityScan, VPATReport, WCAGCriteria, ConformanceLevel } from './types';
+import type {
+  AccessibilityScan,
+  VPATReport,
+  WCAGCriteria,
+  ConformanceLevel,
+} from "./types";
 
 /**
  * Generate a VPAT 2.1 report from accessibility scan results
  */
 export function generateVPAT(scan: AccessibilityScan): VPATReport {
   const timestamp = new Date().toISOString();
-  
+
   return {
     reportId: `VPAT-${Date.now()}`,
     generatedAt: timestamp,
-    productName: scan.productName || 'Unknown Product',
-    productVersion: scan.productVersion || '1.0',
-    vendorName: scan.vendorName || 'Unknown Vendor',
-    platform: scan.platform || 'Web',
-    
+    productName: scan.productName || "Unknown Product",
+    productVersion: scan.productVersion || "1.0",
+    vendorName: scan.vendorName || "Unknown Vendor",
+    platform: scan.platform || "Web",
+
     // WCAG 2.1 compliance
     wcagVersion: '2.1',
     conformanceLevel: scan.conformanceLevel || 'AA',
     
     // Count by severity
     criteria: generateCriteriaReport(scan.findings),
-    
+
     // Summary
     summary: generateSummary(scan.findings),
-    
+
     // Remarks
-    remarks: scan.remarks || '',
-    
+    remarks: scan.remarks || "",
+
     // Optional: linked scan
     linkedScanId: scan.scanId || undefined,
   };
@@ -36,10 +41,12 @@ export function generateVPAT(scan: AccessibilityScan): VPATReport {
 /**
  * Generate criteria-level report
  */
-function generateCriteriaReport(findings: AccessibilityScan['findings']): WCAGCriteria[] {
+function generateCriteriaReport(
+  findings: AccessibilityScan["findings"],
+): WCAGCriteria[] {
   // Group findings by WCAG criteria
   const grouped = new Map<string, typeof findings>();
-  
+
   for (const f of findings) {
     const existing = grouped.get(f.wcagCriteria) || [];
     grouped.set(f.wcagCriteria, [...existing, f]);
@@ -47,18 +54,21 @@ function generateCriteriaReport(findings: AccessibilityScan['findings']): WCAGCr
 
   // Generate report for each criterion
   const criteria: WCAGCriteria[] = [];
-  
+
   for (const [criterion, criterionFindings] of grouped) {
-    const supported = criterionFindings.every(f => f.resolved);
-    const notes = criterionFindings.length > 0
-      ? criterionFindings.map(f => `${f.severity}: ${f.description}`).join('; ')
-      : 'All tests passed';
+    const supported = criterionFindings.every((f) => f.resolved);
+    const notes =
+      criterionFindings.length > 0
+        ? criterionFindings
+            .map((f) => `${f.severity}: ${f.description}`)
+            .join("; ")
+        : "All tests passed";
 
     criteria.push({
       criterion,
       supported,
       notes,
-      violations: criterionFindings.filter(f => !f.resolved).length,
+      violations: criterionFindings.filter((f) => !f.resolved).length,
     });
   }
 
@@ -68,12 +78,20 @@ function generateCriteriaReport(findings: AccessibilityScan['findings']): WCAGCr
 /**
  * Generate summary section
  */
-function generateSummary(findings: AccessibilityScan['findings']): string {
-  const critical = findings.filter(f => f.severity === 'critical' && !f.resolved).length;
-  const serious = findings.filter(f => f.severity === 'serious' && !f.resolved).length;
-  const moderate = findings.filter(f => f.severity === 'moderate' && !f.resolved).length;
-  const minor = findings.filter(f => f.severity === 'minor' && !f.resolved).length;
-  const passed = findings.filter(f => f.resolved).length;
+function generateSummary(findings: AccessibilityScan["findings"]): string {
+  const critical = findings.filter(
+    (f) => f.severity === "critical" && !f.resolved,
+  ).length;
+  const serious = findings.filter(
+    (f) => f.severity === "serious" && !f.resolved,
+  ).length;
+  const moderate = findings.filter(
+    (f) => f.severity === "moderate" && !f.resolved,
+  ).length;
+  const minor = findings.filter(
+    (f) => f.severity === "minor" && !f.resolved,
+  ).length;
+  const passed = findings.filter((f) => f.resolved).length;
 
   return `
 ## Accessibility Conformance Summary
@@ -95,14 +113,16 @@ function generateSummary(findings: AccessibilityScan['findings']): string {
  */
 export function exportAsHTML(report: VPATReport): string {
   const criteriaRows = report.criteria
-    .map(c => `
+    .map(
+      (c) => `
       <tr>
         <td>${c.criterion}</td>
-        <td>${c.supported ? 'Supported' : 'Not Supported'}</td>
+        <td>${c.supported ? "Supported" : "Not Supported"}</td>
         <td>${c.notes}</td>
       </tr>
-    `)
-    .join('');
+    `,
+    )
+    .join("");
 
   return `
 <!DOCTYPE html>
@@ -154,8 +174,11 @@ export function exportAsHTML(report: VPATReport): string {
  */
 export function exportAsMarkdown(report: VPATReport): string {
   const criteriaTable = report.criteria
-    .map(c => `| ${c.criterion} | ${c.supported ? '✅ Supported' : '❌ Not Supported'} | ${c.notes} |`)
-    .join('\n');
+    .map(
+      (c) =>
+        `| ${c.criterion} | ${c.supported ? "✅ Supported" : "❌ Not Supported"} | ${c.notes} |`,
+    )
+    .join("\n");
 
   return `
 # VPAT - ${report.productName}
@@ -176,7 +199,7 @@ ${criteriaTable}
 
 ${report.summary}
 
-${report.remarks ? `## Remarks\n${report.remarks}` : ''}
+${report.remarks ? `## Remarks\n${report.remarks}` : ""}
   `.trim();
 }
 
