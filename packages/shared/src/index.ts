@@ -133,7 +133,7 @@ export {
   VISUAL_REVIEW_QUEUE_NAME,
   getSharedScanQueue,
 } from './scan-queue';
-export { apiLogger, authLogger, scanLogger, workerLogger } from './logger';
+export { apiLogger, authLogger, workerLogger, queueLogger } from './logger';
 export {
   FINDING_STATUSES,
   type FindingStatusValue,

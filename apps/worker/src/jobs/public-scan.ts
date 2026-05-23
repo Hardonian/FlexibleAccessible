@@ -4,6 +4,7 @@ import { Job } from "bullmq";
 import { prisma } from "@aros/db";
 import { chromium, type Browser } from "playwright";
 import { normalizeViolations } from "@aros/scan-engine";
+import { workerLogger } from "@aros/shared";
 
 interface PublicScanJobData {
   publicScanResultId: string;
