@@ -1,9 +1,12 @@
+import { randomBytes } from 'crypto';
 /**
  * Verification Flow Types
  *
  * Standardized verification lifecycle across all repos.
  * Provides evidence collection, chain of custody, and confidence scoring.
  */
+
+import { generateSecureId } from './id-utils';
 
 /**
  * Verification status lifecycle
@@ -448,14 +451,14 @@ export function verifyWebhookSignature(
  * Generate verification ID
  */
 function generateVerificationId(): string {
-  return `ver_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  return `ver_${Date.now()}_${randomBytes(8).toString('hex')}`;
 }
 
 /**
  * Generate evidence ID
  */
 function generateEvidenceId(): string {
-  return `ev_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  return `ev_${Date.now()}_${randomBytes(8).toString('hex')}`;
 }
 
 /**

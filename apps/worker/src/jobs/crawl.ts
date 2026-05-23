@@ -1,11 +1,12 @@
+import { workerLogger } from '@aros/shared';
 import { Job } from 'bullmq';
 import { prisma, type PostCrawlScanKickoffStatus, type ScanEnqueueFailureCode } from '@aros/db';
 import {
   classifyScanEnqueueFailure,
   enqueueSiteScan,
   persistPostCrawlScanKickoffAfterEnqueue,
-} from '@aros/core-services';
-import { chromium, type Browser, type Page } from 'playwright';
+} from "@aros/core-services";
+import { chromium, type Browser, type Page } from "playwright";
 
 interface CrawlJobData {
   crawlRunId: string;
@@ -27,11 +28,11 @@ interface CrawlJobData {
 export async function handleCrawlJob(job: Job<CrawlJobData>) {
   const { crawlRunId, siteId, config } = job.data;
 
-  console.log(`[Crawl] Starting crawl ${crawlRunId} for site ${siteId}`);
+  workerLogger.info(`[Crawl] Starting crawl ${crawlRunId} for site ${siteId}`);
 
   await prisma.crawlRun.update({
     where: { id: crawlRunId },
-    data: { status: 'RUNNING', startedAt: new Date() },
+    data: { status: "RUNNING", startedAt: new Date() },
   });
 
   const site = await prisma.site.findUnique({
@@ -57,7 +58,7 @@ export async function handleCrawlJob(job: Job<CrawlJobData>) {
   if (!site) {
     await prisma.crawlRun.update({
       where: { id: crawlRunId },
-      data: { status: 'FAILED', errorMessage: 'Site not found' },
+      data: { status: "FAILED", errorMessage: "Site not found" },
     });
     return;
   }
@@ -67,7 +68,11 @@ export async function handleCrawlJob(job: Job<CrawlJobData>) {
   try {
     browser = await chromium.launch({
       headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+      ],
     });
 
     const visited = new Set<string>();
@@ -75,7 +80,7 @@ export async function handleCrawlJob(job: Job<CrawlJobData>) {
     let pagesCrawled = 0;
 
     // Discover initial URLs
-    const baseUrl = site.domain.replace(/\/$/, '');
+    const baseUrl = site.domain.replace(/\/$/, "");
 
     // Try sitemap first
     if (config.sitemapUrl) {
@@ -87,12 +92,12 @@ export async function handleCrawlJob(job: Job<CrawlJobData>) {
           }
         }
       } catch (err) {
-        console.warn(`[Crawl] Sitemap fetch failed: ${err}`);
+        workerLogger.warn(`[Crawl] Sitemap fetch failed: ${err}`);
       }
     }
 
     // Always add the root URL
-    if (!queue.some((q) => q.url === baseUrl || q.url === baseUrl + '/')) {
+    if (!queue.some((q) => q.url === baseUrl || q.url === baseUrl + "/")) {
       queue.push({ url: baseUrl, depth: 0 });
     }
 
@@ -111,14 +116,20 @@ export async function handleCrawlJob(job: Job<CrawlJobData>) {
       visited.add(normalizedUrl);
 
       // Check include/exclude patterns
-      if (!matchesPatterns(normalizedUrl, config.includePatterns, config.excludePatterns)) {
+      if (
+        !matchesPatterns(
+          normalizedUrl,
+          config.includePatterns,
+          config.excludePatterns,
+        )
+      ) {
         continue;
       }
 
       try {
         const context = await browser.newContext({
           viewport: config.viewports[0] ?? { width: 1280, height: 720 },
-          userAgent: 'AROS-Crawler/1.0 (Accessibility Scanner)',
+          userAgent: "AROS-Crawler/1.0 (Accessibility Scanner)",
           extraHTTPHeaders: config.customHeaders ?? {},
         });
 
@@ -126,18 +137,22 @@ export async function handleCrawlJob(job: Job<CrawlJobData>) {
         const consoleErrors: string[] = [];
         const networkErrors: string[] = [];
 
-        page.on('console', (msg) => {
-          if (msg.type() === 'error') {
+        page.on("console", (msg) => {
+          if (msg.type() === "error") {
             consoleErrors.push(msg.text());
           }
         });
 
-        page.on('requestfailed', (request) => {
-          networkErrors.push(`${request.url()} - ${request.failure()?.errorText ?? 'unknown'}`);
+        page.on("requestfailed", (request) => {
+          networkErrors.push(
+            `${request.url()} - ${request.failure()?.errorText ?? "unknown"}`,
+          );
         });
 
         const response = await page.goto(normalizedUrl, {
-          waitUntil: config.renderJavaScript ? 'networkidle' : 'domcontentloaded',
+          waitUntil: config.renderJavaScript
+            ? "networkidle"
+            : "domcontentloaded",
           timeout: 30000,
         });
 
@@ -158,7 +173,10 @@ export async function handleCrawlJob(job: Job<CrawlJobData>) {
         const path = new URL(normalizedUrl).pathname;
 
         // Take screenshot
-        const screenshotBuffer = await page.screenshot({ fullPage: true, type: 'png' });
+        const screenshotBuffer = await page.screenshot({
+          fullPage: true,
+          type: "png",
+        });
         const screenshotKey = `crawl/${crawlRunId}/${encodeURIComponent(path)}.png`;
 
         // Get accessibility tree snapshot
@@ -218,9 +236,11 @@ export async function handleCrawlJob(job: Job<CrawlJobData>) {
         await context.close();
 
         // Update progress
-        await job.updateProgress(Math.round((pagesCrawled / config.maxPages) * 100));
+        await job.updateProgress(
+          Math.round((pagesCrawled / config.maxPages) * 100),
+        );
       } catch (err) {
-        console.error(`[Crawl] Error crawling ${normalizedUrl}:`, err);
+        workerLogger.error(`[Crawl] Error crawling ${normalizedUrl}:`, { error: err });
         await prisma.crawlRun.update({
           where: { id: crawlRunId },
           data: { pagesFailed: { increment: 1 } },
@@ -232,14 +252,14 @@ export async function handleCrawlJob(job: Job<CrawlJobData>) {
     await prisma.crawlRun.update({
       where: { id: crawlRunId },
       data: {
-        status: 'COMPLETED',
+        status: "COMPLETED",
         completedAt: new Date(),
         pagesCrawled,
         pagesFound: visited.size,
       },
     });
 
-    console.log(`[Crawl] Completed crawl ${crawlRunId}: ${pagesCrawled} pages crawled`);
+    workerLogger.info(`[Crawl] Completed crawl ${crawlRunId}: ${pagesCrawled} pages crawled`);
 
     const autoScanAfterCrawl = site.crawlConfig?.autoScanAfterCrawl !== false;
 
@@ -253,68 +273,76 @@ export async function handleCrawlJob(job: Job<CrawlJobData>) {
         where: { id: crawlRunId },
         data: {
           postCrawlScanKickoffStatus: data.postCrawlScanKickoffStatus,
-          postCrawlScanKickoffReasonCode: data.postCrawlScanKickoffReasonCode ?? null,
+          postCrawlScanKickoffReasonCode:
+            data.postCrawlScanKickoffReasonCode ?? null,
           postCrawlScanKickoffDetail: data.postCrawlScanKickoffDetail ?? null,
-          postCrawlScanKickoffScanRunId: data.postCrawlScanKickoffScanRunId ?? null,
+          postCrawlScanKickoffScanRunId:
+            data.postCrawlScanKickoffScanRunId ?? null,
         },
       });
     }
 
     if (!site.workspace || pagesCrawled === 0) {
       await persistKickoff({
-        postCrawlScanKickoffStatus: 'NOT_REQUESTED',
+        postCrawlScanKickoffStatus: "NOT_REQUESTED",
         postCrawlScanKickoffDetail:
-          pagesCrawled === 0 ? 'No pages crawled; auto-scan not attempted.' : null,
+          pagesCrawled === 0
+            ? "No pages crawled; auto-scan not attempted."
+            : null,
       });
     } else if (!autoScanAfterCrawl) {
-      console.log(`[Crawl] Post-crawl scan skipped (autoScanAfterCrawl disabled) crawlRun=${crawlRunId}`);
+      workerLogger.info(`[Crawl] Post-crawl scan skipped (autoScanAfterCrawl disabled) crawlRun=${crawlRunId}`);
       await persistKickoff({
-        postCrawlScanKickoffStatus: 'SKIPPED_BY_SETTING',
-        postCrawlScanKickoffDetail: 'Automatic verification after crawl is off in site crawl settings.',
+        postCrawlScanKickoffStatus: "SKIPPED_BY_SETTING",
+        postCrawlScanKickoffDetail:
+          "Automatic verification after crawl is off in site crawl settings.",
       });
     } else {
-      await persistKickoff({ postCrawlScanKickoffStatus: 'REQUESTED' });
+      await persistKickoff({ postCrawlScanKickoffStatus: "REQUESTED" });
       const scanResult = await enqueueSiteScan(
         { prisma },
         {
           siteId,
           organizationId: site.workspace.organizationId,
-          monthlyScanLimit: site.workspace.organization.subscription?.maxScansPerMonth ?? null,
+          monthlyScanLimit:
+            site.workspace.organization.subscription?.maxScansPerMonth ?? null,
           crawlRunId,
-          trigger: 'crawl.completed',
+          trigger: "crawl.completed",
           userId: null,
-        }
+        },
       );
       if (scanResult.ok) {
         if (scanResult.kind === 'queued') {
-          console.log(
+          workerLogger.info(
             `[Crawl] Post-crawl scan queued: scanRun=${scanResult.scanRunId} job=${scanResult.bullmqJobId}`
           );
         } else if (scanResult.kind === 'deduped') {
-          console.log(`[Crawl] Post-crawl scan skipped (already completed for crawl): ${scanResult.scanRunId}`);
+          workerLogger.info(`[Crawl] Post-crawl scan skipped (already completed for crawl): ${scanResult.scanRunId}`);
         } else {
-          console.log(
+          workerLogger.info(
             `[Crawl] Post-crawl scan coalesced: ${scanResult.scanRunId} status=${scanResult.status}`
           );
         }
-        await persistPostCrawlScanKickoffAfterEnqueue(prisma, crawlRunId, scanResult);
-      } else if (scanResult.kind === 'queue_unavailable') {
-        const reasonCode = classifyScanEnqueueFailure(scanResult.message);
-        console.error(
-          `[Crawl] Post-crawl scan enqueue failed (queue): scanRun=${scanResult.scanRunId} ${scanResult.message}`
+        await persistPostCrawlScanKickoffAfterEnqueue(
+          prisma,
+          crawlRunId,
+          scanResult,
         );
+      } else if (scanResult.kind === "queue_unavailable") {
+        const reasonCode = classifyScanEnqueueFailure(scanResult.message);
+        workerLogger.error(`[Crawl] Post-crawl scan enqueue failed (queue): scanRun=${scanResult.scanRunId} ${scanResult.message}`);
         await persistPostCrawlScanKickoffAfterEnqueue(prisma, crawlRunId, scanResult);
         await prisma.auditLog
           .create({
             data: {
               organizationId: site.workspace.organizationId,
-              action: 'scan.enqueue_failed',
-              entityType: 'CrawlRun',
+              action: "scan.enqueue_failed",
+              entityType: "CrawlRun",
               entityId: crawlRunId,
               metadata: {
                 siteId,
                 scanRunId: scanResult.scanRunId,
-                reason: 'queue_unavailable',
+                reason: "queue_unavailable",
                 enqueueFailureCode: reasonCode,
                 message: scanResult.message,
               },
@@ -323,24 +351,28 @@ export async function handleCrawlJob(job: Job<CrawlJobData>) {
           .catch(() => undefined);
       } else {
         if (scanResult.kind === 'invalid_target') {
-          console.warn(`[Crawl] Post-crawl scan skipped: ${scanResult.reason}`);
+          workerLogger.warn(`[Crawl] Post-crawl scan skipped: ${scanResult.reason}`);
         } else if (scanResult.kind === 'plan_limit_reached') {
-          console.warn(
+          workerLogger.warn(
             `[Crawl] Post-crawl scan blocked by monthly limit: used=${scanResult.usedThisMonth} limit=${scanResult.monthlyScanLimit}`
           );
         } else {
-          console.error(`[Crawl] Post-crawl scan failed: ${scanResult.message}`);
+          workerLogger.error(`[Crawl] Post-crawl scan failed: ${scanResult.message}`);
         }
-        await persistPostCrawlScanKickoffAfterEnqueue(prisma, crawlRunId, scanResult);
+        await persistPostCrawlScanKickoffAfterEnqueue(
+          prisma,
+          crawlRunId,
+          scanResult,
+        );
       }
     }
   } catch (err) {
-    console.error(`[Crawl] Crawl ${crawlRunId} failed:`, err);
+    workerLogger.error(`[Crawl] Crawl ${crawlRunId} failed:`, { error: err });
     await prisma.crawlRun.update({
       where: { id: crawlRunId },
       data: {
-        status: 'FAILED',
-        errorMessage: err instanceof Error ? err.message : 'Unknown error',
+        status: "FAILED",
+        errorMessage: err instanceof Error ? err.message : "Unknown error",
         completedAt: new Date(),
       },
     });
@@ -354,7 +386,7 @@ export async function handleCrawlJob(job: Job<CrawlJobData>) {
 
 async function fetchSitemapUrls(sitemapUrl: string): Promise<string[]> {
   const response = await fetch(sitemapUrl, {
-    headers: { 'User-Agent': 'AROS-Crawler/1.0' },
+    headers: { "User-Agent": "AROS-Crawler/1.0" },
     signal: AbortSignal.timeout(10000),
   });
   const text = await response.text();
@@ -369,11 +401,11 @@ async function fetchSitemapUrls(sitemapUrl: string): Promise<string[]> {
 
 async function discoverLinks(page: Page, baseUrl: string): Promise<string[]> {
   const links = await page.evaluate((base: string) => {
-    const anchors = document.querySelectorAll('a[href]');
+    const anchors = document.querySelectorAll("a[href]");
     const urls: string[] = [];
     anchors.forEach((a) => {
       const href = (a as HTMLAnchorElement).href;
-      if (href && href.startsWith(base) && !href.includes('#')) {
+      if (href && href.startsWith(base) && !href.includes("#")) {
         urls.push(href);
       }
     });
@@ -385,7 +417,9 @@ async function discoverLinks(page: Page, baseUrl: string): Promise<string[]> {
 async function getAccessibilityTree(page: Page): Promise<unknown> {
   try {
     const withA11y = page as Page & {
-      accessibility: { snapshot: (options?: { interestingOnly?: boolean }) => Promise<unknown> };
+      accessibility: {
+        snapshot: (options?: { interestingOnly?: boolean }) => Promise<unknown>;
+      };
     };
     return await withA11y.accessibility.snapshot();
   } catch {
@@ -396,8 +430,8 @@ async function getAccessibilityTree(page: Page): Promise<unknown> {
 function normalizeUrl(url: string): string {
   try {
     const u = new URL(url);
-    u.hash = '';
-    let pathname = u.pathname.replace(/\/+$/, '') || '/';
+    u.hash = "";
+    let pathname = u.pathname.replace(/\/+$/, "") || "/";
     u.pathname = pathname;
     u.searchParams.sort();
     return u.toString();
@@ -409,7 +443,7 @@ function normalizeUrl(url: string): string {
 function matchesPatterns(
   url: string,
   includePatterns: string[],
-  excludePatterns: string[]
+  excludePatterns: string[],
 ): boolean {
   if (excludePatterns.length > 0) {
     for (const pattern of excludePatterns) {
