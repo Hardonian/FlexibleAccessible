@@ -163,7 +163,7 @@ export function exportAsMarkdown(report: VPATReport): string {
 **Version:** ${report.productVersion}  
 **Vendor:** ${report.vendorName}  
 **WCAG Version:** ${report.wcagVersion}  
-**Conformance Level:** ${report.conformanceLevel}
+**Conformance Level:** ${report.wcag conformanceLevel}
 **Generated:** ${report.generatedAt}
 
 ## Criteria Results
