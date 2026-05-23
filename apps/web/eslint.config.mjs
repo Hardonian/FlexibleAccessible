@@ -73,6 +73,13 @@ const config = [
       "no-restricted-syntax": "off",
     },
   },
+  {
+    // Mock files in Playwright component tests can use native img tags
+    files: ["playwright/mocks/**"],
+    rules: {
+      "@next/next/no-img-element": "off",
+    },
+  },
 ];
 
 export default config;
