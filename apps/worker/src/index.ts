@@ -8,13 +8,13 @@ import { handleClusterJob } from "./jobs/cluster";
 import { handleRemediationJob } from "./jobs/remediation";
 import { handlePublicScanJob } from "./jobs/public-scan";
 import { AgentOrchestrator } from "@aros/agents";
-import { bullmqConnectionOptions, VISUAL_REVIEW_QUEUE_NAME } from "@aros/shared";
+import { bullmqConnectionOptions, VISUAL_REVIEW_QUEUE_NAME, workerLogger } from "@aros/shared";
 import { startScheduledCrawlLoop } from "./services/scheduled-crawls";
 import { runSiteOpsAlertTick } from "./services/site-ops-alerts";
 
 async function handleVisualReviewJob(job: any) {
   const { siteId, scanRunId, organizationId } = job.data;
-  console.log(`[VisualReview] Starting job ${job.id} for site ${siteId}, run ${scanRunId}`);
+  workerLogger.info(`[VisualReview] Starting job ${job.id} for site ${siteId}, run ${scanRunId}`);
   
   const orchestrator = new AgentOrchestrator();
   return orchestrator.runFullPipeline({
@@ -31,8 +31,8 @@ const redisForShutdown = new IORedis(connection.url, {
 
 const concurrency = parseInt(process.env.WORKER_CONCURRENCY ?? "3");
 
-console.log("[Worker] Starting AROS workers...");
-console.log(`[Worker] Concurrency: ${concurrency}`);
+workerLogger.info("Starting AROS workers...");
+workerLogger.info(`Concurrency: ${concurrency}`);
 
 const crawlWorker = new Worker("crawl", handleCrawlJob, {
   connection,
@@ -72,13 +72,13 @@ const visualReviewWorker = new Worker(VISUAL_REVIEW_QUEUE_NAME, handleVisualRevi
 
 function setupWorkerEvents(worker: Worker, name: string) {
   worker.on("completed", (job) => {
-    console.log(`[${name}] Job ${job.id} completed`);
+    workerLogger.info(`[${name}] Job ${job.id} completed`);
   });
   worker.on("failed", (job, err) => {
-    console.error(`[${name}] Job ${job?.id} failed:`, err.message);
+    workerLogger.error(`[${name}] Job ${job?.id} failed: ${err.message}`, { error: err });
   });
   worker.on("error", (err) => {
-    console.error(`[${name}] Worker error:`, err.message);
+    workerLogger.error(`[${name}] Worker error: ${err.message}`, { error: err });
   });
 }
 
@@ -94,10 +94,7 @@ async function heartbeatTick() {
   try {
     await recordWorkerHeartbeat(prisma);
   } catch (e) {
-    console.error(
-      "[Worker] Platform heartbeat failed:",
-      e instanceof Error ? e.message : e,
-    );
+    workerLogger.error("Platform heartbeat failed", { error: e });
   }
 }
 void heartbeatTick();
@@ -113,15 +110,10 @@ async function siteOpsAlertTick() {
   try {
     const result = await runSiteOpsAlertTick(prisma);
     if (result.transitionsDetected > 0) {
-      console.log(
-        `[SiteOpsAlert] checked=${result.checked} transitions=${result.transitionsDetected} notifications=${result.notificationsSent}`,
-      );
+      workerLogger.info(`[SiteOpsAlert] checked=${result.checked} transitions=${result.transitionsDetected} notifications=${result.notificationsSent}`);
     }
   } catch (e) {
-    console.error(
-      "[SiteOpsAlert] tick failed:",
-      e instanceof Error ? e.message : e,
-    );
+    workerLogger.error("[SiteOpsAlert] tick failed", { error: e });
   }
 }
 void siteOpsAlertTick();
@@ -131,7 +123,7 @@ const siteOpsAlertInterval = setInterval(() => {
 
 
 async function shutdown() {
-  console.log("[Worker] Shutting down...");
+  workerLogger.info("Shutting down...");
   clearInterval(heartbeatInterval);
   clearInterval(scheduledCrawlInterval);
   clearInterval(siteOpsAlertInterval);
@@ -151,4 +143,4 @@ async function shutdown() {
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 
-console.log("[Worker] All workers started successfully");
+workerLogger.info("All workers started successfully");
