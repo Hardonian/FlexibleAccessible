@@ -7,6 +7,34 @@ export enum LogLevel {
   DEBUG = "debug",
 }
 
+const SENSITIVE_KEY_PATTERN =
+  /(key|apikey|api_key|token|secret|password|passwd|authorization|cookie|keyhash|key_hash)/i;
+const REDACTED_VALUE = "[REDACTED]";
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function sanitizeForLogging(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeForLogging(item));
+  }
+
+  if (!isPlainObject(value)) {
+    return value;
+  }
+
+  const sanitized: Record<string, unknown> = {};
+  for (const [key, nestedValue] of Object.entries(value)) {
+    if (SENSITIVE_KEY_PATTERN.test(key)) {
+      sanitized[key] = REDACTED_VALUE;
+    } else {
+      sanitized[key] = sanitizeForLogging(nestedValue);
+    }
+  }
+  return sanitized;
+}
+
 const logSchema = z.object({
   level: z.nativeEnum(LogLevel),
   message: z.string(),
@@ -35,12 +63,18 @@ class Logger {
       Omit<LogEntry, "level" | "message" | "service" | "timestamp">
     >,
   ) {
+    const sanitizedExtra = extra
+      ? (sanitizeForLogging(extra) as Partial<
+          Omit<LogEntry, "level" | "message" | "service" | "timestamp">
+        >)
+      : undefined;
+
     const entry: LogEntry = {
       level,
       message,
       service: this.service,
       timestamp: new Date().toISOString(),
-      ...extra,
+      ...sanitizedExtra,
     };
 
     // In production, this would go to a proper logging service
@@ -57,7 +91,7 @@ class Logger {
 
       console.log(
         `${color}[${level.toUpperCase()}] ${this.service}: ${message}\x1b[0m`,
-        extra ? JSON.stringify(extra, null, 2) : "",
+        sanitizedExtra ? JSON.stringify(sanitizedExtra, null, 2) : "",
       );
     }
   }
@@ -107,7 +141,9 @@ export const authLogger = new Logger("auth");
 export const billingLogger = new Logger("billing");
 export const scanLogger = new Logger("scan");
 export const workerLogger = new Logger("worker");
+export const queueLogger = new Logger("queue");
 export const dbLogger = new Logger("db");
+export const queueLogger = new Logger("queue");
 
 // Utility function to create request-scoped logger
 export function createRequestLogger(
@@ -126,3 +162,4 @@ export function createRequestLogger(
       apiLogger.debug(message, { requestId, userId, organizationId, ...extra }),
   };
 }
+export const queueLogger = new Logger("queue");
