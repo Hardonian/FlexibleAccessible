@@ -47,6 +47,8 @@ export {
   determineReadiness,
   degradedPosture,
   unhealthyPosture,
+  toComponentState,
+  toComponentCriticality,
 } from './posture';
 
 // Verification types
@@ -141,6 +143,7 @@ export {
   deriveAutomationEvidenceFreshness,
 } from './finding-lifecycle';
 export { hashPassword, verifyPassword, generateToken } from './password';
+export { generateSecureId } from './id-utils';
 
 // Version
 export const VERSION = '1.0.0';
