@@ -56,15 +56,25 @@ export function validateFix(suggestedCode: string): ValidationResult {
 }
 
 function hasScriptInjection(code: string): boolean {
+  // Decode HTML entities (decimal and hex) to prevent evasion
+  const decoded = code
+    .replace(/&#(\d+);?/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)))
+    .replace(/&#x([0-9a-f]+);?/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+
   const patterns = [
-    /javascript:/i,
+    /j[\s\x00-\x20]*a[\s\x00-\x20]*v[\s\x00-\x20]*a[\s\x00-\x20]*s[\s\x00-\x20]*c[\s\x00-\x20]*r[\s\x00-\x20]*i[\s\x00-\x20]*p[\s\x00-\x20]*t[\s\x00-\x20]*:/i,
+    /v[\s\x00-\x20]*b[\s\x00-\x20]*s[\s\x00-\x20]*c[\s\x00-\x20]*r[\s\x00-\x20]*i[\s\x00-\x20]*p[\s\x00-\x20]*t[\s\x00-\x20]*:/i,
+    /d[\s\x00-\x20]*a[\s\x00-\x20]*t[\s\x00-\x20]*a[\s\x00-\x20]*:/i,
     /<script/i,
-    /on\w+\s*=/i,
-    /eval\s*\(/,
-    /document\.write/,
-    /innerHTML\s*=/,
+    /<iframe/i,
+    /<object/i,
+    /<embed/i,
+    /on[a-z]+[\s\x00-\x20]*=/i,
+    /eval[\s\x00-\x20]*\(/i,
+    /document\.write/i,
+    /innerHTML[\s\x00-\x20]*=/i,
   ];
-  return patterns.some((p) => p.test(code));
+  return patterns.some((p) => p.test(decoded));
 }
 
 function hasBalancedTags(code: string): boolean {

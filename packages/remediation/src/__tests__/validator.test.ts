@@ -19,6 +19,27 @@ describe('validateFix', () => {
     expect(result.valid).toBe(false);
   });
 
+  it("detects obfuscated javascript: protocol", () => {
+    const result1 = validateFix("<a href=\"java&#x0A;script:alert(1)\">Click</a>");
+    expect(result1.valid).toBe(false);
+
+    const result2 = validateFix("<a href=\"j a v a s c r i p t :alert(1)\">Click</a>");
+    expect(result2.valid).toBe(false);
+  });
+
+  it("detects dangerous tags", () => {
+    const result1 = validateFix("<IFRAME SRC=\"javascript:alert(1)\"></IFRAME>");
+    expect(result1.valid).toBe(false);
+
+    const result2 = validateFix("<object data=\"javascript:alert(1)\"></object>");
+    expect(result2.valid).toBe(false);
+  });
+
+  it("detects data: and vbscript: URIs", () => {
+    expect(validateFix("<a href=\"data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==\">Click</a>").valid).toBe(false);
+    expect(validateFix("<a href=\"vbscript:msgbox(1)\">Click</a>").valid).toBe(false);
+  });
+
   it('warns about unbalanced tags', () => {
     const result = validateFix('<div><span>text</div>');
     expect(result.warnings.length).toBeGreaterThan(0);
