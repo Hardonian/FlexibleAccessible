@@ -19,15 +19,18 @@
   "devDependencies": {
     "@prisma/client": "^7.8.0",
     "@types/node": "^25.6.0",
-    "tsup": "^8.5.1",
-    "typescript": "^5.3.0"
+    "tsup": "^8.0.0",
+    "typescript": "^5.3.0",
+    "vitest": "^4.1.6"
   },
   "engines": {
     "node": ">=18"
   },
   "dependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "bcrypt": "^6.0.0",
     "bullmq": "^5.73.3",
     "ioredis": "^5.4.0",
-    "zod": "^3.25.76"
+    "vitest": "^4.1.6"
   }
 }
