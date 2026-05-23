@@ -11,6 +11,11 @@ describe('planTierRank', () => {
   });
 
   it('ranks tiers in ascending order', () => {
+    expect(planTierRank('FREE')).toBe(0);
+    expect(planTierRank('STARTER')).toBe(1);
+    expect(planTierRank('PROFESSIONAL')).toBe(2);
+    expect(planTierRank('ENTERPRISE')).toBe(3);
+
     expect(planTierRank('FREE')).toBeLessThan(planTierRank('STARTER'));
     expect(planTierRank('STARTER')).toBeLessThan(planTierRank('PROFESSIONAL'));
     expect(planTierRank('PROFESSIONAL')).toBeLessThan(planTierRank('ENTERPRISE'));
@@ -20,6 +25,40 @@ describe('planTierRank', () => {
     // @ts-expect-error - testing invalid input
     expect(planTierRank('INVALID_TIER')).toBe(0);
   });
+
+  it('handles invalid actual tiers by treating them as FREE', () => {
+    expect(planMeetsMinimum('INVALID_TIER' as PlanTier, 'FREE')).toBe(true); // FREE >= FREE
+    expect(planMeetsMinimum('INVALID_TIER' as PlanTier, 'STARTER')).toBe(false); // FREE < STARTER
+  });
+
+  it('handles invalid minimum tiers by treating them as FREE', () => {
+    expect(planMeetsMinimum('FREE', 'INVALID_TIER' as PlanTier)).toBe(true); // FREE >= FREE
+    expect(planMeetsMinimum('STARTER', 'INVALID_TIER' as PlanTier)).toBe(true); // STARTER >= FREE
+  });
+
+  it.each([
+    ['FREE', 'FREE', true],
+    ['FREE', 'STARTER', false],
+    ['FREE', 'PROFESSIONAL', false],
+    ['FREE', 'ENTERPRISE', false],
+    ['STARTER', 'FREE', true],
+    ['STARTER', 'STARTER', true],
+    ['STARTER', 'PROFESSIONAL', false],
+    ['STARTER', 'ENTERPRISE', false],
+    ['PROFESSIONAL', 'FREE', true],
+    ['PROFESSIONAL', 'STARTER', true],
+    ['PROFESSIONAL', 'PROFESSIONAL', true],
+    ['PROFESSIONAL', 'ENTERPRISE', false],
+    ['ENTERPRISE', 'FREE', true],
+    ['ENTERPRISE', 'STARTER', true],
+    ['ENTERPRISE', 'PROFESSIONAL', true],
+    ['ENTERPRISE', 'ENTERPRISE', true],
+  ] as const)(
+    'when actual is %s and minimum is %s, it returns %s',
+    (actual: PlanTier, minimum: PlanTier, expected: boolean) => {
+      expect(planMeetsMinimum(actual, minimum)).toBe(expected);
+    }
+  );
 });
 
 describe('planMeetsMinimum', () => {
