@@ -1,3 +1,4 @@
+import { workerLogger } from "@aros/shared";
 import { PUBLIC_SCAN_EVIDENCE_TTL_MS } from "@aros/config";
 import { Job } from "bullmq";
 import { prisma } from "@aros/db";

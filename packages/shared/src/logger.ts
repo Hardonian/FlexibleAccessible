@@ -107,6 +107,7 @@ export const authLogger = new Logger("auth");
 export const billingLogger = new Logger("billing");
 export const scanLogger = new Logger("scan");
 export const workerLogger = new Logger("worker");
+export const queueLogger = new Logger("queue");
 export const dbLogger = new Logger("db");
 
 // Utility function to create request-scoped logger
@@ -126,3 +127,5 @@ export function createRequestLogger(
       apiLogger.debug(message, { requestId, userId, organizationId, ...extra }),
   };
 }
+
+export const queueLogger = new Logger("queue");
