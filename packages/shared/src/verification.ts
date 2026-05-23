@@ -6,6 +6,8 @@ import { randomBytes } from 'crypto';
  * Provides evidence collection, chain of custody, and confidence scoring.
  */
 
+import { generateSecureId } from './id-utils';
+
 /**
  * Verification status lifecycle
  */
