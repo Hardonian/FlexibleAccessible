@@ -1,8 +1,10 @@
+import { workerLogger } from "@aros/shared";
 import { PUBLIC_SCAN_EVIDENCE_TTL_MS } from "@aros/config";
 import { Job } from "bullmq";
 import { prisma } from "@aros/db";
 import { chromium, type Browser } from "playwright";
 import { normalizeViolations } from "@aros/scan-engine";
+import { workerLogger } from "@aros/shared";
 
 interface PublicScanJobData {
   publicScanResultId: string;
@@ -19,9 +21,9 @@ interface PublicScanJobData {
 export async function handlePublicScanJob(job: Job<PublicScanJobData>) {
   const { publicScanResultId, url, maxPages } = job.data;
 
-  console.log(
-    `[PublicScan] Starting public scan ${publicScanResultId} for ${url}`,
-  );
+  workerLogger.info(`[PublicScan] Starting public scan ${publicScanResultId} for ${url}`, {
+    metadata: { publicScanResultId, url }
+  });
 
   await prisma.publicScanResult.update({
     where: { id: publicScanResultId },
@@ -113,7 +115,7 @@ export async function handlePublicScanJob(job: Job<PublicScanJobData>) {
         pagesScanned++;
         await page.close();
       } catch (err) {
-        console.error(`[PublicScan] Error scanning ${pageUrl}:`, err);
+        workerLogger.error(`[PublicScan] Error scanning ${pageUrl}`, { error: err, metadata: { pageUrl, publicScanResultId } });
       }
     }
 
@@ -161,11 +163,11 @@ export async function handlePublicScanJob(job: Job<PublicScanJobData>) {
       },
     });
 
-    console.log(
-      `[PublicScan] Completed ${publicScanResultId}: score=${score}, ${totalViolations} violations across ${pagesScanned} pages`,
-    );
+    workerLogger.info(`[PublicScan] Completed ${publicScanResultId}: score=${score}, ${totalViolations} violations across ${pagesScanned} pages`, {
+      metadata: { publicScanResultId, score, totalViolations, pagesScanned }
+    });
   } catch (err) {
-    console.error(`[PublicScan] Failed ${publicScanResultId}:`, err);
+    workerLogger.error(`[PublicScan] Failed ${publicScanResultId}`, { error: err, metadata: { publicScanResultId } });
     const failedAt = new Date();
     await prisma.publicScanResult.update({
       where: { id: publicScanResultId },
