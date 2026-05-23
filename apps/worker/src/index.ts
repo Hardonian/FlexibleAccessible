@@ -94,10 +94,7 @@ async function heartbeatTick() {
   try {
     await recordWorkerHeartbeat(prisma);
   } catch (e) {
-    workerLogger.error(
-      `Platform heartbeat failed: ${e instanceof Error ? e.message : String(e)}`,
-      { error: e }
-    );
+    workerLogger.error("Platform heartbeat failed", { error: e });
   }
 }
 void heartbeatTick();
@@ -113,15 +110,10 @@ async function siteOpsAlertTick() {
   try {
     const result = await runSiteOpsAlertTick(prisma);
     if (result.transitionsDetected > 0) {
-      workerLogger.info(
-        `[SiteOpsAlert] checked=${result.checked} transitions=${result.transitionsDetected} notifications=${result.notificationsSent}`,
-      );
+      workerLogger.info(`[SiteOpsAlert] checked=${result.checked} transitions=${result.transitionsDetected} notifications=${result.notificationsSent}`);
     }
   } catch (e) {
-    workerLogger.error(
-      `[SiteOpsAlert] tick failed: ${e instanceof Error ? e.message : String(e)}`,
-      { error: e }
-    );
+    workerLogger.error("[SiteOpsAlert] tick failed", { error: e });
   }
 }
 void siteOpsAlertTick();
