@@ -3,6 +3,13 @@ import { planMeetsMinimum, planTierRank, PLAN_TIER_ORDER } from '../plan-tier-or
 import type { PlanTier } from '../plans';
 
 describe('planTierRank', () => {
+  it('returns sequential ranks starting at 0 for known tiers', () => {
+    expect(planTierRank('FREE')).toBe(0);
+    expect(planTierRank('STARTER')).toBe(1);
+    expect(planTierRank('PROFESSIONAL')).toBe(2);
+    expect(planTierRank('ENTERPRISE')).toBe(3);
+  });
+
   it('ranks tiers in ascending order', () => {
     expect(planTierRank('FREE')).toBe(0);
     expect(planTierRank('STARTER')).toBe(1);
@@ -14,40 +21,9 @@ describe('planTierRank', () => {
     expect(planTierRank('PROFESSIONAL')).toBeLessThan(planTierRank('ENTERPRISE'));
   });
 
-  it('returns 0 (equivalent to FREE) for unknown tiers', () => {
-    expect(planTierRank('UNKNOWN_TIER' as PlanTier)).toBe(0);
-    expect(planTierRank(undefined as unknown as PlanTier)).toBe(0);
-    expect(planTierRank(null as unknown as PlanTier)).toBe(0);
-  });
-});
-
-describe('planMeetsMinimum', () => {
-  it('returns true when actual and minimum are the same tier', () => {
-    for (const tier of PLAN_TIER_ORDER) {
-      expect(planMeetsMinimum(tier, tier)).toBe(true);
-    }
-  });
-
-  it('returns true when actual tier is higher than minimum tier', () => {
-    expect(planMeetsMinimum('STARTER', 'FREE')).toBe(true);
-    expect(planMeetsMinimum('PROFESSIONAL', 'FREE')).toBe(true);
-    expect(planMeetsMinimum('ENTERPRISE', 'FREE')).toBe(true);
-
-    expect(planMeetsMinimum('PROFESSIONAL', 'STARTER')).toBe(true);
-    expect(planMeetsMinimum('ENTERPRISE', 'STARTER')).toBe(true);
-
-    expect(planMeetsMinimum('ENTERPRISE', 'PROFESSIONAL')).toBe(true);
-  });
-
-  it('returns false when actual tier is lower than minimum tier', () => {
-    expect(planMeetsMinimum('FREE', 'STARTER')).toBe(false);
-    expect(planMeetsMinimum('FREE', 'PROFESSIONAL')).toBe(false);
-    expect(planMeetsMinimum('FREE', 'ENTERPRISE')).toBe(false);
-
-    expect(planMeetsMinimum('STARTER', 'PROFESSIONAL')).toBe(false);
-    expect(planMeetsMinimum('STARTER', 'ENTERPRISE')).toBe(false);
-
-    expect(planMeetsMinimum('PROFESSIONAL', 'ENTERPRISE')).toBe(false);
+  it('returns 0 for unknown tiers', () => {
+    // @ts-expect-error - testing invalid input
+    expect(planTierRank('INVALID_TIER')).toBe(0);
   });
 
   it('handles invalid actual tiers by treating them as FREE', () => {
@@ -80,6 +56,36 @@ describe('planMeetsMinimum', () => {
   ] as const)(
     'when actual is %s and minimum is %s, it returns %s',
     (actual: PlanTier, minimum: PlanTier, expected: boolean) => {
+      expect(planMeetsMinimum(actual, minimum)).toBe(expected);
+    }
+  );
+});
+
+describe('planMeetsMinimum', () => {
+  it.each([
+    // [actual, minimum, expected]
+    ['FREE', 'FREE', true],
+    ['FREE', 'STARTER', false],
+    ['FREE', 'PROFESSIONAL', false],
+    ['FREE', 'ENTERPRISE', false],
+
+    ['STARTER', 'FREE', true],
+    ['STARTER', 'STARTER', true],
+    ['STARTER', 'PROFESSIONAL', false],
+    ['STARTER', 'ENTERPRISE', false],
+
+    ['PROFESSIONAL', 'FREE', true],
+    ['PROFESSIONAL', 'STARTER', true],
+    ['PROFESSIONAL', 'PROFESSIONAL', true],
+    ['PROFESSIONAL', 'ENTERPRISE', false],
+
+    ['ENTERPRISE', 'FREE', true],
+    ['ENTERPRISE', 'STARTER', true],
+    ['ENTERPRISE', 'PROFESSIONAL', true],
+    ['ENTERPRISE', 'ENTERPRISE', true],
+  ] as Array<[PlanTier, PlanTier, boolean]>)(
+    'returns %3$s when actual=%1$s and minimum=%2$s',
+    (actual, minimum, expected) => {
       expect(planMeetsMinimum(actual, minimum)).toBe(expected);
     }
   );
