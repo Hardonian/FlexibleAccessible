@@ -56,15 +56,38 @@ export function validateFix(suggestedCode: string): ValidationResult {
 }
 
 function hasScriptInjection(code: string): boolean {
-  const patterns = [
-    /javascript:/i,
+  // Decode HTML entities to catch obfuscated payloads like java&#x0A;script:
+  const decodedCode = code.replace(/&#(?:x([\da-f]+)|(\d+));?/gi, (_, hex, dec) => {
+    return String.fromCharCode(dec ? parseInt(dec, 10) : parseInt(hex, 16));
+  });
+
+  // Strip control characters and whitespace for protocol matching
+  // This catches things like "j a v a s c r i p t :" or "java\x00script:"
+  const strippedCode = decodedCode.replace(/[\u0000-\u0020\u007F-\u009F\u2000-\u200F\u2028-\u202F\u205F-\u206F\u3000\uFEFF]/g, '');
+
+  const generalPatterns = [
     /<script/i,
-    /on\w+\s*=/i,
-    /eval\s*\(/,
-    /document\.write/,
-    /innerHTML\s*=/,
+    /<object/i,
+    /<embed/i,
+    /<iframe/i,
+    /\bon\w+\s*=/i,
+    /eval\s*\(/i,
+    /setTimeout\s*\(/i,
+    /setInterval\s*\(/i,
+    /document\.write/i,
+    /innerHTML\s*=/i,
   ];
-  return patterns.some((p) => p.test(code));
+
+  const protocolPatterns = [
+    /javascript:/i,
+    /vbscript:/i,
+    /data:text\/html/i,
+  ];
+
+  return (
+    generalPatterns.some((p) => p.test(decodedCode)) ||
+    protocolPatterns.some((p) => p.test(strippedCode))
+  );
 }
 
 function hasBalancedTags(code: string): boolean {
