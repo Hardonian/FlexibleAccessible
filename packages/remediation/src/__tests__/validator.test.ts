@@ -61,4 +61,39 @@ describe('validateFix', () => {
     expect(result.valid).toBe(true);
     expect(result.checks.syntaxValid).toBe(true);
   });
+
+  it('detects obfuscated script injection with HTML entities', () => {
+    const result = validateFix('<a href="java&#x0A;script:alert(1)">Click</a>');
+    expect(result.valid).toBe(false);
+  });
+
+  it('detects obfuscated script injection with whitespaces and control characters', () => {
+    const result = validateFix('<a href="j a v a s c r i p t :alert(1)">Click</a>');
+    expect(result.valid).toBe(false);
+
+    // Test with null byte (simulation)
+    const result2 = validateFix('<a href="java\x00script:alert(1)">Click</a>');
+    expect(result2.valid).toBe(false);
+  });
+
+  it('detects uppercase variations of script injection', () => {
+    const result1 = validateFix('<script>EVAL("1")</script>');
+    expect(result1.valid).toBe(false);
+
+    const result2 = validateFix('<script>DOCUMENT.WRITE("test")</script>');
+    expect(result2.valid).toBe(false);
+  });
+
+  it('does not produce false positives for conditional text with equals sign', () => {
+    const result = validateFix('<div data-conditional="true">content</div>');
+    expect(result.valid).toBe(true);
+  });
+
+  it('detects vbscript and other execution methods', () => {
+    const result1 = validateFix('<a href="vbscript:msgbox(1)">Click</a>');
+    expect(result1.valid).toBe(false);
+
+    const result2 = validateFix('<script>setTimeout("alert(1)", 1000)</script>');
+    expect(result2.valid).toBe(false);
+  });
 });
