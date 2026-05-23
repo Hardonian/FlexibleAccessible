@@ -6,13 +6,12 @@ import { prisma } from "@/lib/db";
 import { createSession } from "@/lib/session";
 import { abuseRateLimit, verifyPassword } from "@aros/shared";
 import { getClientIpFromHeaders } from "@/lib/client-ip";
+import { randomBytes } from "node:crypto";
 
 interface LoginState {
   error: string | null;
 }
 
-const DUMMY_HASH =
-  "$argon2id$v=19$m=65536,t=3,p=1$dummy$dummyhashdummyhashdummyhashdum";
 
 async function constantTimeVerify(
   password: string,
@@ -81,12 +80,14 @@ export async function loginAction(
   });
   if (!user) {
     // Perform a dummy hash verification to prevent user enumeration via timing
-    await constantTimeVerify(password, DUMMY_HASH);
+    const dynamicDummyHash = `${randomBytes(16).toString("hex")}:${randomBytes(64).toString("hex")}`;
+    await constantTimeVerify(password, dynamicDummyHash);
     return { error: "Invalid email or password" };
   }
 
   if (!user.passwordHash) {
-    await constantTimeVerify(password, DUMMY_HASH);
+    const dynamicDummyHash = `${randomBytes(16).toString("hex")}:${randomBytes(64).toString("hex")}`;
+    await constantTimeVerify(password, dynamicDummyHash);
     return {
       error:
         "This account uses single sign-on. Use the “Continue with SSO” option on the sign-in page.",

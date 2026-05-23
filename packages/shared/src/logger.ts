@@ -127,5 +127,4 @@ export function createRequestLogger(
       apiLogger.debug(message, { requestId, userId, organizationId, ...extra }),
   };
 }
-
 export const queueLogger = new Logger("queue");
