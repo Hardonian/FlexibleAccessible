@@ -7,6 +7,7 @@ describe('parseEnvDiagnostics', () => {
       DATABASE_URL: 'postgresql://localhost:5432/db',
       NEXTAUTH_SECRET: 'test-secret-for-ci-only',
       NEXTAUTH_URL: 'http://localhost:3000',
+      REDIS_URL: 'redis://localhost:6379',
       NODE_ENV: 'test',
     });
     expect(d.valid).toBe(true);
