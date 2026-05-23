@@ -56,38 +56,25 @@ export function validateFix(suggestedCode: string): ValidationResult {
 }
 
 function hasScriptInjection(code: string): boolean {
-  // Decode HTML entities to catch obfuscated payloads like java&#x0A;script:
-  const decodedCode = code.replace(/&#(?:x([\da-f]+)|(\d+));?/gi, (_, hex, dec) => {
-    return String.fromCharCode(dec ? parseInt(dec, 10) : parseInt(hex, 16));
-  });
+  // Decode HTML entities (decimal and hex) to prevent evasion
+  const decoded = code
+    .replace(/&#(\d+);?/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)))
+    .replace(/&#x([0-9a-f]+);?/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
 
-  // Strip control characters and whitespace for protocol matching
-  // This catches things like "j a v a s c r i p t :" or "java\x00script:"
-  const strippedCode = decodedCode.replace(/[\u0000-\u0020\u007F-\u009F\u2000-\u200F\u2028-\u202F\u205F-\u206F\u3000\uFEFF]/g, '');
-
-  const generalPatterns = [
+  const patterns = [
+    /j[\s\x00-\x20]*a[\s\x00-\x20]*v[\s\x00-\x20]*a[\s\x00-\x20]*s[\s\x00-\x20]*c[\s\x00-\x20]*r[\s\x00-\x20]*i[\s\x00-\x20]*p[\s\x00-\x20]*t[\s\x00-\x20]*:/i,
+    /v[\s\x00-\x20]*b[\s\x00-\x20]*s[\s\x00-\x20]*c[\s\x00-\x20]*r[\s\x00-\x20]*i[\s\x00-\x20]*p[\s\x00-\x20]*t[\s\x00-\x20]*:/i,
+    /d[\s\x00-\x20]*a[\s\x00-\x20]*t[\s\x00-\x20]*a[\s\x00-\x20]*:/i,
     /<script/i,
+    /<iframe/i,
     /<object/i,
     /<embed/i,
-    /<iframe/i,
-    /\bon\w+\s*=/i,
-    /eval\s*\(/i,
-    /setTimeout\s*\(/i,
-    /setInterval\s*\(/i,
+    /on[a-z]+[\s\x00-\x20]*=/i,
+    /eval[\s\x00-\x20]*\(/i,
     /document\.write/i,
-    /innerHTML\s*=/i,
+    /innerHTML[\s\x00-\x20]*=/i,
   ];
-
-  const protocolPatterns = [
-    /javascript:/i,
-    /vbscript:/i,
-    /data:text\/html/i,
-  ];
-
-  return (
-    generalPatterns.some((p) => p.test(decodedCode)) ||
-    protocolPatterns.some((p) => p.test(strippedCode))
-  );
+  return patterns.some((p) => p.test(decoded));
 }
 
 function hasBalancedTags(code: string): boolean {
