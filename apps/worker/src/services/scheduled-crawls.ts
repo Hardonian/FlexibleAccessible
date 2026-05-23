@@ -248,11 +248,12 @@ export function startScheduledCrawlLoop(prisma: PrismaClient) {
     try {
       const result = await runScheduledCrawlTick(prisma);
       if (result.enqueued > 0 || result.blocked > 0) {
-        workerLogger.info(`[ScheduledCrawl] scanned=${result.scanned} enqueued=${result.enqueued} blocked=${result.blocked}`);
+        workerLogger.info(
+          `[ScheduledCrawl] scanned=${result.scanned} enqueued=${result.enqueued} blocked=${result.blocked}`,
+        );
       }
     } catch (error) {
-      const err = error instanceof Error ? error : new Error(String(error));
-      workerLogger.error("[ScheduledCrawl] tick failed", { error: err.message, stack: err.stack });
+      workerLogger.error("[ScheduledCrawl] tick failed", { error });
     }
   };
 
