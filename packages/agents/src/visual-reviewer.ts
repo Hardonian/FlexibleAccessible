@@ -368,9 +368,9 @@ export class GeminiVisualReviewer extends BaseAgent {
       }
 
       // Process screen reader findings (missing landmarks)
-      for (const landmark of screenReaderResult.missing_landmarks) {
-        await prisma.aiVisualFinding.create({
-          data: {
+      if (screenReaderResult.missing_landmarks.length > 0) {
+        const landmarksData = screenReaderResult.missing_landmarks.map(
+          (landmark) => ({
             reviewRunId,
             siteId,
             pageId,
@@ -384,10 +384,15 @@ export class GeminiVisualReviewer extends BaseAgent {
             source: "screen_reader",
             action: "auto_create",
             metadata: { landmark },
-          },
+          }),
+        );
+
+        await prisma.aiVisualFinding.createMany({
+          data: landmarksData,
         });
-        findingsCreated++;
-        highConfidence++;
+
+        findingsCreated += screenReaderResult.missing_landmarks.length;
+        highConfidence += screenReaderResult.missing_landmarks.length;
       }
 
       // Unlabeled interactive elements
