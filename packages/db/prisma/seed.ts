@@ -1,23 +1,23 @@
-import { PrismaClient } from '@prisma/client';
-import { randomBytes, scrypt } from 'crypto';
-import { promisify } from 'util';
+import { PrismaClient } from "@prisma/client";
+import { randomBytes, randomUUID, scrypt, createHash } from "crypto";
+import { promisify } from "util";
 
 const prisma = new PrismaClient();
 const scryptAsync = promisify(scrypt);
 
 async function hashPassword(password: string): Promise<string> {
-  const salt = randomBytes(16).toString('hex');
+  const salt = randomBytes(16).toString("hex");
   const derivedKey = (await scryptAsync(password, salt, 64)) as Buffer;
-  return `${salt}:${derivedKey.toString('hex')}`;
+  return `${salt}:${derivedKey.toString("hex")}`;
 }
 
 async function main() {
-  console.log('Seeding database...');
+  console.log("Seeding database...");
 
   await prisma.platformState.upsert({
-    where: { id: 'platform' },
+    where: { id: "platform" },
     create: {
-      id: 'platform',
+      id: "platform",
       bootstrapVersion: 1,
       productFlags: {},
     },
@@ -25,12 +25,12 @@ async function main() {
   });
 
   // Create demo user
-  const passwordHash = await hashPassword('demo1234');
+  const passwordHash = await hashPassword("demo1234");
   const user = await prisma.user.upsert({
-    where: { email: 'demo@aros.dev' },
+    where: { email: "demo@aros.dev" },
     create: {
-      email: 'demo@aros.dev',
-      name: 'Demo User',
+      email: "demo@aros.dev",
+      name: "Demo User",
       passwordHash,
       emailVerified: true,
     },
@@ -39,22 +39,24 @@ async function main() {
 
   // Create demo organization
   const org = await prisma.organization.upsert({
-    where: { slug: 'acme-corp' },
-    create: { name: 'Acme Corp', slug: 'acme-corp' },
+    where: { slug: "acme-corp" },
+    create: { name: "Acme Corp", slug: "acme-corp" },
     update: {},
   });
 
   // Self dogfooding org - AROS scanning itself
   const selfOrg = await prisma.organization.upsert({
-    where: { slug: 'aros-platform' },
-    create: { name: 'AROS Platform', slug: 'aros-platform' },
+    where: { slug: "aros-platform" },
+    create: { name: "AROS Platform", slug: "aros-platform" },
     update: {},
   });
 
   // Membership for self org
   await prisma.membership.upsert({
-    where: { userId_organizationId: { userId: user.id, organizationId: selfOrg.id } },
-    create: { userId: user.id, organizationId: selfOrg.id, role: 'OWNER' },
+    where: {
+      userId_organizationId: { userId: user.id, organizationId: selfOrg.id },
+    },
+    create: { userId: user.id, organizationId: selfOrg.id, role: "OWNER" },
     update: {},
   });
 
@@ -63,8 +65,8 @@ async function main() {
     where: { organizationId: selfOrg.id },
     create: {
       organizationId: selfOrg.id,
-      plan: 'ENTERPRISE',
-      status: 'ACTIVE',
+      plan: "ENTERPRISE",
+      status: "ACTIVE",
       maxDomains: 100,
       maxPagesPerCrawl: 10000,
       maxScansPerMonth: 1000,
@@ -75,23 +77,28 @@ async function main() {
     update: {},
   });
 
-
   // Workspace for self org
   const selfWorkspace = await prisma.workspace.upsert({
-    where: { organizationId_slug: { organizationId: selfOrg.id, slug: 'production' } },
-    create: { organizationId: selfOrg.id, name: 'Production', slug: 'production' },
+    where: {
+      organizationId_slug: { organizationId: selfOrg.id, slug: "production" },
+    },
+    create: {
+      organizationId: selfOrg.id,
+      name: "Production",
+      slug: "production",
+    },
     update: {},
   });
 
   // Self-scan site - AROS platform itself
   const selfSite = await prisma.site.upsert({
-    where: { id: 'self-scan-aros-dev' },
+    where: { id: "self-scan-aros-dev" },
     create: {
-      id: 'self-scan-aros-dev',
+      id: "self-scan-aros-dev",
       workspaceId: selfWorkspace.id,
-      name: 'AROS Production',
-      domain: 'https://aros.dev',
-      environment: 'PRODUCTION',
+      name: "AROS Production",
+      domain: "https://aros.dev",
+      environment: "PRODUCTION",
       verified: true,
     },
     update: {},
@@ -102,19 +109,21 @@ async function main() {
     where: { siteId: selfSite.id },
     create: {
       siteId: selfSite.id,
-      sitemapUrl: 'https://aros.dev/sitemap.xml',
+      sitemapUrl: "https://aros.dev/sitemap.xml",
       maxDepth: 5,
       maxPages: 500,
     },
     update: {},
   });
 
-  console.log('Self dogfooding org created: aros-platform (site: aros.dev)');
+  console.log("Self dogfooding org created: aros-platform (site: aros.dev)");
 
   // Membership
   await prisma.membership.upsert({
-    where: { userId_organizationId: { userId: user.id, organizationId: org.id } },
-    create: { userId: user.id, organizationId: org.id, role: 'OWNER' },
+    where: {
+      userId_organizationId: { userId: user.id, organizationId: org.id },
+    },
+    create: { userId: user.id, organizationId: org.id, role: "OWNER" },
     update: {},
   });
 
@@ -123,8 +132,8 @@ async function main() {
     where: { organizationId: org.id },
     create: {
       organizationId: org.id,
-      plan: 'PROFESSIONAL',
-      status: 'ACTIVE',
+      plan: "PROFESSIONAL",
+      status: "ACTIVE",
       maxDomains: 10,
       maxPagesPerCrawl: 1000,
       maxScansPerMonth: 50,
@@ -137,20 +146,24 @@ async function main() {
 
   // Workspace
   const workspace = await prisma.workspace.upsert({
-    where: { organizationId_slug: { organizationId: org.id, slug: 'default' } },
-    create: { organizationId: org.id, name: 'Default Workspace', slug: 'default' },
+    where: { organizationId_slug: { organizationId: org.id, slug: "default" } },
+    create: {
+      organizationId: org.id,
+      name: "Default Workspace",
+      slug: "default",
+    },
     update: {},
   });
 
   // Demo site
   const site = await prisma.site.upsert({
-    where: { id: 'demo-site-1' },
+    where: { id: "demo-site-1" },
     create: {
-      id: 'demo-site-1',
+      id: "demo-site-1",
       workspaceId: workspace.id,
-      name: 'Acme Public Site',
-      domain: 'https://example.com',
-      environment: 'PRODUCTION',
+      name: "Acme Public Site",
+      domain: "https://example.com",
+      environment: "PRODUCTION",
     },
     update: {},
   });
@@ -160,7 +173,7 @@ async function main() {
     where: { siteId: site.id },
     create: {
       siteId: site.id,
-      sitemapUrl: 'https://example.com/sitemap.xml',
+      sitemapUrl: "https://example.com/sitemap.xml",
       maxDepth: 5,
       maxPages: 500,
     },
@@ -171,7 +184,7 @@ async function main() {
   const crawlRun = await prisma.crawlRun.create({
     data: {
       siteId: site.id,
-      status: 'COMPLETED',
+      status: "COMPLETED",
       pagesFound: 25,
       pagesCrawled: 25,
       startedAt: new Date(Date.now() - 3600000),
@@ -182,20 +195,38 @@ async function main() {
   // Demo pages
   const pages = [];
   const pagePaths = [
-    '/', '/about', '/contact', '/blog', '/blog/post-1', '/blog/post-2',
-    '/products', '/products/widget', '/products/gadget', '/pricing',
-    '/docs', '/docs/getting-started', '/docs/api', '/team',
-    '/careers', '/faq', '/terms', '/privacy', '/login', '/signup',
+    "/",
+    "/about",
+    "/contact",
+    "/blog",
+    "/blog/post-1",
+    "/blog/post-2",
+    "/products",
+    "/products/widget",
+    "/products/gadget",
+    "/pricing",
+    "/docs",
+    "/docs/getting-started",
+    "/docs/api",
+    "/team",
+    "/careers",
+    "/faq",
+    "/terms",
+    "/privacy",
+    "/login",
+    "/signup",
   ];
 
   for (const path of pagePaths) {
     const page = await prisma.page.upsert({
-      where: { siteId_url: { siteId: site.id, url: `https://example.com${path}` } },
+      where: {
+        siteId_url: { siteId: site.id, url: `https://example.com${path}` },
+      },
       create: {
         siteId: site.id,
         url: `https://example.com${path}`,
         path,
-        title: `${path === '/' ? 'Home' : path.split('/').pop()?.replace(/-/g, ' ')} - Acme`,
+        title: `${path === "/" ? "Home" : path.split("/").pop()?.replace(/-/g, " ")} - Acme`,
         statusCode: 200,
         lastCrawledAt: new Date(),
       },
@@ -209,7 +240,7 @@ async function main() {
     data: {
       siteId: site.id,
       crawlRunId: crawlRun.id,
-      status: 'COMPLETED',
+      status: "COMPLETED",
       totalPages: pages.length,
       pagesScanned: pages.length,
       violationsFound: 47,
@@ -221,65 +252,70 @@ async function main() {
   // Demo findings
   const findingsData = [
     {
-      ruleId: 'image-alt',
-      impact: 'CRITICAL' as const,
-      description: 'Images must have alternate text',
-      wcagTags: ['wcag111'],
-      selector: 'header > div > img.logo',
+      ruleId: "image-alt",
+      impact: "CRITICAL" as const,
+      description: "Images must have alternate text",
+      wcagTags: ["wcag111"],
+      selector: "header > div > img.logo",
       html: '<img class="logo" src="/logo.png">',
       pageIndices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
     },
     {
-      ruleId: 'button-name',
-      impact: 'CRITICAL' as const,
-      description: 'Buttons must have discernible text',
-      wcagTags: ['wcag412'],
-      selector: 'nav > button.menu-toggle',
+      ruleId: "button-name",
+      impact: "CRITICAL" as const,
+      description: "Buttons must have discernible text",
+      wcagTags: ["wcag412"],
+      selector: "nav > button.menu-toggle",
       html: '<button class="menu-toggle"><svg>...</svg></button>',
       pageIndices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
     },
     {
-      ruleId: 'color-contrast',
-      impact: 'SERIOUS' as const,
-      description: 'Elements must have sufficient color contrast',
-      wcagTags: ['wcag143'],
-      selector: 'footer > p.copyright',
+      ruleId: "color-contrast",
+      impact: "SERIOUS" as const,
+      description: "Elements must have sufficient color contrast",
+      wcagTags: ["wcag143"],
+      selector: "footer > p.copyright",
       html: '<p class="copyright" style="color: #999">Copyright 2024</p>',
-      pageIndices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17],
+      pageIndices: [
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
+      ],
     },
     {
-      ruleId: 'link-name',
-      impact: 'SERIOUS' as const,
-      description: 'Links must have discernible text',
-      wcagTags: ['wcag412', 'wcag244'],
-      selector: 'div.social > a',
+      ruleId: "link-name",
+      impact: "SERIOUS" as const,
+      description: "Links must have discernible text",
+      wcagTags: ["wcag412", "wcag244"],
+      selector: "div.social > a",
       html: '<a href="https://twitter.com/acme"><svg>...</svg></a>',
       pageIndices: [0, 1, 2],
     },
     {
-      ruleId: 'heading-order',
-      impact: 'MODERATE' as const,
-      description: 'Heading levels should only increase by one',
-      wcagTags: ['wcag131'],
-      selector: 'main > section > h4',
-      html: '<h4>Product Features</h4>',
+      ruleId: "heading-order",
+      impact: "MODERATE" as const,
+      description: "Heading levels should only increase by one",
+      wcagTags: ["wcag131"],
+      selector: "main > section > h4",
+      html: "<h4>Product Features</h4>",
       pageIndices: [6, 7, 8],
     },
     {
-      ruleId: 'label',
-      impact: 'CRITICAL' as const,
-      description: 'Form elements must have labels',
-      wcagTags: ['wcag131', 'wcag332'],
+      ruleId: "label",
+      impact: "CRITICAL" as const,
+      description: "Form elements must have labels",
+      wcagTags: ["wcag131", "wcag332"],
       selector: 'form > input[type="email"]',
       html: '<input type="email" name="email" placeholder="Enter email">',
       pageIndices: [2, 18, 19],
     },
   ];
 
+  const rawViolationsToCreate = [];
+  const findingOccurrenceUpserts = [];
+
   for (const fd of findingsData) {
-    const fingerprint = createHash('sha256')
+    const fingerprint = createHash("sha256")
       .update(`${site.id}|${fd.ruleId}|${fd.selector}`)
-      .digest('hex')
+      .digest("hex")
       .slice(0, 32);
 
     const finding = await prisma.canonicalFinding.upsert({
@@ -291,9 +327,9 @@ async function main() {
         description: fd.description,
         wcagTags: fd.wcagTags,
         fingerprint,
-        evidenceSource: 'AUTOMATED_AXE',
-        sourceType: 'SCAN',
-        status: 'OPEN',
+        evidenceSource: "AUTOMATED_AXE",
+        sourceType: "SCAN",
+        status: "OPEN",
         occurrenceCount: fd.pageIndices.length,
         distinctScanRunsObserved: 1,
         lastScanRunId: scanRun.id,
@@ -311,75 +347,95 @@ async function main() {
       const page = pages[idx];
       if (!page) continue;
 
-      const raw = await prisma.rawViolation.create({
-        data: {
-          scanRunId: scanRun.id,
-          pageId: page.id,
-          ruleId: fd.ruleId,
-          impact: fd.impact,
-          description: fd.description,
-          wcagTags: fd.wcagTags,
-          selector: fd.selector,
-          elementHtml: fd.html,
-          elementContext: `Demo failure context for ${fd.ruleId} on ${page.path}`,
-          fingerprint,
-        },
+      const rawId = randomUUID();
+
+      rawViolationsToCreate.push({
+        id: rawId,
+        scanRunId: scanRun.id,
+        pageId: page.id,
+        ruleId: fd.ruleId,
+        impact: fd.impact,
+        description: fd.description,
+        wcagTags: fd.wcagTags,
+        selector: fd.selector,
+        elementHtml: fd.html,
+        elementContext: `Demo failure context for ${fd.ruleId} on ${page.path}`,
+        fingerprint,
       });
 
-      await prisma.findingOccurrence.upsert({
-        where: {
-          canonicalFindingId_pageId: { canonicalFindingId: finding.id, pageId: page.id },
-        },
-        create: {
-          canonicalFindingId: finding.id,
-          pageId: page.id,
-          selector: fd.selector,
-          elementHtml: fd.html,
-          lastRawViolationId: raw.id,
-        },
-        update: {
-          lastRawViolationId: raw.id,
-        },
-      });
+      findingOccurrenceUpserts.push(
+        prisma.findingOccurrence.upsert({
+          where: {
+            canonicalFindingId_pageId: {
+              canonicalFindingId: finding.id,
+              pageId: page.id,
+            },
+          },
+          create: {
+            canonicalFindingId: finding.id,
+            pageId: page.id,
+            selector: fd.selector,
+            elementHtml: fd.html,
+            lastRawViolationId: rawId,
+          },
+          update: {
+            lastRawViolationId: rawId,
+          },
+        }),
+      );
     }
+  }
+
+  if (rawViolationsToCreate.length > 0) {
+    await prisma.rawViolation.createMany({
+      data: rawViolationsToCreate,
+    });
+  }
+
+  if (findingOccurrenceUpserts.length > 0) {
+    await prisma.$transaction(findingOccurrenceUpserts);
   }
 
   // Demo clusters
   const imageCluster = await prisma.issueCluster.create({
     data: {
       siteId: site.id,
-      name: 'Missing alt text on header logo (13 pages)',
-      description: 'Header logo image lacks alt text across all pages with the shared header component.',
-      selectorPattern: 'header > div > img.logo',
-      domFingerprint: 'img[class=logo]',
+      name: "Missing alt text on header logo (13 pages)",
+      description:
+        "Header logo image lacks alt text across all pages with the shared header component.",
+      selectorPattern: "header > div > img.logo",
+      domFingerprint: "img[class=logo]",
       pageCount: 13,
       findingCount: 1,
-      severity: 'CRITICAL',
+      severity: "CRITICAL",
     },
   });
 
   const buttonCluster = await prisma.issueCluster.create({
     data: {
       siteId: site.id,
-      name: 'Menu toggle button without accessible name (10 pages)',
-      description: 'Mobile menu toggle button has an SVG icon but no accessible name.',
-      selectorPattern: 'nav > button.menu-toggle',
-      domFingerprint: 'button>svg',
+      name: "Menu toggle button without accessible name (10 pages)",
+      description:
+        "Mobile menu toggle button has an SVG icon but no accessible name.",
+      selectorPattern: "nav > button.menu-toggle",
+      domFingerprint: "button>svg",
       pageCount: 10,
       findingCount: 1,
-      severity: 'CRITICAL',
+      severity: "CRITICAL",
     },
   });
 
   // Link findings to clusters
-  const allFindings = await prisma.canonicalFinding.findMany({ where: { siteId: site.id } });
+  const allFindings = await prisma.canonicalFinding.findMany({
+    where: { siteId: site.id },
+  });
   for (const f of allFindings) {
-    if (f.ruleId === 'image-alt') {
+    if (f.ruleId === "image-alt") {
       await prisma.canonicalFinding.update({
         where: { id: f.id },
         data: { clusterId: imageCluster.id },
       });
-    } else if (f.ruleId === 'button-name') {
+    } else if (f.ruleId === "button-name") {
       await prisma.canonicalFinding.update({
         where: { id: f.id },
         data: { clusterId: buttonCluster.id },
@@ -419,8 +475,8 @@ async function main() {
         verificationSteps: input.verificationSteps,
         riskNotes: input.riskNotes,
         applicableTargets: [],
-        frameworks: ['html'],
-        requiredReviewLevel: 'MEDIUM',
+        frameworks: ["html"],
+        requiredReviewLevel: "MEDIUM",
         confidence: 0.85,
       },
       select: { id: true },
@@ -430,54 +486,58 @@ async function main() {
   }
 
   const imageAltRecipeId = await ensureRecipe({
-    ruleId: 'image-alt',
-    defectClass: 'missing_alt_text',
-    title: 'Add accurate alternative text',
-    strategy: 'Write alt text that reflects the image purpose rather than the asset filename.',
-    guidance: 'Use empty alt only for decorative imagery.',
+    ruleId: "image-alt",
+    defectClass: "missing_alt_text",
+    title: "Add accurate alternative text",
+    strategy:
+      "Write alt text that reflects the image purpose rather than the asset filename.",
+    guidance: "Use empty alt only for decorative imagery.",
     verificationSteps: [
-      'Confirm the image has a purposeful alt attribute.',
-      'Re-run automated verification for the affected pages.',
+      "Confirm the image has a purposeful alt attribute.",
+      "Re-run automated verification for the affected pages.",
     ],
-    riskNotes: ['Logo alt text should stay consistent across the site.'],
+    riskNotes: ["Logo alt text should stay consistent across the site."],
   });
 
   const buttonNameRecipeId = await ensureRecipe({
-    ruleId: 'button-name',
-    defectClass: 'missing_button_name',
-    title: 'Provide a durable button name',
-    strategy: 'Prefer visible text. Use aria-label only for true icon-only controls.',
-    guidance: 'Keep icon decoration hidden from assistive tech when the label is elsewhere.',
+    ruleId: "button-name",
+    defectClass: "missing_button_name",
+    title: "Provide a durable button name",
+    strategy:
+      "Prefer visible text. Use aria-label only for true icon-only controls.",
+    guidance:
+      "Keep icon decoration hidden from assistive tech when the label is elsewhere.",
     verificationSteps: [
-      'Check the button accessible name.',
-      'Re-run automated verification.',
+      "Check the button accessible name.",
+      "Re-run automated verification.",
     ],
-    riskNotes: ['Labels often drift when icon buttons change purpose.'],
+    riskNotes: ["Labels often drift when icon buttons change purpose."],
   });
 
   const labelRecipeId = await ensureRecipe({
-    ruleId: 'label',
-    defectClass: 'missing_form_label',
-    title: 'Associate controls with visible labels',
-    strategy: 'Use native label bindings rather than placeholders.',
-    guidance: 'Keep ids stable across renders.',
+    ruleId: "label",
+    defectClass: "missing_form_label",
+    title: "Associate controls with visible labels",
+    strategy: "Use native label bindings rather than placeholders.",
+    guidance: "Keep ids stable across renders.",
     verificationSteps: [
-      'Check label association in DOM and with keyboard focus.',
-      'Re-run automated verification.',
+      "Check label association in DOM and with keyboard focus.",
+      "Re-run automated verification.",
     ],
-    riskNotes: ['Generated ids can break label bindings.'],
+    riskNotes: ["Generated ids can break label bindings."],
   });
 
   const imageSuggestion = await prisma.remediationSuggestion.create({
     data: {
-      canonicalFindingId: allFindings.find((f) => f.ruleId === 'image-alt')?.id,
+      canonicalFindingId: allFindings.find((f) => f.ruleId === "image-alt")?.id,
       clusterId: imageCluster.id,
       recipeId: imageAltRecipeId,
-      type: 'ALT_TEXT',
-      status: 'VALIDATED',
+      type: "ALT_TEXT",
+      status: "VALIDATED",
       originalCode: '<img class="logo" src="/logo.png">',
       suggestedCode: '<img class="logo" src="/logo.png" alt="Acme Corp logo">',
-      rationale: 'The header logo image is missing alt text. Added descriptive alt text identifying the company logo. Since this is a meaningful image (not decorative), it should convey the brand identity.',
+      rationale:
+        "The header logo image is missing alt text. Added descriptive alt text identifying the company logo. Since this is a meaningful image (not decorative), it should convey the brand identity.",
       confidence: 0.85,
       validationResult: { valid: true, errors: [], warnings: [] },
     },
@@ -485,14 +545,17 @@ async function main() {
 
   const buttonSuggestion = await prisma.remediationSuggestion.create({
     data: {
-      canonicalFindingId: allFindings.find((f) => f.ruleId === 'button-name')?.id,
+      canonicalFindingId: allFindings.find((f) => f.ruleId === "button-name")
+        ?.id,
       clusterId: buttonCluster.id,
       recipeId: buttonNameRecipeId,
-      type: 'BUTTON_LABEL',
-      status: 'VALIDATED',
+      type: "BUTTON_LABEL",
+      status: "VALIDATED",
       originalCode: '<button class="menu-toggle"><svg>...</svg></button>',
-      suggestedCode: '<button class="menu-toggle" aria-label="Open navigation menu"><svg aria-hidden="true">...</svg></button>',
-      rationale: 'The menu toggle button uses an SVG icon without any accessible name. Added aria-label to provide screen reader users with context. Also added aria-hidden to the decorative SVG. Consider also adding visible text like "Menu" alongside the icon for maximum accessibility.',
+      suggestedCode:
+        '<button class="menu-toggle" aria-label="Open navigation menu"><svg aria-hidden="true">...</svg></button>',
+      rationale:
+        'The menu toggle button uses an SVG icon without any accessible name. Added aria-label to provide screen reader users with context. Also added aria-hidden to the decorative SVG. Consider also adding visible text like "Menu" alongside the icon for maximum accessibility.',
       confidence: 0.75,
       validationResult: { valid: true, errors: [], warnings: [] },
     },
@@ -500,13 +563,16 @@ async function main() {
 
   const labelSuggestion = await prisma.remediationSuggestion.create({
     data: {
-      canonicalFindingId: allFindings.find((f) => f.ruleId === 'label')?.id,
+      canonicalFindingId: allFindings.find((f) => f.ruleId === "label")?.id,
       recipeId: labelRecipeId,
-      type: 'FORM_LABEL',
-      status: 'DRAFT',
-      originalCode: '<input type="email" name="email" placeholder="Enter email">',
-      suggestedCode: '<label for="email">Email address</label>\n<input type="email" name="email" id="email" placeholder="Enter email">',
-      rationale: 'The email input relies on placeholder text as its only label. Placeholders disappear when users type and are not announced by all screen readers. Added a visible <label> element, which is the preferred approach over aria-label.',
+      type: "FORM_LABEL",
+      status: "DRAFT",
+      originalCode:
+        '<input type="email" name="email" placeholder="Enter email">',
+      suggestedCode:
+        '<label for="email">Email address</label>\n<input type="email" name="email" id="email" placeholder="Enter email">',
+      rationale:
+        "The email input relies on placeholder text as its only label. Placeholders disappear when users type and are not announced by all screen readers. Added a visible <label> element, which is the preferred approach over aria-label.",
       confidence: 0.9,
       validationResult: { valid: true, errors: [], warnings: [] },
     },
@@ -519,11 +585,12 @@ async function main() {
         siteId: site.id,
         canonicalFindingId: firstFinding.id,
         scanRunId: scanRun.id,
-        kind: 'SCAN_RECHECK',
-        status: 'FAILED',
+        kind: "SCAN_RECHECK",
+        status: "FAILED",
         startedAt: scanRun.startedAt ?? new Date(),
         completedAt: scanRun.completedAt ?? new Date(),
-        outcomeSummary: 'Demo verification shows the issue is still present in the baseline scan.',
+        outcomeSummary:
+          "Demo verification shows the issue is still present in the baseline scan.",
       },
     });
 
@@ -534,9 +601,9 @@ async function main() {
           canonicalFindingId: firstFinding.id,
           scanRunId: scanRun.id,
           verificationRunId: verificationRun.id,
-          kind: 'RULE_EVALUATION',
+          kind: "RULE_EVALUATION",
           label: firstFinding.ruleId,
-          summary: 'Baseline automated evidence imported by the seed script.',
+          summary: "Baseline automated evidence imported by the seed script.",
           jsonValue: {
             normalizedRuleKey: firstFinding.ruleId,
             wcagTags: firstFinding.wcagTags,
@@ -546,9 +613,9 @@ async function main() {
           siteId: site.id,
           canonicalFindingId: firstFinding.id,
           scanRunId: scanRun.id,
-          kind: 'REMEDIATION_PROPOSAL',
+          kind: "REMEDIATION_PROPOSAL",
           remediationSuggestionId: imageSuggestion.id,
-          label: 'seed remediation proposal',
+          label: "seed remediation proposal",
           summary: imageSuggestion.rationale,
           textValue: imageSuggestion.suggestedCode,
         },
@@ -560,30 +627,33 @@ async function main() {
   await prisma.reviewTask.create({
     data: {
       suggestionId: imageSuggestion.id,
-      type: 'ALT_TEXT_REVIEW',
-      status: 'PENDING',
-      title: 'Review alt text for product images',
-      description: 'Product images on /products/* pages need human-reviewed alt text that accurately describes the products.',
+      type: "ALT_TEXT_REVIEW",
+      status: "PENDING",
+      title: "Review alt text for product images",
+      description:
+        "Product images on /products/* pages need human-reviewed alt text that accurately describes the products.",
       assigneeId: user.id,
     },
   });
 
   await prisma.reviewTask.create({
     data: {
-      type: 'KEYBOARD_FLOW',
-      status: 'PENDING',
-      title: 'Verify keyboard navigation on main menu',
-      description: 'The main navigation menu needs keyboard flow verification - tab order, focus management, and escape behavior.',
+      type: "KEYBOARD_FLOW",
+      status: "PENDING",
+      title: "Verify keyboard navigation on main menu",
+      description:
+        "The main navigation menu needs keyboard flow verification - tab order, focus management, and escape behavior.",
     },
   });
 
   await prisma.reviewTask.create({
     data: {
       suggestionId: buttonSuggestion.id,
-      type: 'SCREEN_READER',
-      status: 'IN_PROGRESS',
-      title: 'Screen reader testing: checkout flow',
-      description: 'Manual screen reader testing needed for the checkout flow to verify form instructions and error messages are announced.',
+      type: "SCREEN_READER",
+      status: "IN_PROGRESS",
+      title: "Screen reader testing: checkout flow",
+      description:
+        "Manual screen reader testing needed for the checkout flow to verify form instructions and error messages are announced.",
       assigneeId: user.id,
     },
   });
@@ -591,24 +661,54 @@ async function main() {
   // Audit log entries
   await prisma.auditLog.createMany({
     data: [
-      { organizationId: org.id, userId: user.id, action: 'org.created', entityType: 'Organization', entityId: org.id },
-      { organizationId: org.id, userId: user.id, action: 'site.created', entityType: 'Site', entityId: site.id },
-      { organizationId: org.id, userId: user.id, action: 'crawl.started', entityType: 'CrawlRun', entityId: crawlRun.id },
-      { organizationId: org.id, userId: user.id, action: 'crawl.completed', entityType: 'CrawlRun', entityId: crawlRun.id },
-      { organizationId: org.id, userId: user.id, action: 'scan.completed', entityType: 'ScanRun', entityId: scanRun.id },
+      {
+        organizationId: org.id,
+        userId: user.id,
+        action: "org.created",
+        entityType: "Organization",
+        entityId: org.id,
+      },
+      {
+        organizationId: org.id,
+        userId: user.id,
+        action: "site.created",
+        entityType: "Site",
+        entityId: site.id,
+      },
+      {
+        organizationId: org.id,
+        userId: user.id,
+        action: "crawl.started",
+        entityType: "CrawlRun",
+        entityId: crawlRun.id,
+      },
+      {
+        organizationId: org.id,
+        userId: user.id,
+        action: "crawl.completed",
+        entityType: "CrawlRun",
+        entityId: crawlRun.id,
+      },
+      {
+        organizationId: org.id,
+        userId: user.id,
+        action: "scan.completed",
+        entityType: "ScanRun",
+        entityId: scanRun.id,
+      },
     ],
   });
 
-  console.log('Seed complete!');
-  console.log('');
-  console.log('Demo credentials:');
-  console.log('  Email: demo@aros.dev');
-  console.log('  Password: demo1234');
+  console.log("Seed complete!");
+  console.log("");
+  console.log("Demo credentials:");
+  console.log("  Email: demo@aros.dev");
+  console.log("  Password: demo1234");
 }
 
 main()
   .catch((e) => {
-    console.error('Seed failed:', e);
+    console.error("Seed failed:", e);
     process.exit(1);
   })
   .finally(async () => {
