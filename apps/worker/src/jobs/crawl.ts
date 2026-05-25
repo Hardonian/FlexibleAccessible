@@ -106,6 +106,8 @@ export async function handleCrawlJob(job: Job<CrawlJobData>) {
       data: { pagesFound: queue.length },
     });
 
+    let lastProgressUpdateTime = 0;
+
     // Crawl loop
     while (queue.length > 0 && pagesCrawled < config.maxPages) {
       const item = queue.shift();
@@ -224,6 +226,13 @@ export async function handleCrawlJob(job: Job<CrawlJobData>) {
               queue.push({ url: link, depth: item.depth + 1 });
             }
           }
+        }
+
+        await context.close();
+
+        // Update progress (throttled)
+        const now = Date.now();
+        if (now - lastProgressUpdateTime > 2000) {
           await prisma.crawlRun.update({
             where: { id: crawlRunId },
             data: {
@@ -231,14 +240,11 @@ export async function handleCrawlJob(job: Job<CrawlJobData>) {
               pagesCrawled,
             },
           });
+          await job.updateProgress(
+            Math.round((pagesCrawled / config.maxPages) * 100),
+          );
+          lastProgressUpdateTime = now;
         }
-
-        await context.close();
-
-        // Update progress
-        await job.updateProgress(
-          Math.round((pagesCrawled / config.maxPages) * 100),
-        );
       } catch (err) {
         workerLogger.error(`[Crawl] Error crawling ${normalizedUrl}:`, { error: err });
         await prisma.crawlRun.update({
