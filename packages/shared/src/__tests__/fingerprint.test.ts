@@ -102,6 +102,38 @@ describe("createDomFingerprint", () => {
     const fp = createDomFingerprint("<div><span></span></div>");
     expect(fp).toMatch(/^[a-f0-9]{24}$/);
   });
+
+  it("differentiates by type attributes", () => {
+    const a = createDomFingerprint('<input type="text">');
+    const b = createDomFingerprint('<input type="password">');
+    expect(a).not.toBe(b);
+  });
+
+  it("differentiates by width attributes", () => {
+    const a = createDomFingerprint('<img width="100">');
+    const b = createDomFingerprint('<img width="200">');
+    expect(a).not.toBe(b);
+  });
+
+  it("produces same fingerprint regardless of class order", () => {
+    const a = createDomFingerprint('<div class="a b c"></div>');
+    const b = createDomFingerprint('<div class="c a b"></div>');
+    expect(a).toBe(b);
+  });
+
+  it("ignores non-structural attributes", () => {
+    const a = createDomFingerprint(
+      '<div id="abc" data-testid="123" style="color: red;"></div>',
+    );
+    const b = createDomFingerprint("<div></div>");
+    expect(a).toBe(b);
+  });
+
+  it("handles text-only or empty snippets safely", () => {
+    const a = createDomFingerprint("Just some text");
+    const b = createDomFingerprint("");
+    expect(a).toBe(b);
+  });
 });
 
 describe("selectorSimilarity", () => {
