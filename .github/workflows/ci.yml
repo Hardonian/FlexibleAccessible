@@ -120,3 +120,4 @@ jobs:
             apps/web/playwright-report/
             apps/web/test-results/
           retention-days: 14
+          if-no-files-found: ignore
