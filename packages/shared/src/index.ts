@@ -155,3 +155,5 @@ export const PACKAGE_INFO = {
   version: VERSION,
   description: 'Standardized patterns across MEL, Settler, and FlexibleAccessible',
 } as const;
+
+export { escapeXml } from './xml-utils';

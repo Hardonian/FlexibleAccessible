@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getLatestValidPublicScanForDomain } from "@/lib/public-scan/validity";
+import { escapeXml } from "@aros/shared";
 
 export const runtime = "nodejs";
 
@@ -76,20 +77,27 @@ export async function GET(request: Request) {
       ? `${score}/100 - ${totalViolations} issues`
       : "Scan at aros.dev";
 
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="28" role="img" aria-label="Accessibility Score: ${statusText}">
-  <title>Accessibility Score: ${statusText}</title>
-  <rect width="200" height="28" rx="4" fill="${colors.bg}" stroke="${colors.text}" stroke-opacity="0.2" stroke-width="1"/>
-  <text x="10" y="19" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="600" fill="${colors.text}">A11y</text>
-  <rect x="50" y="6" width="1" height="16" fill="${colors.text}" opacity="0.2"/>
-  <text x="58" y="19" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="700" fill="${colors.text}">${scoreText}</text>
-  <text x="80" y="19" font-family="system-ui, -apple-system, sans-serif" font-size="11" fill="${colors.text}" opacity="0.7">${colors.label}</text>
+  const safeStatusText = escapeXml(statusText);
+  const safeScoreText = escapeXml(scoreText);
+  const safeBg = escapeXml(colors.bg);
+  const safeText = escapeXml(colors.text);
+  const safeLabel = escapeXml(colors.label);
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="28" role="img" aria-label="Accessibility Score: ${safeStatusText}">
+  <title>Accessibility Score: ${safeStatusText}</title>
+  <rect width="200" height="28" rx="4" fill="${safeBg}" stroke="${safeText}" stroke-opacity="0.2" stroke-width="1"/>
+  <text x="10" y="19" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="600" fill="${safeText}">A11y</text>
+  <rect x="50" y="6" width="1" height="16" fill="${safeText}" opacity="0.2"/>
+  <text x="58" y="19" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="700" fill="${safeText}">${safeScoreText}</text>
+  <text x="80" y="19" font-family="system-ui, -apple-system, sans-serif" font-size="11" fill="${safeText}" opacity="0.7">${safeLabel}</text>
 </svg>`;
 
   return new NextResponse(svg, {
     headers: {
       "Content-Type": "image/svg+xml",
       "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
-      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Origin": `https://${domain}`,
+      "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; sandbox;",
     },
   });
 }
