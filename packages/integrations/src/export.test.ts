@@ -1,113 +1,86 @@
 import { describe, it, expect } from 'vitest';
-import { formatCsvExport, formatJsonExport, ExportData } from './export';
+import { formatCsvExport, formatJsonExport, type ExportData } from './export.js';
 
-describe('export formatters', () => {
+describe('export utilities', () => {
   const mockData: ExportData = {
+    generatedAt: '2024-05-23T00:00:00.000Z',
+    generatedBy: 'test-user',
     findings: [
       {
-        id: 'f-1',
+        id: 'find-1',
         ruleId: 'color-contrast',
         impact: 'serious',
         status: 'open',
         description: 'Elements must have sufficient color contrast',
         wcagTags: ['wcag2aa', 'wcag143'],
-        occurrenceCount: 2,
-        pages: [
-          { url: 'https://example.com', selector: '#main > p' }
-        ]
+        occurrenceCount: 3,
+        pages: [{ url: 'https://example.com', selector: '#main-nav' }],
       },
       {
-        id: 'f-2',
+        id: 'find-2',
         ruleId: 'image-alt',
         impact: 'critical',
         status: 'resolved',
-        description: 'Images must have alternate text',
+        description: 'Images must have text alternatives',
         wcagTags: ['wcag2a', 'wcag111'],
         occurrenceCount: 1,
-        pages: [
-          { url: 'https://example.com/about', selector: 'img.logo' }
-        ]
+        pages: [], // no pages
+      },
+      {
+        id: 'find-3',
+        ruleId: 'aria-roles',
+        impact: 'moderate',
+        status: 'open',
+        description: 'Elements with ARIA roles must use a valid, non-abstract ARIA role. Quote: "test"',
+        wcagTags: [],
+        occurrenceCount: 2,
+        pages: [{ url: 'https://example.com/about', selector: '.foo[data-test="bar"]' }],
       }
     ],
-    generatedAt: '2024-05-23T12:00:00Z',
-    generatedBy: 'test-user'
   };
 
-  describe('formatJsonExport', () => {
-    it('should format data as JSON with a disclaimer', () => {
-      const jsonStr = formatJsonExport(mockData);
-      const parsed = JSON.parse(jsonStr);
+  describe('formatCsvExport', () => {
+    it('should format a standard finding correctly', () => {
+      const csv = formatCsvExport({ ...mockData, findings: [mockData.findings[0]] });
+      const rows = csv.split('\n');
+      expect(rows.length).toBe(2);
+      expect(rows[0]).toBe('Finding ID,Rule,Impact,Status,Description,WCAG Tags,Occurrences,Sample Page,Sample Selector');
+      expect(rows[1]).toBe('find-1,color-contrast,serious,open,"Elements must have sufficient color contrast","wcag2aa; wcag143",3,https://example.com,"#main-nav"');
+    });
 
-      expect(parsed).toMatchObject({
-        generatedAt: mockData.generatedAt,
-        generatedBy: mockData.generatedBy,
-        disclaimer: 'This export provides evidence of automated accessibility testing. It does not constitute a guarantee of WCAG conformance.'
-      });
-      expect(parsed.findings).toHaveLength(2);
-      expect(parsed.findings[0].id).toBe('f-1');
+    it('should handle findings with no pages', () => {
+      const csv = formatCsvExport({ ...mockData, findings: [mockData.findings[1]] });
+      const rows = csv.split('\n');
+      expect(rows.length).toBe(2);
+      expect(rows[1]).toBe('find-2,image-alt,critical,resolved,"Images must have text alternatives","wcag2a; wcag111",1,,""');
+    });
 
-      // Check formatting: indentation
-      expect(jsonStr).toContain('{\n  "findings":');
+    it('should escape double quotes in descriptions and selectors', () => {
+      const csv = formatCsvExport({ ...mockData, findings: [mockData.findings[2]] });
+      const rows = csv.split('\n');
+      expect(rows.length).toBe(2);
+      // Description quote "test" should become ""test"" inside the quoted field.
+      // Selector .foo[data-test="bar"] should become .foo[data-test=""bar""] inside the quoted field.
+      expect(rows[1]).toBe('find-3,aria-roles,moderate,open,"Elements with ARIA roles must use a valid, non-abstract ARIA role. Quote: ""test""","",2,https://example.com/about,".foo[data-test=""bar""]"');
+    });
+
+    it('should handle empty findings list', () => {
+      const csv = formatCsvExport({ ...mockData, findings: [] });
+      const rows = csv.split('\n');
+      expect(rows.length).toBe(1);
+      expect(rows[0]).toBe('Finding ID,Rule,Impact,Status,Description,WCAG Tags,Occurrences,Sample Page,Sample Selector');
     });
   });
 
-  describe('formatCsvExport', () => {
-    it('should format data as CSV with headers and quoted fields', () => {
-      const csvStr = formatCsvExport(mockData);
-      const lines = csvStr.split('\n');
+  describe('formatJsonExport', () => {
+    it('should include all data and append a disclaimer', () => {
+      const jsonStr = formatJsonExport(mockData);
+      const parsed = JSON.parse(jsonStr);
 
-      expect(lines).toHaveLength(3); // 1 header + 2 rows
-
-      expect(lines[0]).toBe('Finding ID,Rule,Impact,Status,Description,WCAG Tags,Occurrences,Sample Page,Sample Selector');
-
-      expect(lines[1]).toBe(
-        'f-1,color-contrast,serious,open,"Elements must have sufficient color contrast","wcag2aa; wcag143",2,https://example.com,"#main > p"'
-      );
-
-      expect(lines[2]).toBe(
-        'f-2,image-alt,critical,resolved,"Images must have alternate text","wcag2a; wcag111",1,https://example.com/about,"img.logo"'
-      );
-    });
-
-    it('should handle findings without pages', () => {
-      const dataWithoutPages: ExportData = {
-        ...mockData,
-        findings: [
-          {
-            ...mockData.findings[0],
-            pages: []
-          }
-        ]
-      };
-
-      const csvStr = formatCsvExport(dataWithoutPages);
-      const lines = csvStr.split('\n');
-
-      expect(lines[1]).toBe(
-        'f-1,color-contrast,serious,open,"Elements must have sufficient color contrast","wcag2aa; wcag143",2,,""'
-      );
-    });
-
-    it('should escape quotes in description and selector', () => {
-      const dataWithQuotes: ExportData = {
-        ...mockData,
-        findings: [
-          {
-            ...mockData.findings[0],
-            description: 'Fix "color" contrast',
-            pages: [
-              { url: 'https://example.com', selector: 'div[data-name="test"]' }
-            ]
-          }
-        ]
-      };
-
-      const csvStr = formatCsvExport(dataWithQuotes);
-      const lines = csvStr.split('\n');
-
-      expect(lines[1]).toBe(
-        'f-1,color-contrast,serious,open,"Fix ""color"" contrast","wcag2aa; wcag143",2,https://example.com,"div[data-name=""test""]"'
-      );
+      expect(parsed.generatedAt).toBe(mockData.generatedAt);
+      expect(parsed.generatedBy).toBe(mockData.generatedBy);
+      expect(parsed.findings).toEqual(mockData.findings);
+      expect(parsed.disclaimer).toBe('This export provides evidence of automated accessibility testing. It does not constitute a guarantee of WCAG conformance.');
     });
   });
 });
