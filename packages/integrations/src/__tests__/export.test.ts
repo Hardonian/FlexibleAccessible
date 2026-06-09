@@ -35,7 +35,7 @@ describe('formatCsvExport', () => {
     const lines = result.split('\n');
     expect(lines.length).toBe(2);
     expect(lines[1]).toBe(
-      'f1,r1,high,open,"A finding description","wcag21a; wcag21aa",5,https://example.com,"#main"'
+      'f1,r1,high,open,"A finding description","wcag21a; wcag21aa",5,"https://example.com","#main"'
     );
   });
 
