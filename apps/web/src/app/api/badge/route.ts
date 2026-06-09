@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getLatestValidPublicScanForDomain } from "@/lib/public-scan/validity";
+import { escapeXml } from "@aros/shared";
 
 export const runtime = "nodejs";
 
@@ -70,11 +71,13 @@ export async function GET(request: Request) {
 
   const category = getScoreCategory(score);
   const colors = SCORE_COLORS[category];
-  const scoreText = score !== null ? String(score) : "?";
+  const scoreText = score !== null ? escapeXml(String(score)) : "?";
   const statusText =
+    escapeXml(
     score !== null
       ? `${score}/100 - ${totalViolations} issues`
-      : "Scan at aros.dev";
+      : "Scan at aros.dev"
+    );
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="28" role="img" aria-label="Accessibility Score: ${statusText}">
   <title>Accessibility Score: ${statusText}</title>
@@ -90,6 +93,7 @@ export async function GET(request: Request) {
       "Content-Type": "image/svg+xml",
       "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
       "Access-Control-Allow-Origin": "*",
+      "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; sandbox;",
     },
   });
 }

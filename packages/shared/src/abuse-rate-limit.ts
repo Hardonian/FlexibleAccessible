@@ -1,5 +1,6 @@
 import { getRedisClient } from "./redis-connection.js";
 import { authLogger } from "./logger.js";
+import { randomUUID } from "node:crypto";
 
 export type AbuseRateLimitMode = "redis" | "memory_fallback" | "redis_unavailable_strict";
 
@@ -42,7 +43,7 @@ export async function abuseRateLimit(
     const redis = getRedisClient();
     const multi = redis.multi();
     multi.zremrangebyscore(fullKey, 0, now - windowMs);
-    multi.zadd(fullKey, now, `${now}:${Math.random()}`);
+    multi.zadd(fullKey, now, `${now}:${randomUUID()}`);
     multi.zcard(fullKey);
     multi.pexpire(fullKey, windowMs);
 
