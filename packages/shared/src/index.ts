@@ -120,7 +120,7 @@ export {
 
 export { AppError, ApiError } from './errors';
 export { logAiUsage, checkAiEntitlement } from './ai-usage';
-export { slugify, truncate, pluralize } from './strings';
+export { slugify, truncate, pluralize, escapeXml } from './strings';
 export {
   createFingerprint,
   normalizeSelector,
