@@ -33,9 +33,13 @@ export async function GET(request: Request) {
     }
 
     // Use centralized auth guard
-    const ctx = await requireCanonicalOrgAccess(requestedOrgId, "reports:export", {
-      requirePaid: true,
-    });
+    const ctx = await requireCanonicalOrgAccess(
+      requestedOrgId,
+      "reports:export",
+      {
+        requirePaid: true,
+      },
+    );
 
     const health = await collectPlatformHealth(prisma);
     const truth = buildRoutePlatformTruth(health);
@@ -67,10 +71,16 @@ export async function GET(request: Request) {
       summary: {
         totalFindings: findings.length,
         bySeverity: {
-          critical: findings.filter((f: ReportFinding) => f.impact === "CRITICAL").length,
-          serious: findings.filter((f: ReportFinding) => f.impact === "SERIOUS").length,
-          moderate: findings.filter((f: ReportFinding) => f.impact === "MODERATE").length,
-          minor: findings.filter((f: ReportFinding) => f.impact === "MINOR").length,
+          critical: findings.filter(
+            (f: ReportFinding) => f.impact === "CRITICAL",
+          ).length,
+          serious: findings.filter((f: ReportFinding) => f.impact === "SERIOUS")
+            .length,
+          moderate: findings.filter(
+            (f: ReportFinding) => f.impact === "MODERATE",
+          ).length,
+          minor: findings.filter((f: ReportFinding) => f.impact === "MINOR")
+            .length,
         },
         byEvidenceSource: {
           automatedAxe: findings.filter(
@@ -79,8 +89,9 @@ export async function GET(request: Request) {
           manualReview: findings.filter(
             (f: ReportFinding) => f.evidenceSource === "MANUAL_REVIEW",
           ).length,
-          imported: findings.filter((f: ReportFinding) => f.evidenceSource === "IMPORTED")
-            .length,
+          imported: findings.filter(
+            (f: ReportFinding) => f.evidenceSource === "IMPORTED",
+          ).length,
         },
         proofCompleteness: {
           complete: findings.filter((f: ReportFinding) => {
@@ -95,7 +106,9 @@ export async function GET(request: Request) {
               evidenceSource: f.evidenceSource,
               sourceType: f.sourceType,
             });
-            return Object.values(summary.completeness).filter(Boolean).length >= 4;
+            return (
+              Object.values(summary.completeness).filter(Boolean).length >= 4
+            );
           }).length,
           partial: findings.filter((f: ReportFinding) => {
             const summary = buildFindingProofSummary({
@@ -109,7 +122,9 @@ export async function GET(request: Request) {
               evidenceSource: f.evidenceSource,
               sourceType: f.sourceType,
             });
-            return Object.values(summary.completeness).filter(Boolean).length < 4;
+            return (
+              Object.values(summary.completeness).filter(Boolean).length < 4
+            );
           }).length,
         },
         recurringAcrossScanRuns: findings.filter(
@@ -167,20 +182,24 @@ export async function GET(request: Request) {
               outcomeSummary: f.verificationRuns[0].outcomeSummary,
             }
           : null,
-        governance: f.governanceDecisions.map((decision: ReportFinding["governanceDecisions"][number]) => ({
-          id: decision.id,
-          kind: decision.kind,
-          status: decision.status,
-          rationale: decision.rationale,
-          justification: decision.justification,
-          expiresAt: decision.expiresAt,
-          createdAt: decision.createdAt,
-        })),
-        affectedPages: f.occurrences.map((o: ReportFinding["occurrences"][number]) => ({
-          url: o.page.url,
-          title: o.page.title,
-          selector: o.selector,
-        })),
+        governance: f.governanceDecisions.map(
+          (decision: ReportFinding["governanceDecisions"][number]) => ({
+            id: decision.id,
+            kind: decision.kind,
+            status: decision.status,
+            rationale: decision.rationale,
+            justification: decision.justification,
+            expiresAt: decision.expiresAt,
+            createdAt: decision.createdAt,
+          }),
+        ),
+        affectedPages: f.occurrences.map(
+          (o: ReportFinding["occurrences"][number]) => ({
+            url: o.page.url,
+            title: o.page.title,
+            selector: o.selector,
+          }),
+        ),
       })),
     };
 
@@ -192,15 +211,33 @@ export async function GET(request: Request) {
     );
 
     if (format === "csv") {
-      const lines = [
-        "Rule ID,Impact,Status,Truth Status,Change Signal,Comparison Basis,Scan Runs Observed,Absent While Open (runs),Triage Score,Triage Reasons,Proof Completeness,Family Active,Family Regressed,Family Multi-Run,Description,Occurrences,WCAG Tags",
-      ];
-      for (const f of report.findings) {
-        const proofCompletenessScore = Object.values(f.proofSummary.completeness).filter(Boolean).length;
-        const reasons = f.triagePriority.reasons.join(" | ").replace(/"/g, '""');
-        lines.push(
-          `"${f.ruleId}","${f.impact}","${f.status}","${f.truthStatus}","${f.proofSummary.changedSinceLastRun}","${f.proofSummary.comparisonBasis}",${f.proofSummary.recurrence.distinctScanRunsObserved},${f.proofSummary.recurrence.distinctScanRunsAbsentWhenOpen},${f.triagePriority.score.toFixed(0)},"${reasons}",${proofCompletenessScore},${f.familySummary?.activeFindings ?? 0},${f.familySummary?.regressedFindings ?? 0},${f.familySummary?.recurringAcrossScanRunsFindings ?? 0},"${f.description.replace(/"/g, '""')}",${f.occurrenceCount},"${f.wcagTags.join("; ")}"`,
-        );
+      const numFindings = report.findings.length;
+      const lines = new Array(numFindings + 1);
+      lines[0] =
+        "Rule ID,Impact,Status,Truth Status,Change Signal,Comparison Basis,Scan Runs Observed,Absent While Open (runs),Triage Score,Triage Reasons,Proof Completeness,Family Active,Family Regressed,Family Multi-Run,Description,Occurrences,WCAG Tags";
+
+      for (let i = 0; i < numFindings; i++) {
+        const f = report.findings[i];
+
+        let proofCompletenessScore = 0;
+        const comp = f.proofSummary.completeness;
+        if (comp) {
+          if (comp.hasSummary) proofCompletenessScore++;
+          if (comp.hasLatestObservationTimestamp) proofCompletenessScore++;
+          if (comp.hasVerificationStatus) proofCompletenessScore++;
+          if (comp.hasPageUrl) proofCompletenessScore++;
+          if (comp.hasLineage) proofCompletenessScore++;
+        }
+
+        const reasons = f.triagePriority.reasons
+          .join(" | ")
+          .replace(/"/g, '""');
+        const desc = f.description.replace(/"/g, '""');
+        const tags = f.wcagTags.join("; ");
+        const fam = f.familySummary;
+
+        lines[i + 1] =
+          `"${f.ruleId}","${f.impact}","${f.status}","${f.truthStatus}","${f.proofSummary.changedSinceLastRun}","${f.proofSummary.comparisonBasis}",${f.proofSummary.recurrence.distinctScanRunsObserved},${f.proofSummary.recurrence.distinctScanRunsAbsentWhenOpen},${Math.round(f.triagePriority.score)},"${reasons}",${proofCompletenessScore},${fam?.activeFindings ?? 0},${fam?.regressedFindings ?? 0},${fam?.recurringAcrossScanRunsFindings ?? 0},"${desc}",${f.occurrenceCount},"${tags}"`;
       }
       return new NextResponse(lines.join("\n"), {
         headers: {
