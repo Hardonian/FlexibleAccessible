@@ -50,7 +50,9 @@ describe('Jira Integration', () => {
       expect(result).toEqual({ id: '10000', key: 'TEST-1' });
 
       expect(global.fetch).toHaveBeenCalledTimes(1);
-      const callArgs = vi.mocked(global.fetch).mock.calls[0];
+        (global.fetch as any).mock.calls[0];
+        expect((global.fetch as any).mock.calls[0][0]).toContain('/rest/api/3/issue');
+        expect((global.fetch as any).mock.calls[0][1]?.method).toBe('POST');
       expect(callArgs[0]).toContain('/rest/api/3/issue');
       expect(callArgs[1]?.method).toBe('POST');
     });
