@@ -276,6 +276,8 @@ export class GeminiVisualReviewer extends BaseAgent {
         combined.requiresHumanReview = required;
         combined.humanReviewReasons = reasons;
 
+        const newFindingsData = [];
+
         for (const criteria of visionResult.criteria_status) {
           for (const issue of criteria.issues) {
             const action =
@@ -288,28 +290,26 @@ export class GeminiVisualReviewer extends BaseAgent {
             if (action === "evidence_only" && criteria.confidence < 0.5)
               continue;
 
-            const finding = await prisma.aiVisualFinding.create({
-              data: {
-                reviewRunId,
-                siteId,
-                pageId,
-                criterionId: criteria.criterion_id,
-                criterionName: criteria.criterion_name,
-                level: criteria.level,
-                status: criteria.status,
-                confidence: criteria.confidence,
-                severity: issue.severity,
-                description: issue.description,
-                selector: issue.selector || null,
-                suggestedFix: issue.suggested_fix || null,
-                source: "vision",
-                action,
-                metadata: {
-                  evidence: issue.evidence,
-                  elementDescription: issue.element_description,
-                  modelVersion: visionResult.model_version,
-                  latencyMs: visionResult.latency_ms,
-                },
+            newFindingsData.push({
+              reviewRunId,
+              siteId,
+              pageId,
+              criterionId: criteria.criterion_id,
+              criterionName: criteria.criterion_name,
+              level: criteria.level,
+              status: criteria.status,
+              confidence: criteria.confidence,
+              severity: issue.severity,
+              description: issue.description,
+              selector: issue.selector || null,
+              suggestedFix: issue.suggested_fix || null,
+              source: "vision",
+              action,
+              metadata: {
+                evidence: issue.evidence,
+                elementDescription: issue.element_description,
+                modelVersion: visionResult.model_version,
+                latencyMs: visionResult.latency_ms,
               },
             });
 
@@ -317,6 +317,12 @@ export class GeminiVisualReviewer extends BaseAgent {
             if (action === "auto_create") highConfidence++;
             if (action === "review_required") needsReview++;
           }
+        }
+
+        if (newFindingsData.length > 0) {
+          await prisma.aiVisualFinding.createMany({
+            data: newFindingsData,
+          });
         }
       }
 
