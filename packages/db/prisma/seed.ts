@@ -372,20 +372,33 @@ async function main() {
   });
 
   // Link findings to clusters
-  const allFindings = await prisma.canonicalFinding.findMany({ where: { siteId: site.id } });
-  for (const f of allFindings) {
-    if (f.ruleId === 'image-alt') {
-      await prisma.canonicalFinding.update({
-        where: { id: f.id },
+  const allFindings = await prisma.canonicalFinding.findMany({
+    where: { siteId: site.id },
+    select: { id: true, ruleId: true },
+  });
+  const imageAltIds = allFindings.filter((f) => f.ruleId === 'image-alt').map((f) => f.id);
+  const buttonNameIds = allFindings.filter((f) => f.ruleId === 'button-name').map((f) => f.id);
+
+  const clusterPromises = [];
+  if (imageAltIds.length > 0) {
+    clusterPromises.push(
+      prisma.canonicalFinding.updateMany({
+        where: { id: { in: imageAltIds } },
         data: { clusterId: imageCluster.id },
-      });
-    } else if (f.ruleId === 'button-name') {
-      await prisma.canonicalFinding.update({
-        where: { id: f.id },
-        data: { clusterId: buttonCluster.id },
-      });
-    }
+      })
+    );
   }
+
+  if (buttonNameIds.length > 0) {
+    clusterPromises.push(
+      prisma.canonicalFinding.updateMany({
+        where: { id: { in: buttonNameIds } },
+        data: { clusterId: buttonCluster.id },
+      })
+    );
+  }
+
+  await Promise.all(clusterPromises);
 
   // Demo remediation suggestions
   async function ensureRecipe(input: {
