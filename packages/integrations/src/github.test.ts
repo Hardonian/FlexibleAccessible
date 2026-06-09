@@ -41,7 +41,18 @@ describe('github integration', () => {
         'Failed to create GitHub issue: 403 - Rate limit exceeded'
       );
 
-      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://api.github.com/repos/test-owner/test-repo/issues',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'Authorization': 'Bearer fake-token',
+            'Content-Type': 'application/json',
+            'Accept': 'application/vnd.github+json'
+          }),
+          body: expect.any(String)
+        })
+      );
       expect(global.fetch).toHaveBeenCalledWith(
         'https://api.github.com/repos/test-owner/test-repo/issues',
         expect.objectContaining({
