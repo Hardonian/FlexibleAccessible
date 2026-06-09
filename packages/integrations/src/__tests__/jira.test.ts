@@ -53,7 +53,7 @@ describe('Jira Integration', () => {
         (global.fetch as any).mock.calls[0];
         expect((global.fetch as any).mock.calls[0][0]).toContain('/rest/api/3/issue');
         expect((global.fetch as any).mock.calls[0][1]?.method).toBe('POST');
-      expect(callArgs[0]).toContain('/rest/api/3/issue');
+      expect((global.fetch as any).mock.calls[0][0]).toContain('/rest/api/3/issue');
       expect(callArgs[1]?.method).toBe('POST');
     });
   });
