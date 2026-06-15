@@ -10,10 +10,10 @@
   },
   "dependencies": {
     "@aros/shared": "*",
-    "axe-core": "^4.10.0"
+    "axe-core": "^4.12.1"
   },
   "devDependencies": {
     "typescript": "^5.7.0",
-    "vitest": "^4.1.4"
+    "vitest": "^4.1.8"
   }
 }

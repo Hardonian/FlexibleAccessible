@@ -18,12 +18,12 @@
     "@aros/db": "*",
     "@aros/scan-engine": "*",
     "@aros/shared": "*",
-    "bullmq": "^5.73.3",
-    "ioredis": "^5.4.0",
+    "bullmq": "^5.78.1",
+    "ioredis": "^5.11.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "typescript": "^5.7.0",
-    "vitest": "^4.1.4"
+    "vitest": "^4.1.8"
   }
 }

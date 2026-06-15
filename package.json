@@ -40,13 +40,13 @@
     "@axe-core/playwright": "^4.11.1",
     "@ioredis/commands": "^1.6.0",
     "@playwright/experimental-ct-react": "^1.58.2",
-    "@types/node": "^25.6.0",
+    "@types/node": "^25.9.3",
     "cluster-key-slot": "^1.1.2",
     "lodash.defaults": "^4.2.0",
-    "prettier": "^3.8.2",
+    "prettier": "^3.8.4",
     "redis-errors": "^1.2.0",
     "standard-as-callback": "^2.1.0",
-    "turbo": "^2.9.6",
+    "turbo": "^2.9.18",
     "typescript": "^5.7.0"
   },
   "engines": {
@@ -55,8 +55,8 @@
   "dependencies": {
     "@hono/node-server": "^1.19.14",
     "@prisma/client": "^7.8.0",
-    "hono": "^4.12.19",
-    "msgpackr": "2.0.1",
+    "hono": "^4.12.25",
+    "msgpackr": "2.0.4",
     "next": "^16.2.3",
     "nodemailer": "^8.0.5"
   },
