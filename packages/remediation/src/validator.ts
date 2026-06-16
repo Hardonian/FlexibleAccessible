@@ -69,7 +69,7 @@ function hasScriptInjection(code: string): boolean {
     /<iframe/i,
     /<object/i,
     /<embed/i,
-    /on[a-z]+[\s\x00-\x20]*=/i,
+    /\bon[a-z]+[\s\x00-\x20]*=/i,
     /eval[\s\x00-\x20]*\(/i,
     /document\.write/i,
     /innerHTML[\s\x00-\x20]*=/i,
