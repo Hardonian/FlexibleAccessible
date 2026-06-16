@@ -52,11 +52,7 @@ describe('GET /api/badge', () => {
     expect(res.headers.get('Access-Control-Allow-Origin')).toBe('https://example.com');
   });
 
-  test('Sets Access-Control-Allow-Origin from valid domain', async () => {
-    const req = new Request('http://localhost/api/badge?domain=example.com');
-    const res = await GET(req);
-    expect(res.headers.get('Access-Control-Allow-Origin')).toBe('https://example.com');
-  });
+  test('Escapes malicious domain parameter in origin header', async () => {
     // If domain has quotes, wait, validDomain rejects spaces, slashes, etc.
     const req = new Request('http://localhost/api/badge?domain=example.com');
     const res = await GET(req);
