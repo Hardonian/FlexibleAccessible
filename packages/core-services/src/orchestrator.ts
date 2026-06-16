@@ -154,7 +154,7 @@ export async function collectPlatformHealth(prisma: PrismaClient): Promise<Platf
   const workerRunning = installed && redisCheck.ok && !workerStale && platformRow?.workerLastHeartbeatAt != null;
 
   const qPressure =
-    queueResult?.ok === true ? queueFailurePressure(queueResult.snapshot) : { degraded: false, totalFailed: 0 };
+    queueResult?.ok === true ? queueFailurePressure(queueResult.data!) : { degraded: false, totalFailed: 0 };
 
   const sessionOk = dbCheck.ok && envDiag.valid;
 
@@ -197,11 +197,11 @@ export async function collectPlatformHealth(prisma: PrismaClient): Promise<Platf
           healthState: dbCheck.ok ? 'running' : 'unavailable',
           lastCheckAt: checkedAt,
           lastActivityAt: dbCheck.ok ? checkedAt : null,
-          failureReason: dbCheck.ok ? null : dbCheck.message ?? 'Unreachable',
+          failureReason: dbCheck.ok ? null : dbCheck.error?.message ?? 'Unreachable',
           nextStep: dbCheck.ok
             ? 'No action required.'
             : 'Verify DATABASE_URL and database availability; run migrations after connectivity is restored.',
-          dependencies: { postgres: dbCheck },
+          dependencies: { postgres: { ok: dbCheck.ok, checkedAt: dbCheck.metadata?.timestamp || new Date().toISOString(), message: dbCheck.error?.message } },
         };
         break;
       }
@@ -224,11 +224,11 @@ export async function collectPlatformHealth(prisma: PrismaClient): Promise<Platf
           lastActivityAt: redisCheck.ok ? checkedAt : null,
           failureReason: redisCheck.ok
             ? null
-            : (redisCheck.message ?? 'Redis unreachable'),
+            : (redisCheck.error?.message ?? 'Redis unreachable'),
           nextStep: redisCheck.ok
             ? 'No action required.'
             : 'Start Redis and set REDIS_URL; docker compose up includes Redis. Until then, some auth rate limits use per-process fallback (not synchronized across instances).',
-          dependencies: { redis: redisCheck },
+          dependencies: { redis: { ok: redisCheck.ok, checkedAt: redisCheck.metadata?.timestamp || new Date().toISOString(), message: redisCheck.error?.message } },
         };
         break;
       }
@@ -268,7 +268,7 @@ export async function collectPlatformHealth(prisma: PrismaClient): Promise<Platf
           lastActivityAt: platformRow?.workerLastHeartbeatAt?.toISOString() ?? null,
           failureReason: reason,
           nextStep: next,
-          dependencies: { redis: redisCheck, database: dbCheck },
+          dependencies: { redis: { ok: redisCheck.ok, checkedAt: redisCheck.metadata?.timestamp || new Date().toISOString(), message: redisCheck.error?.message }, database: { ok: dbCheck.ok, checkedAt: dbCheck.metadata?.timestamp || new Date().toISOString(), message: dbCheck.error?.message } },
         };
         break;
       }
@@ -287,7 +287,7 @@ export async function collectPlatformHealth(prisma: PrismaClient): Promise<Platf
           next = 'Start workers and verify they can reach Redis.';
         } else if (queueResult?.ok === false) {
           health = 'degraded';
-          reason = queueResult.message ?? 'Could not read queue metrics.';
+          reason = queueResult.error?.message ?? 'Could not read queue metrics.';
           next = 'Check Redis memory, BullMQ keys, and worker logs.';
         } else if (qPressure.degraded) {
           health = 'degraded';
@@ -308,12 +308,12 @@ export async function collectPlatformHealth(prisma: PrismaClient): Promise<Platf
                   queuesReadable: true,
                   failedJobsTotal: qPressure.totalFailed,
                   waitingTotal:
-                    queueResult.snapshot.crawl.waiting +
-                    queueResult.snapshot.scan.waiting +
-                    queueResult.snapshot.cluster.waiting +
-                    queueResult.snapshot.remediation.waiting +
-                    queueResult.snapshot.publicScan.waiting +
-                    queueResult.snapshot.visualReview.waiting,
+                    queueResult.data!.crawl.waiting +
+                    queueResult.data!.scan.waiting +
+                    queueResult.data!.cluster.waiting +
+                    queueResult.data!.remediation.waiting +
+                    queueResult.data!.publicScan.waiting +
+                    queueResult.data!.visualReview.waiting,
                 }
               : { queuesReadable: false },
           healthState: health,
@@ -321,7 +321,7 @@ export async function collectPlatformHealth(prisma: PrismaClient): Promise<Platf
           lastActivityAt: platformRow?.workerLastHeartbeatAt?.toISOString() ?? null,
           failureReason: reason,
           nextStep: next,
-          dependencies: { postgres: dbCheck, redis: redisCheck },
+          dependencies: { postgres: { ok: dbCheck.ok, checkedAt: dbCheck.metadata?.timestamp || new Date().toISOString(), message: dbCheck.error?.message }, redis: { ok: redisCheck.ok, checkedAt: redisCheck.metadata?.timestamp || new Date().toISOString(), message: redisCheck.error?.message } },
         };
         break;
       }
@@ -339,14 +339,14 @@ export async function collectPlatformHealth(prisma: PrismaClient): Promise<Platf
           healthState: sessionOk ? 'running' : dbCheck.ok ? 'misconfigured' : 'unavailable',
           lastCheckAt: checkedAt,
           lastActivityAt: null,
-          failureReason: sessionOk ? null : !dbCheck.ok ? dbCheck.message ?? null : 'Session environment invalid',
+          failureReason: sessionOk ? null : !dbCheck.ok ? dbCheck.error?.message ?? null : 'Session environment invalid',
           nextStep: sessionOk
             ? outboundEmailOk
               ? 'No action required.'
               : 'Optional: configure SMTP_* and EMAIL_FROM for password reset and signup verification email.'
             : 'Fix DATABASE_URL and required env vars; see environment validation errors.',
           dependencies: {
-            postgres: dbCheck,
+            postgres: { ok: dbCheck.ok, checkedAt: dbCheck.metadata?.timestamp || new Date().toISOString(), message: dbCheck.error?.message },
             env: { ok: envDiag.valid, checkedAt },
             outboundEmail: {
               ok: outboundEmailOk,
@@ -388,7 +388,7 @@ export async function collectPlatformHealth(prisma: PrismaClient): Promise<Platf
               : !dbCheck.ok
                 ? 'Restore database connectivity before relying on billing webhooks.'
                 : 'No action required for billing connectivity.',
-          dependencies: { postgres: dbCheck },
+          dependencies: { postgres: { ok: dbCheck.ok, checkedAt: dbCheck.metadata?.timestamp || new Date().toISOString(), message: dbCheck.error?.message } },
         };
         break;
       }
@@ -410,7 +410,7 @@ export async function collectPlatformHealth(prisma: PrismaClient): Promise<Platf
             : misconfigured
               ? gh.issues[0]
               : 'No action required.',
-          dependencies: { postgres: dbCheck },
+          dependencies: { postgres: { ok: dbCheck.ok, checkedAt: dbCheck.metadata?.timestamp || new Date().toISOString(), message: dbCheck.error?.message } },
         };
         break;
       }
@@ -426,11 +426,11 @@ export async function collectPlatformHealth(prisma: PrismaClient): Promise<Platf
           healthState: dbCheck.ok ? 'ready' : 'unavailable',
           lastCheckAt: checkedAt,
           lastActivityAt: null,
-          failureReason: dbCheck.ok ? null : dbCheck.message ?? null,
+          failureReason: dbCheck.ok ? null : dbCheck.error?.message ?? null,
           nextStep: dbCheck.ok
             ? 'Add a Jira integration from organization settings when needed.'
             : 'Restore database connectivity.',
-          dependencies: { postgres: dbCheck },
+          dependencies: { postgres: { ok: dbCheck.ok, checkedAt: dbCheck.metadata?.timestamp || new Date().toISOString(), message: dbCheck.error?.message } },
         };
         break;
       }
@@ -454,7 +454,7 @@ export async function collectPlatformHealth(prisma: PrismaClient): Promise<Platf
               ? 'No action required.'
               : 'Start workers to process remediation jobs.'
             : 'Optional: set OPENAI_API_KEY or ANTHROPIC_API_KEY for enhanced suggestions (rule-based path works without).',
-          dependencies: { redis: redisCheck },
+          dependencies: { redis: { ok: redisCheck.ok, checkedAt: redisCheck.metadata?.timestamp || new Date().toISOString(), message: redisCheck.error?.message } },
         };
         break;
       }
@@ -531,7 +531,7 @@ export async function collectPlatformHealth(prisma: PrismaClient): Promise<Platf
 
   const jobQueueDepths =
     queueResult?.ok === true
-      ? { checkedAt: queueResult.checkedAt, snapshot: queueResult.snapshot }
+      ? { checkedAt: queueResult.metadata?.timestamp || new Date().toISOString(), snapshot: queueResult.data! }
       : null;
 
   return {
@@ -539,8 +539,8 @@ export async function collectPlatformHealth(prisma: PrismaClient): Promise<Platf
     liveInfraProbes: 'live',
     bootstrap,
     dependencies: {
-      database: dbCheck,
-      redis: redisCheck,
+      database: { ok: dbCheck.ok, checkedAt: dbCheck.metadata?.timestamp || new Date().toISOString(), message: dbCheck.error?.message },
+      redis: { ok: redisCheck.ok, checkedAt: redisCheck.metadata?.timestamp || new Date().toISOString(), message: redisCheck.error?.message },
       sessionStore: {
         ok: sessionOk,
         checkedAt,
