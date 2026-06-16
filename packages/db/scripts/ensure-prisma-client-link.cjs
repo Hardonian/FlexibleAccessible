@@ -1,22 +1,20 @@
 #!/usr/bin/env node
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 
-const workspaceRoot = path.resolve(__dirname, '..', '..', '..');
-const rootClient = path.join(workspaceRoot, 'node_modules', '@prisma', 'client');
 const localScope = path.resolve(__dirname, '..', 'node_modules', '@prisma');
 const localClient = path.join(localScope, 'client');
 
-if (fs.existsSync(localClient)) {
-  process.exit(0);
+if (!fs.existsSync(localClient)) {
+  console.log('[db:generate] Installing @prisma/client locally to satisfy Prisma generate...');
+  execSync('npm install @prisma/client --no-save', { stdio: 'inherit', cwd: path.resolve(__dirname, '..') });
+} else {
+  // If it's a symlink, Prisma might fail to generate
+  const stat = fs.lstatSync(localClient);
+  if (stat.isSymbolicLink()) {
+    console.log('[db:generate] Replacing @prisma/client symlink with local installation...');
+    fs.rmSync(localClient, { recursive: true, force: true });
+    execSync('npm install @prisma/client --no-save', { stdio: 'inherit', cwd: path.resolve(__dirname, '..') });
+  }
 }
-
-if (!fs.existsSync(rootClient)) {
-  console.error('[db:generate] Missing root @prisma/client. Run npm install first.');
-  process.exit(1);
-}
-
-fs.mkdirSync(localScope, { recursive: true });
-const relativeTarget = path.relative(localScope, rootClient);
-fs.symlinkSync(relativeTarget, localClient, 'dir');
-console.log(`[db:generate] Linked @prisma/client -> ${relativeTarget}`);
