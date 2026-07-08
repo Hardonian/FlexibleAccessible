@@ -39,7 +39,7 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",
     "@ioredis/commands": "^1.6.0",
-    "@playwright/experimental-ct-react": "^1.61.1",
+    "@playwright/experimental-ct-react": "^1.61.0",
     "@types/node": "^25.6.0",
     "cluster-key-slot": "^1.1.2",
     "lodash.defaults": "^4.2.0",
@@ -57,7 +57,7 @@
     "@prisma/client": "^7.8.0",
     "hono": "^4.12.27",
     "msgpackr": "2.0.4",
-    "next": "^9.3.3",
+    "next": "^0.4.1",
     "nodemailer": "^9.0.3"
   },
   "overrides": {
