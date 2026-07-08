@@ -47,3 +47,16 @@ apps/web/public/fallback-*.js
 npm-debug.log*
 *.key
 *.pem
+
+# --- Hardonian bootstrap kit ---
+# Hardonian standard ignores
+.env.*
+!.env.example
+!.env.template
+__pycache__/
+*.pyc
+.venv/
+venv/
+target/
+.coverage
+htmlcov/
