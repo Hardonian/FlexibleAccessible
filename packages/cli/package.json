@@ -17,12 +17,12 @@
     "@aros/remediation": "*",
     "@aros/shared": "*",
     "axe-core": "^4.10.0",
-    "playwright": "^1.49.0",
+    "playwright": "^1.61.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "tsx": "^4.19.0",
+    "tsx": "^4.23.0",
     "typescript": "^5.7.0",
-    "vitest": "^4.1.4"
+    "vitest": "^4.1.9"
   }
 }
