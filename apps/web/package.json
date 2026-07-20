@@ -33,7 +33,7 @@
     "lucide-react": "^1.24.0",
     "next": "^15.5.20",
     "nodemailer": "9.0.3",
-    "postcss": "^8.5.18",
+    "postcss": "^8.5.19",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "stripe": "^22.3.1",
