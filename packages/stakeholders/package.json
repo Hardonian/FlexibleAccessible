@@ -9,13 +9,13 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@aros/shared": "*",
-    "@aros/db": "*",
     "@aros/config": "*",
+    "@aros/db": "*",
+    "@aros/shared": "*",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "typescript": "^5.7.0",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.9"
   }
 }

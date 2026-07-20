@@ -38,7 +38,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",
-    "@ioredis/commands": "^1.6.0",
+    "@ioredis/commands": "^1.11.0",
     "@playwright/experimental-ct-react": "^1.61.1",
     "@types/node": "^25.6.0",
     "cluster-key-slot": "^1.1.2",
@@ -46,7 +46,7 @@
     "prettier": "^3.9.5",
     "redis-errors": "^1.2.0",
     "standard-as-callback": "^2.1.0",
-    "turbo": "^2.10.4",
+    "turbo": "^2.10.5",
     "typescript": "^5.7.0"
   },
   "engines": {
@@ -55,7 +55,7 @@
   "dependencies": {
     "@hono/node-server": "^1.19.14",
     "@prisma/client": "^7.8.0",
-    "hono": "^4.12.30",
+    "hono": "^4.12.31",
     "msgpackr": "2.0.4",
     "next": "^0.4.1",
     "nodemailer": "^9.0.3"

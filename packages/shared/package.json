@@ -22,7 +22,7 @@
     "cac": "^7.0.0",
     "tsup": "^8.0.0",
     "typescript": "^5.3.0",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.9"
   },
   "engines": {
     "node": ">=18"
@@ -30,8 +30,7 @@
   "dependencies": {
     "@types/bcrypt": "^6.0.0",
     "bcrypt": "^6.0.0",
-    "bullmq": "^5.80.2",
-    "ioredis": "^5.11.1",
-    "vitest": "^4.1.10"
+    "bullmq": "^5.80.9",
+    "ioredis": "^5.11.1"
   }
 }
