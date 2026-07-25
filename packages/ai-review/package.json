@@ -10,13 +10,13 @@
   },
   "dependencies": {
     "@aros/db": "*",
-    "@aros/shared": "*",
     "@aros/scan-engine": "*",
+    "@aros/shared": "*",
     "@google/generative-ai": "^0.24.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "typescript": "^5.7.0",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.9"
   }
 }
