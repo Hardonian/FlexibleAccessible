@@ -18,7 +18,7 @@
     "nodemailer": "9.0.3"
   },
   "devDependencies": {
-    "@prisma/debug": "^7.6.0",
+    "@prisma/debug": "^7.9.0",
     "empathic": "^2.0.1",
     "exsolve": "^1.1.0",
     "prisma": "^6.19.3",
