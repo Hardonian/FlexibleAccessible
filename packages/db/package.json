@@ -19,7 +19,7 @@
   },
   "devDependencies": {
     "@prisma/debug": "^7.6.0",
-    "empathic": "^2.0.1",
+    "empathic": "^2.0.0",
     "exsolve": "^1.1.0",
     "prisma": "^6.19.3",
     "tsx": "^4.23.1",
