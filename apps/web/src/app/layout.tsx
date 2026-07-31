@@ -11,6 +11,7 @@ import {
   siteDefaultOpenGraphImages,
   siteDefaultTwitterImages,
 } from "@/lib/site-metadata";
+import { AnalyticsScripts } from "@/components/analytics-scripts";
 
 const appBase = getAppBaseUrl();
 
@@ -79,7 +80,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" dir="ltr">
-      <body className="min-h-dvh bg-[rgb(var(--color-canvas))]">{children}</body>
+      <body className="min-h-dvh bg-[rgb(var(--color-canvas))]">
+        <AnalyticsScripts />
+        {children}
+      </body>
     </html>
   );
 }

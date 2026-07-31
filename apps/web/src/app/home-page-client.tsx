@@ -26,6 +26,7 @@ import {
   productFeatures,
 } from "@/lib/marketing-content";
 import { CONFIDENCE_LABELS } from "@/lib/assurance-ladder";
+import { LeadCapture } from "@/components/lead-capture";
 
 const featureIcons = [
   Search,
@@ -438,6 +439,28 @@ npx @aros/cli scan --site example.com`}</pre>
               </Link>
             </div>
           ))}
+        </div>
+      </section>
+
+      <section
+        id="get-started"
+        className="mx-auto max-w-7xl px-6 py-section-lg"
+        aria-labelledby="get-started-heading"
+      >
+        <div className="mx-auto max-w-2xl text-center">
+          <h2
+            id="get-started-heading"
+            className="text-3xl font-bold text-slate-900"
+          >
+            Start with evidence, not a score
+          </h2>
+          <p className="mx-auto mt-4 max-w-xl text-slate-600">
+            Join teams shipping accessibility remediation they can defend. We&apos;ll
+            send a prioritized plan based on your first scan.
+          </p>
+        </div>
+        <div className="mt-10 flex justify-center">
+          <LeadCapture source="home-cta" productSlug="accessibility-remediation-os" />
         </div>
       </section>
 
