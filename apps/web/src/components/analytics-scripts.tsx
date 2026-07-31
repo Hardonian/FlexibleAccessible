@@ -48,4 +48,20 @@ export function trackEvent(event: string, payload: Record<string, unknown> = {})
   if (dl && Array.isArray(dl)) {
     dl.push({ event, ...payload });
   }
+  // First-party sovereign analytics: always send to /api/event (no external keys).
+  try {
+    fetch("/api/event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        event,
+        path: window.location.pathname,
+        product_slug: (payload.product as string) ?? "",
+        referrer: document.referrer,
+      }),
+      keepalive: true,
+    }).catch(() => {});
+  } catch {
+    /* analytics must never break the page */
+  }
 }
