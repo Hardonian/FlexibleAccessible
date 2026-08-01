@@ -49,7 +49,7 @@ export const feedbackCreateSchema = z.object({
   source: z.string().optional(),
   tags: z.array(z.string()).optional(),
   attachments: z.array(z.string()).optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const feedbackUpdateSchema = z.object({
@@ -60,7 +60,7 @@ export const feedbackUpdateSchema = z.object({
   responseText: z.string().optional(),
   resolutionNotes: z.string().optional(),
   linkedFindingId: z.string().optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type FeedbackCreateInput = z.infer<typeof feedbackCreateSchema>;

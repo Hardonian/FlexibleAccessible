@@ -37,7 +37,7 @@ export const validationRecordSchema = z.object({
   owner: z.string(),
   validatedAt: z.date(),
   nextValidation: z.date().optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type ValidationRecordInput = z.infer<typeof validationRecordSchema>;

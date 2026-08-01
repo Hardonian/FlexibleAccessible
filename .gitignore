@@ -47,3 +47,6 @@ apps/web/public/fallback-*.js
 npm-debug.log*
 *.key
 *.pem
+
+# Cleanup additions
+__pycache__

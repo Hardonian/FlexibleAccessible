@@ -50,7 +50,7 @@ export const biasAuditEntrySchema = z.object({
   mitigationStatus: z.enum(BIAS_MITIGATION_STATUSES).optional(),
   owner: z.string().optional(),
   dueDate: z.date().optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type BiasAuditEntryInput = z.infer<typeof biasAuditEntrySchema>;

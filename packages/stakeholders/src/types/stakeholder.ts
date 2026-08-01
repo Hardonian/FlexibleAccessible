@@ -71,7 +71,7 @@ export const stakeholderCreateSchema = z.object({
   underrepresentedGroups: z.array(z.string()).optional(),
   region: z.string().optional(),
   language: z.string().optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const stakeholderUpdateSchema = stakeholderCreateSchema

@@ -97,8 +97,9 @@ export function parseEnvDiagnostics(processEnv: NodeJS.ProcessEnv): EnvDiagnosti
     return { valid: true, fieldErrors: {}, issues: [] };
   }
   const flat = result.error.flatten();
-  const issues = Object.entries(flat.fieldErrors).flatMap(([key, messages]) =>
+  const fieldErrors = flat.fieldErrors as Record<string, string[] | undefined>;
+  const issues = Object.entries(fieldErrors).flatMap(([key, messages]) =>
     (messages ?? []).map((msg) => `${key}: ${msg}`)
   );
-  return { valid: false, fieldErrors: flat.fieldErrors, issues };
+  return { valid: false, fieldErrors, issues };
 }

@@ -16,7 +16,7 @@ import { CREDIT_PACKS, type CreditPackId } from "@/lib/credits/packs";
 import type { PlanTier } from "@aros/db";
 import { logProductEvent, PRODUCT_EVENT_ACTIONS } from "@/lib/product-events";
 
-function redirectWithError(message: string) {
+function redirectWithError(message: string): never {
   redirect(`/settings/billing?error=${encodeURIComponent(message)}`);
 }
 

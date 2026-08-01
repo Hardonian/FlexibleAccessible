@@ -61,7 +61,7 @@ export const outreachRecordSchema = z.object({
   barriersEncountered: z.array(z.string()).optional(),
   followUpDate: z.date().optional(),
   owner: z.string(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type OutreachRecordInput = z.infer<typeof outreachRecordSchema>;

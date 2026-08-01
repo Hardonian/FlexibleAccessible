@@ -43,7 +43,7 @@ const logSchema = z.object({
   organizationId: z.string().optional(),
   requestId: z.string().optional(),
   error: z.unknown().optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
   timestamp: z.string().default(() => new Date().toISOString()),
 });
 
