@@ -17,7 +17,7 @@
     "@aros/remediation": "*",
     "@aros/scan-engine": "*",
     "@aros/shared": "*",
-    "axe-core": "^4.10.0",
+    "axe-core": "^4.13.0",
     "bullmq": "^5.80.2",
     "ioredis": "^5.11.1",
     "openai": "^6.46.0",
