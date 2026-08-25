@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { randomBytes, scrypt } from 'crypto';
+import { randomBytes, scrypt, createHash } from 'crypto';
 import { promisify } from 'util';
 
 const prisma = new PrismaClient();
