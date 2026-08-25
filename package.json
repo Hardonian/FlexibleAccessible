@@ -40,7 +40,7 @@
     "@axe-core/playwright": "^4.12.1",
     "@ioredis/commands": "^1.6.0",
     "@playwright/experimental-ct-react": "^1.61.1",
-    "@types/node": "^25.6.0",
+    "@types/node": "^26.2.0",
     "cluster-key-slot": "^1.1.2",
     "lodash.defaults": "^4.2.0",
     "prettier": "^3.9.5",
