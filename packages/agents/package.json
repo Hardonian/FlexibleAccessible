@@ -20,7 +20,7 @@
     "bullmq": "^5.80.2"
   },
   "devDependencies": {
-    "typescript": "^5.7.0",
+    "typescript": "^7.0.2",
     "vitest": "^4.1.10"
   }
 }
