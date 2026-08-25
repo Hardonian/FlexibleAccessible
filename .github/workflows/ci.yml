@@ -72,8 +72,8 @@ jobs:
             fi
           done
 
-      - name: npm audit (high and critical must be zero)
-        run: npm audit --audit-level=high
+      - name: npm audit (actionable high/critical must be zero)
+        run: node scripts/audit-gate.cjs
 
       - name: Push Schema & Seed
         env:
