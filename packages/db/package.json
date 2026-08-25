@@ -21,7 +21,7 @@
     "@prisma/debug": "^7.6.0",
     "empathic": "^2.0.1",
     "exsolve": "^1.1.0",
-    "prisma": "^6.19.3",
+    "prisma": "^7.9.1",
     "tsx": "^4.23.1",
     "typescript": "^5.7.0"
   }
