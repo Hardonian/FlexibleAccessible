@@ -47,7 +47,7 @@
     "redis-errors": "^1.2.0",
     "standard-as-callback": "^2.1.0",
     "turbo": "^2.10.9",
-    "typescript": "^5.7.0"
+    "typescript": "^7.0.2"
   },
   "engines": {
     "node": ">=20.0.0"
