@@ -48,7 +48,7 @@ export async function evaluateLegacyRetirementForOperator(
     }),
   ]);
 
-  const manageableOrgIds = memberships
+  const manageableOrgIds = (memberships ?? [])
     .filter((membership) => hasPermission(membership.role as MemberRole, 'org:system:manage'))
     .map((membership) => membership.organizationId);
   const evaluationOrgIds = options?.organizationId

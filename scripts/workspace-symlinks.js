@@ -56,6 +56,8 @@ for (const { from, name } of packagesToSymlink) {
       }
     }
   }
+}
+
 const webTs = path.join(workspacesDir, "apps", "web", "node_modules", "typescript");
 const rootTs = path.join(rootNodeModules, "typescript");
 if (existsSync(rootTs) && !existsSync(webTs)) {
