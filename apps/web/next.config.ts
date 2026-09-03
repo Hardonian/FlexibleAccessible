@@ -36,6 +36,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   typedRoutes: true,
+  output: process.env.BUILD_STANDALONE === "true" ? "standalone" : undefined,
   outputFileTracingRoot: path.resolve(__dirname, "../.."),
   transpilePackages: [
     "@aros/db",
