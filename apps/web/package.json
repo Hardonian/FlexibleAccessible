@@ -20,11 +20,14 @@
     "test:launch-critical": "vitest run src/app/api/public-scan/route.test.ts src/app/api/public-scan/[id]/route.test.ts src/lib/public-scan/og-render-model.test.ts src/lib/public-scan/validity.test.ts src/lib/public-scan/target-validation.test.ts src/app/api/github-action/status/[scanRunId]/route.test.ts src/app/api/reports/vpat/route.test.ts src/lib/server-org-boundary.test.ts src/lib/operator-org-resolution.test.ts src/lib/dashboard-org-scoped-prisma.test.ts src/lib/dashboard-form-org.test.ts src/lib/marketing-routes.test.ts src/lib/review-operations.test.ts"
   },
   "dependencies": {
+    "@aros/compliance": "*",
     "@aros/config": "*",
     "@aros/core-services": "*",
     "@aros/db": "*",
+    "@aros/integrations": "*",
     "@aros/shared": "*",
     "@aros/stakeholders": "*",
+    "@aros/ui": "*",
     "autoprefixer": "^10.5.2",
     "bullmq": "^5.80.2",
     "clsx": "^2.1.0",

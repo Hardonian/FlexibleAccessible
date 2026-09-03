@@ -6,7 +6,9 @@
       "@aros/db": ["packages/db/src"],
       "@aros/config": ["packages/config/src"],
       "@aros/stakeholders": ["packages/stakeholders/src"],
-      "@aros/ai-review": ["packages/ai-review/src"]
+      "@aros/ai-review": ["packages/ai-review/src"],
+      "@aros/compliance": ["packages/compliance/src"],
+      "@aros/ui": ["packages/ui/src"]
     },
     "target": "ES2022",
     "module": "NodeNext",
@@ -28,6 +30,7 @@
     { "path": "packages/ai-review" },
     { "path": "packages/cli" },
     { "path": "packages/clustering" },
+    { "path": "packages/compliance" },
     { "path": "packages/config" },
     { "path": "packages/core-services" },
     { "path": "packages/db" },
