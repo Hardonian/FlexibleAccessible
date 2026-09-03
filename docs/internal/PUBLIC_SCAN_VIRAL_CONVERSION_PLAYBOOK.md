@@ -6,7 +6,7 @@ How to turn the `/scan/[domain]` public tool into a continuous inbound sales mac
 
 ## 1. The Growth Flywheel
 
-```
+```text
 Public Scan (Free)
        ↓
 Instant Scorecard + Pareto 80/20 Leverage Curve
@@ -37,17 +37,19 @@ Conversion to Paid Workspace ($49 - $499/mo)
 ## 3. High-Converting 3-Step Automated Outreach Sequence
 
 ### Email 1: The Instant Finding Tear-Down (Minute 0)
+
 **Subject**: [Domain] accessibility scan results: 3 highest-impact code fixes  
 **Body**:
 > Hi {{first_name}},
 >
 > Your public accessibility audit for **{{domain}}** just finished processing on AROS.
 >
-> We detected {{total_violations}} violations across {{pages_scanned}} analyzed pages. 
-> 
+> We detected {{total_violations}} violations across {{pages_scanned}} analyzed pages.
+>
 > Good news: based on our Pareto clustering model, you don't need to fix 50 separate bugs. Fixing just **{{cluster_top_count}} shared component templates** will clear **{{cluster_percent}}%** of your entire violation backlog.
 >
 > Here are the top 3 items detected in your code:
+>
 > 1. {{defect_1}} ({{rule_1}})
 > 2. {{defect_2}} ({{rule_2}})
 > 3. {{defect_3}} ({{rule_3}})
@@ -61,6 +63,7 @@ Conversion to Paid Workspace ($49 - $499/mo)
 ---
 
 ### Email 2: The Pareto ROI & Engineering Time Savings (Day 2)
+
 **Subject**: How to clear 80% of {{domain}}'s accessibility issues in 1 sprint  
 **Body**:
 > Hi {{first_name}},
@@ -70,6 +73,7 @@ Conversion to Paid Workspace ($49 - $499/mo)
 > In reality, 80% of defects stem from the same 2-3 design system primitives (e.g., your modal focus trap, navigation button aria-expanded, or form error announcements).
 >
 > With AROS:
+>
 > - We map your GitHub repository directly to site templates.
 > - Our AI Copilot and deterministic validation engine generates validated pull requests.
 > - Your developers review and merge verified code directly in GitHub.
@@ -83,6 +87,7 @@ Conversion to Paid Workspace ($49 - $499/mo)
 ---
 
 ### Email 3: The Procurement & Legal Shield (Day 5)
+
 **Subject**: VPAT 2.5 & Procurement Sign-Off for {{domain}}  
 **Body**:
 > Hi {{first_name}},
