@@ -614,3 +614,19 @@ export async function persistPostCrawlKickoffAfterEnqueueDashboard(
 ) {
   return persistPostCrawlScanKickoffAfterEnqueue(prisma, crawlRunId, result);
 }
+
+export async function upsertGitHubRepoMappingForSite(
+  siteId: string,
+  data: { repoOwner: string; repoName: string; defaultBranch: string; basePath: string },
+) {
+  return prisma.gitHubRepoMapping.upsert({
+    where: { siteId },
+    create: {
+      siteId,
+      ...data,
+    },
+    update: {
+      ...data,
+    },
+  });
+}

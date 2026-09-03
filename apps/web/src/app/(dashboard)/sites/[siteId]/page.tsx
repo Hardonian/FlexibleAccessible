@@ -39,6 +39,9 @@ import {
   scheduleBlockedReason,
   scheduleCadenceLabel,
 } from "@aros/core-services";
+import { getParetoAnalysis } from "@/lib/impact/compute-cluster-impact";
+import { ParetoImpactCard } from "@/components/clusters/pareto-impact-card";
+import { EmbedBadgeDialog } from "@/components/sites/embed-badge-dialog";
 
 export async function generateMetadata({
   params,
@@ -334,6 +337,13 @@ export default async function SiteDetailPage({
     minor: findings.filter((f) => f.impact === "MINOR").length,
   };
 
+  let paretoAnalysis = { clusters: [] as any[], totalImpact: 0, paretoCut: 0 };
+  try {
+    paretoAnalysis = (await getParetoAnalysis(site.id)) as any;
+  } catch {
+    // Graceful fallback
+  }
+
   return (
     <div className="space-y-6">
       {verificationLoadError ? (
@@ -389,6 +399,7 @@ export default async function SiteDetailPage({
           <p className="page-description mt-0.5">{site.domain}</p>
         </div>
         <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap lg:w-auto lg:justify-end">
+          <EmbedBadgeDialog domain={site.domain} siteName={site.name} />
           <form action={startCrawlAction} className="w-full sm:w-auto">
             <input type="hidden" name="siteId" value={siteId} />
             <button type="submit" className="btn-primary w-full sm:w-auto">
@@ -436,6 +447,10 @@ export default async function SiteDetailPage({
           as="article"
         />
       </div>
+
+      {paretoAnalysis.clusters.length > 0 && (
+        <ParetoImpactCard analysis={paretoAnalysis} siteId={site.id} />
+      )}
 
       {/* ── Crawl automation ───────────────────────────────────────────── */}
       <section className="card" aria-labelledby="crawl-automation-heading">

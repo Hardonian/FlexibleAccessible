@@ -43,8 +43,7 @@ export function AnalyticsScripts() {
 /** Fire a GTM event from client components. Safe no-op if no dataLayer. */
 export function trackEvent(event: string, payload: Record<string, unknown> = {}) {
   if (typeof window === "undefined") return;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const dl = (window as any).dataLayer;
+  const dl = (window as unknown as { dataLayer?: unknown[] }).dataLayer;
   if (dl && Array.isArray(dl)) {
     dl.push({ event, ...payload });
   }

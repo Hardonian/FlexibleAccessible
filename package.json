@@ -47,10 +47,14 @@
     "redis-errors": "^1.2.0",
     "standard-as-callback": "^2.1.0",
     "turbo": "^2.10.12",
-    "typescript": "^7.0.2"
+    "typescript": "^5.8.2"
   },
   "engines": {
     "node": ">=20.0.0"
+  },
+  "overrides": {
+    "brace-expansion": "1.1.11",
+    "typescript": "^5.8.2"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.0",

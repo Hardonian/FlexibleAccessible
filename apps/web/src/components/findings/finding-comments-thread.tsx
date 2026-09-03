@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { MessageSquare, Send, Reply, CornerDownRight, Loader2, User } from "lucide-react";
 
 interface Comment {
@@ -34,9 +34,8 @@ export function FindingCommentsThread({
   const [replyText, setReplyText] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  async function loadComments() {
+  const loadComments = useCallback(async () => {
     try {
-      setLoading(true);
       const res = await fetch(
         `/api/comments?findingId=${encodeURIComponent(
           findingId,
@@ -51,10 +50,29 @@ export function FindingCommentsThread({
     } finally {
       setLoading(false);
     }
-  }
+  }, [findingId, organizationId]);
 
   useEffect(() => {
-    loadComments();
+    let active = true;
+    fetch(
+      `/api/comments?findingId=${encodeURIComponent(
+        findingId,
+      )}&organizationId=${encodeURIComponent(organizationId)}`,
+    )
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (active && json) {
+          setComments(json.data ?? []);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, [findingId, organizationId]);
 
   async function handleAddComment(e: React.FormEvent) {

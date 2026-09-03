@@ -20,6 +20,8 @@ import {
   TrendingUp,
   Users,
 } from "lucide-react";
+import { generateVpatReport } from "@/lib/vpat/generator";
+import { VpatInteractiveHub } from "@/components/compliance/vpat-interactive-hub";
 
 export const metadata = { title: pageTitle("Reports") };
 
@@ -117,8 +119,17 @@ export default async function ReportsPage({
 
   const { opSummary, sites } = statsResult.data;
 
+  let initialVpat: any = null;
+  if (sites.length > 0) {
+    try {
+      initialVpat = await generateVpatReport(sites[0].id, orgRes.organizationId);
+    } catch {
+      // Degraded or no data
+    }
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 pb-16">
       <PageHeader
         title="Evidence reports"
         description="Export structured findings data for audits, tickets, and stakeholder updates. This is evidence of testing activity — not a legal conformance certificate."
@@ -272,6 +283,14 @@ export default async function ReportsPage({
           </div>
         </div>
       </div>
+
+      {/* Interactive WCAG 2.2 VPAT Hub */}
+      <VpatInteractiveHub
+        initialReport={initialVpat}
+        sites={sites}
+        currentSiteId={sites[0]?.id ?? ""}
+        organizationId={orgRes.organizationId}
+      />
     </div>
   );
 }
