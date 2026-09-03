@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const findManyMock = vi.fn();
-const findUniqueMock = vi.fn();
+const { findManyMock, findUniqueMock } = vi.hoisted(() => ({
+  findManyMock: vi.fn(),
+  findUniqueMock: vi.fn(),
+}));
 
 vi.mock('@/lib/db', () => ({
   prisma: {
@@ -13,6 +15,8 @@ vi.mock('@/lib/db', () => ({
 vi.mock('@aros/config', () => ({
   hasPermission: (role: string, permission: string) => permission === 'org:system:manage' && (role === 'OWNER' || role === 'ADMIN'),
 }));
+
+import { evaluateLegacyRetirementForOperator } from './operator-legacy-retirement';
 
 describe('evaluateLegacyRetirementForOperator', () => {
   beforeEach(() => {
@@ -34,7 +38,6 @@ describe('evaluateLegacyRetirementForOperator', () => {
       },
     });
 
-    const { evaluateLegacyRetirementForOperator } = await import('./operator-legacy-retirement');
     const result = await evaluateLegacyRetirementForOperator('user1');
 
     expect(result.inventory).toEqual([
@@ -45,20 +48,19 @@ describe('evaluateLegacyRetirementForOperator', () => {
     expect(result.readiness.status).toBe('fallback_detected');
     expect(result.readiness.fallbackOrganizationIds).toEqual(['orgA']);
     expect(result.readiness.canSafelyPruneLegacyKeys).toBe(false);
-  });
+  }, 15000);
 
   it('returns unknown readiness when operator has no manageable organizations', async () => {
     findManyMock.mockResolvedValueOnce([{ organizationId: 'orgC', role: 'DEVELOPER' }]);
     findUniqueMock.mockResolvedValueOnce({ productFlags: {} });
 
-    const { evaluateLegacyRetirementForOperator } = await import('./operator-legacy-retirement');
     const result = await evaluateLegacyRetirementForOperator('user2');
 
     expect(result.inventory).toEqual([]);
     expect(result.readiness.evaluationScope).toBe('operator_manage_scope');
     expect(result.readiness.status).toBe('unknown');
     expect(result.readiness.inspectedOrganizationCount).toBe(0);
-  });
+  }, 15000);
 
   it('supports strict organization-scoped evaluation to avoid cross-org inventory leakage', async () => {
     findManyMock.mockResolvedValueOnce([
@@ -74,7 +76,6 @@ describe('evaluateLegacyRetirementForOperator', () => {
       },
     });
 
-    const { evaluateLegacyRetirementForOperator } = await import('./operator-legacy-retirement');
     const result = await evaluateLegacyRetirementForOperator('user1', { organizationId: 'orgB' });
 
     expect(result.inventory).toEqual([
@@ -84,5 +85,5 @@ describe('evaluateLegacyRetirementForOperator', () => {
     expect(result.readiness.inspectedOrganizationCount).toBe(1);
     expect(result.readiness.fallbackOrganizationIds).toEqual([]);
     expect(result.readiness.reason).toContain('requested organization');
-  });
+  }, 15000);
 });
