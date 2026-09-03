@@ -25,6 +25,7 @@ Step 4: Export Signed VPAT 2.5 Compliance Report (0:45 - 1:00)
 ## 2. Core Modules & Daily Workflows
 
 ### 2.1 The Scan Engine & Crawl Execution
+
 - **How Scans Work**: AROS dispatches headless Chromium browsers running automated Playwright sessions. Unlike superficial regex scanners, AROS evaluates the actual rendered DOM tree, computed CSS styles, and accessibility tree.
 - **Fingerprinting**: Every defect is assigned a cryptographic SHA-256 fingerprint based on DOM selector, rule ID, and HTML target. This ensures finding identity persists across sprint releases.
 - **Starting a Scan**:
@@ -34,6 +35,7 @@ Step 4: Export Signed VPAT 2.5 Compliance Report (0:45 - 1:00)
 ---
 
 ### 2.2 Finding Backlog & AI Copilot Triage
+
 - **Navigating Findings**: Go to `/findings` to filter by Severity (Critical, Serious, Moderate, Minor) or Conformance Level (WCAG 2.2 Level A vs AA).
 - **Finding Detail View**: Click on any finding to see:
   - Exact DOM selector and offending code snippet.
@@ -46,6 +48,7 @@ Step 4: Export Signed VPAT 2.5 Compliance Report (0:45 - 1:00)
 ---
 
 ### 2.3 Pareto Clustering & High-Leverage Fixes
+
 - **The 80/20 Problem**: Fixing 500 individual page errors is demoralizing and inefficient.
 - **The AROS Solution**: Navigate to `/clusters`. The clustering engine groups identical defects across shared layout components (e.g. your navigation header, modal dialogs, or footer links).
 - **ROI Metric**: The **Pareto Impact Card** displays:
@@ -56,6 +59,7 @@ Step 4: Export Signed VPAT 2.5 Compliance Report (0:45 - 1:00)
 ---
 
 ### 2.4 Self-Serve VPAT 2.5 Compliance Reporting
+
 - **Why Traditional Audits Fail**: Accessibility consulting firms charge $30,000 for a static PDF that expires on your next code push.
 - **Interactive VPAT Hub**: Navigate to `/reports` to access the live VPAT 2.5 matrix:
   - Real-time scorecards across all WCAG 2.2 criteria (`Supports`, `Partially Supports`, `Does Not Support`, `Not Applicable`).
@@ -65,6 +69,7 @@ Step 4: Export Signed VPAT 2.5 Compliance Report (0:45 - 1:00)
 ---
 
 ### 2.5 Stakeholder Governance & Bias Audits
+
 - **Who It's For**: Compliance officers, executive sponsors, and accessibility champions.
 - **Power/Interest Matrix**: Navigate to `/stakeholders` to visually manage champions:
   - *Manage Closely* (High Power, High Interest)
