@@ -9,6 +9,7 @@ import {
   FileText,
   Settings,
   Server,
+  Users,
   Menu,
   X,
   type LucideIcon,
@@ -34,6 +35,7 @@ export const DASHBOARD_NAV_ITEMS = [
   { href: "/remediation", label: "Remediation", icon: "Wrench", premium: true },
   { href: "/reviews", label: "Reviews", icon: "CheckSquare", premium: true },
   { href: "/reports", label: "Reports", icon: "FileText", premium: true },
+  { href: "/stakeholders", label: "Stakeholders", icon: "Users", premium: true },
   { href: "/settings", label: "Settings", icon: "Settings", premium: false },
 ] as const;
 
@@ -45,6 +47,7 @@ export const NAV_ICON_MAP: Record<string, LucideIcon> = {
   Wrench,
   CheckSquare,
   FileText,
+  Users,
   Settings,
   Server,
   Menu,

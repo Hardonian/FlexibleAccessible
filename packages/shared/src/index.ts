@@ -145,6 +145,7 @@ export {
 } from './finding-lifecycle';
 export { hashPassword, verifyPassword, generateToken } from './password';
 export { generateSecureId } from './id-utils';
+export * from './wcag';
 
 // Version
 export const VERSION = '1.0.0';

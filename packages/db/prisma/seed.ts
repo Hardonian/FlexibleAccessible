@@ -374,7 +374,7 @@ async function main() {
   // Link findings to clusters
   const allFindings = await prisma.canonicalFinding.findMany({
     where: { siteId: site.id },
-    select: { id: true, ruleId: true },
+    select: { id: true, ruleId: true, wcagTags: true },
   });
   const imageAltIds = allFindings.filter((f) => f.ruleId === 'image-alt').map((f) => f.id);
   const buttonNameIds = allFindings.filter((f) => f.ruleId === 'button-name').map((f) => f.id);

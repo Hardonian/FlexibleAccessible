@@ -1,15 +1,6 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",
-    "paths": {
-      "@aros/shared": ["packages/shared/src"],
-      "@aros/db": ["packages/db/src"],
-      "@aros/config": ["packages/config/src"],
-      "@aros/stakeholders": ["packages/stakeholders/src"],
-      "@aros/ai-review": ["packages/ai-review/src"],
-      "@aros/compliance": ["packages/compliance/src"],
-      "@aros/ui": ["packages/ui/src"]
-    },
+
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",

@@ -60,7 +60,7 @@ test.describe("Mobile Navigation Accessibility", () => {
     await signInAsDemo(page);
     await page.goto("/dashboard");
 
-    const accessibilityScanResults = await new AxeBuilder({ page })
+    const accessibilityScanResults = await new AxeBuilder({ page: page as any })
       .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
       .analyze();
 

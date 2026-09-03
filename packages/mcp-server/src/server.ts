@@ -7,7 +7,7 @@ import { logToolCall, checkMcpQuota, estimateTokens } from "./billing";
 import { validateApiKey } from "./auth";
 
 export class ArosMcpServer {
-  private server: McpServer;
+  private server: any;
   private orgId: string = "";
   private apiKeyId: string = "";
   private boundOrgId: string | null = null;
@@ -73,7 +73,7 @@ export class ArosMcpServer {
       "aros.list_sites",
       "List all monitored websites",
       { organizationId: z.string().describe("Organization ID") },
-      async (args: Record<string, unknown>) => {
+      async (args: any) => {
         const start = Date.now();
         const organizationId = args.organizationId as string;
         this.orgId = organizationId;
