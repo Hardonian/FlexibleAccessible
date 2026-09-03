@@ -43,17 +43,18 @@ export function isWorkerHeartbeatStale(lastHeartbeatAt: Date | null | undefined)
  * 
  * @deprecated Use calculateHealthScore with queue component posture instead
  */
-export function queueFailurePressure(snapshot: JobQueueDepthSnapshot): {
+export function queueFailurePressure(snapshot?: Partial<JobQueueDepthSnapshot> | null): {
   degraded: boolean;
   totalFailed: number;
 } {
+  if (!snapshot) return { degraded: false, totalFailed: 0 };
   const totalFailed =
-    snapshot.crawl.failed +
-    snapshot.scan.failed +
-    snapshot.cluster.failed +
-    snapshot.remediation.failed +
-    snapshot.publicScan.failed +
-    snapshot.visualReview.failed;
+    (snapshot.crawl?.failed ?? 0) +
+    (snapshot.scan?.failed ?? 0) +
+    (snapshot.cluster?.failed ?? 0) +
+    (snapshot.remediation?.failed ?? 0) +
+    (snapshot.publicScan?.failed ?? 0) +
+    (snapshot.visualReview?.failed ?? 0);
   return { degraded: totalFailed >= FAILED_JOBS_WARNING, totalFailed };
 }
 

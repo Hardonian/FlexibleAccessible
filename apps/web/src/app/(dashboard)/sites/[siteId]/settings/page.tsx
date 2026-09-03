@@ -90,7 +90,7 @@ export default async function SiteSettingsPage({
       include: {
         crawlConfig: true,
         workspace: { select: { id: true } },
-        gitHubRepoMapping: true,
+        githubRepoMapping: true,
         deployWebhooks: true,
       },
     });
@@ -107,7 +107,7 @@ export default async function SiteSettingsPage({
 
   const autoScanAfterCrawl = site.crawlConfig?.autoScanAfterCrawl !== false;
   const scheduleCron = site.crawlConfig?.scheduleCron ?? null;
-  const githubMapping = (site as any).gitHubRepoMapping as {
+  const githubMapping = site.githubRepoMapping as {
     repoOwner: string;
     repoName: string;
     defaultBranch: string;

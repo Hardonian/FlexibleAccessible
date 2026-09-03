@@ -56,6 +56,18 @@ for (const { from, name } of packagesToSymlink) {
       }
     }
   }
+const webTs = path.join(workspacesDir, "apps", "web", "node_modules", "typescript");
+const rootTs = path.join(rootNodeModules, "typescript");
+if (existsSync(rootTs) && !existsSync(webTs)) {
+  try {
+    symlinkSync(rootTs, webTs, "junction");
+    console.log("[workspace-symlinks] Linked typescript -> apps/web");
+    linked = true;
+  } catch (err) {
+    if (err.code !== "EEXIST") {
+      console.warn(`[workspace-symlinks] Could not link typescript: ${err.message}`);
+    }
+  }
 }
 
 if (linked) {

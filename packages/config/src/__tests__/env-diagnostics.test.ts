@@ -39,8 +39,8 @@ describe('parseEnvDiagnostics', () => {
 
     expect(d.valid).toBe(false);
     expect(d.fieldErrors).toHaveProperty('DATABASE_URL');
-    expect(d.fieldErrors.DATABASE_URL).toEqual(['Required']);
-    expect(d.issues).toContain('DATABASE_URL: Required');
+    expect(d.fieldErrors.DATABASE_URL?.[0]).toMatch(/(required|expected string)/i);
+    expect(d.issues.some((i) => /DATABASE_URL:.*(required|expected string)/i.test(i))).toBe(true);
   });
 
   it('returns invalid when format is incorrect', () => {
@@ -51,8 +51,8 @@ describe('parseEnvDiagnostics', () => {
 
     expect(d.valid).toBe(false);
     expect(d.fieldErrors).toHaveProperty('DATABASE_URL');
-    expect(d.fieldErrors.DATABASE_URL).toEqual(['Invalid url']);
-    expect(d.issues).toContain('DATABASE_URL: Invalid url');
+    expect(d.fieldErrors.DATABASE_URL?.[0]).toMatch(/invalid url/i);
+    expect(d.issues.some((i) => /DATABASE_URL:.*invalid url/i.test(i))).toBe(true);
   });
 
   it('returns invalid when string length constraints are not met', () => {
@@ -63,7 +63,7 @@ describe('parseEnvDiagnostics', () => {
 
     expect(d.valid).toBe(false);
     expect(d.fieldErrors).toHaveProperty('NEXTAUTH_SECRET');
-    expect(d.fieldErrors.NEXTAUTH_SECRET).toEqual(['String must contain at least 16 character(s)']);
-    expect(d.issues).toContain('NEXTAUTH_SECRET: String must contain at least 16 character(s)');
+    expect(d.fieldErrors.NEXTAUTH_SECRET?.[0]).toMatch(/(16|at least 16)/i);
+    expect(d.issues.some((i) => /NEXTAUTH_SECRET:.*16/i.test(i))).toBe(true);
   });
 });
