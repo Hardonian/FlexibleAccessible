@@ -4,6 +4,10 @@
 
 A production-ready multi-tenant SaaS platform for continuous accessibility issue discovery, scanning, clustering, and source-level remediation. Built on the AROS engine (internal: *Accessibility Remediation OS*).
 
+<!-- BEGIN: REPO HERO -->
+![Repository hero generated locally on the GPU stack](assets/repo-hero.png)
+<!-- END: REPO HERO -->
+
 > **Brand note:** The public product name is **AccessibleMadeFlexible**. Internal packages use the `@aros/*` scope (AROS engine). The repository directory name (`FlexibleAccessible`) reflects the original working title; the canonical brand is AccessibleMadeFlexible going forward.
 
 ## What This Is
