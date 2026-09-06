@@ -48,7 +48,7 @@
     "@csstools/css-calc": "^3.2.0",
     "@csstools/css-color-parser": "^4.2.1",
     "@ducanh2912/next-pwa": "^10.2.6",
-    "@eslint/eslintrc": "^3.3.6",
+    "@eslint/eslintrc": "^3.3.7",
     "@playwright/experimental-ct-react": "^1.61.1",
     "@playwright/test": "^1.62.1",
     "@testing-library/jest-dom": "^7.0.1",
