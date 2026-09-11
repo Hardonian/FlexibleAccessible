@@ -12,6 +12,7 @@ import {
   siteDefaultTwitterImages,
 } from "@/lib/site-metadata";
 import { AnalyticsScripts } from "@/components/analytics-scripts";
+import { Analytics } from "@vercel/analytics/next";
 
 const appBase = getAppBaseUrl();
 
@@ -83,6 +84,7 @@ export default function RootLayout({
       <body className="min-h-dvh bg-[rgb(var(--color-canvas))]">
         <AnalyticsScripts />
         {children}
+        <Analytics />
       </body>
     </html>
   );
