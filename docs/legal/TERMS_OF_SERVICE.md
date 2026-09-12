@@ -11,6 +11,7 @@
 AROS provides an accessibility intelligence, automated scanning, component clustering, and remediation operating system ("Service"). The Service assists software engineering and compliance teams in identifying and remediating digital accessibility defects under Web Content Accessibility Guidelines (WCAG 2.2).
 
 ### 1.1 Non-Legal Nature of Service & Warranty Disclaimer
+
 **THE SERVICE DOES NOT CONSTITUTE LEGAL ADVICE, LEGAL DEFENSE, OR A GUARANTEE OF REGULATORY IMMUNITY.** Automated accessibility evaluations are by nature heuristic and incomplete. While AROS significantly improves accessibility posture and generates deterministic evidence, Company does not warrant that using the Service will guarantee complete legal compliance with the Americans with Disabilities Act (ADA), Section 508 of the Rehabilitation Act, the European Accessibility Act (EAA), or any other global jurisdiction.
 
 ---
@@ -20,7 +21,9 @@ AROS provides an accessibility intelligence, automated scanning, component clust
 Customers may use the Service solely to scan and remediate web applications and digital assets owned, operated, or explicitly authorized by Customer.
 
 ### 2.1 Prohibited Activities
+
 Customer agrees not to:
+
 - Use the Service to perform unauthorized security penetration testing or denial-of-service scans on third-party properties.
 - Circumvent rate limits, tenant isolation boundaries, or billing entitlement walls.
 - Scrape or reverse-engineer the remediation recipes, AI prompts, or proprietary clustering algorithms.
@@ -54,6 +57,7 @@ TO THE MAXIMUM EXTENT PERMITTED BY LAW, IN NO EVENT SHALL COMPANY BE LIABLE FOR 
 ## 6. Contact
 
 For legal notices or questions regarding these Terms:
-- **Email**: legal@aros.dev  
-- **Support**: support@aros.dev  
+
+- **Email**: [legal@aros.dev](mailto:legal@aros.dev)
+- **Support**: [support@aros.dev](mailto:support@aros.dev)
 - **Address**: AROS Inc., Legal Department
