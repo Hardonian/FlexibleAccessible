@@ -44,27 +44,36 @@ The platform runs the following autonomous maintenance jobs:
 ## 3. Emergency Failover Runbooks
 
 ### 3.1 Redis Failure / Queue Lockup
+
 1. The platform automatically degrades to **in-process memory rate limiting** without crashing web requests.
 2. In the operator console, inspect queue depth:
+
    ```bash
    # From root:
    docker compose restart worker
    ```
 
 ### 3.2 AI Provider Outage
+
 1. If Anthropic or OpenAI API keys are unreachable, `/api/ai-copilot` returns `503 AI_UNAVAILABLE` with graceful fallback UI messaging.
 2. The worker automatically executes **deterministic rule-based recipes** for all pending scans without interruption.
 
 ### 3.3 Database Point-In-Time Restore
+
 1. Locate latest encrypted backup:
+
    ```bash
    ls -lat /var/backups/aros/
    ```
+
 2. Run restore sequence:
+
    ```bash
    gunzip -c /var/backups/aros/db_latest.sql.gz | psql "$DATABASE_URL"
    ```
+
 3. Run verification:
+
    ```bash
    node scripts/canary-health-check.mjs
    ```

@@ -10,11 +10,13 @@ AROS Inc. ("AROS", "we", "our", or "us") is dedicated to safeguarding the privac
 ## 1. Information We Collect
 
 ### 1.1 Account & Authentication Information
+
 - **Name and Email Address**: Collected during signup, team invitation, or OIDC single sign-on (SSO).
 - **Credentials**: Salted bcrypt password hashes (local accounts) or OIDC Subject/Issuer identifiers (enterprise SSO).
 - **Billing Data**: Processed directly by Stripe (PCI-DSS Level 1 certified). We store only Stripe Customer IDs, subscription status, and non-sensitive invoice metadata.
 
 ### 1.2 Scan & Operational Telemetry
+
 - **Scanned URLs and Rendered DOM Snippets**: Collected to run Axe-core and generate accessibility remediation recipes.
 - **Audit Logs**: Timestamps, IP addresses, user-agent headers, and action descriptions for tenant security trails.
 - **Canary & Performance Metrics**: Latency, queue depths, and worker execution statistics.
@@ -62,5 +64,6 @@ We partner with enterprise infrastructure providers that maintain SOC 2 and ISO 
 ## 6. Privacy Contact
 
 For privacy requests, DPO inquiries, or deletion requests:
-- **Email**: privacy@aros.dev
-- **Data Protection Officer**: dpo@aros.dev
+
+- **Email**: [privacy@aros.dev](mailto:privacy@aros.dev)
+- **Data Protection Officer**: [dpo@aros.dev](mailto:dpo@aros.dev)

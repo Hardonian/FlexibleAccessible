@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -205,6 +206,9 @@ export function HomePageClient() {
               <Link href="/docs/api" className="btn-secondary">
                 Integration guide
               </Link>
+              <Link href={"/docs/google-and-foss" as Route} className="btn-secondary">
+                Google &amp; FOSS tools
+              </Link>
               <Link
                 href="/signup"
                 className="inline-flex items-center gap-1 font-semibold text-brand-800 underline-offset-4 hover:underline"
@@ -222,8 +226,9 @@ npx @aros/mcp-server
 curl -H "Authorization: Bearer $API_KEY" \\
   $BASE_URL/api/...
 
-# CLI / CI
-npx @aros/cli scan --site example.com`}</pre>
+# CLI / CI / Google Lighthouse
+npx @aros/cli scan --site example.com
+npx @aros/cli lhci --assert`}</pre>
             <p className="mt-4 border-t border-slate-800 pt-4 text-xs text-slate-500">
               Engine packages are @aros/*; the product experience is{" "}
               {PRODUCT_DISPLAY_NAME}.

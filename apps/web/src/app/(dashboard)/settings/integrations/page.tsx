@@ -1,5 +1,6 @@
 import { requireSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
+import type { Route } from "next";
 import Link from "next/link";
 import { getRoutePlatformTruth } from "@/lib/platform-truth-cache";
 import { resolveDashboardOrgMembership } from "@/lib/route-data-boundary";
@@ -408,6 +409,62 @@ jobs:
           site-domain: 'https://example.com'
           fail-on-severity: 'CRITICAL'`}
         </pre>
+      </div>
+
+      {/* Google Lighthouse & FOSS Developer Tooling Suite */}
+      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Terminal className="h-4 w-4 text-brand-600" />
+            <h2 className="text-sm font-bold text-slate-900">
+              Google Lighthouse &amp; FOSS Tooling Suite
+            </h2>
+          </div>
+          <Link
+            href={"/docs/google-and-foss" as Route}
+            className="inline-flex items-center gap-1 text-xs font-semibold text-brand-600 hover:text-brand-700"
+          >
+            Integration Guide <ExternalLink className="h-3 w-3" />
+          </Link>
+        </div>
+        <p className="text-xs text-slate-500">
+          Native adapters allow your engineering team to connect existing Google Lighthouse CI runs, Chrome DevTools Protocol issues, and Pa11y runners directly into AROS without vendor lock-in.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+          <div className="rounded-lg border border-slate-100 bg-slate-50 p-3.5 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-900">Google Lighthouse CI</span>
+              <span className="rounded bg-teal-100 px-1.5 py-0.5 text-[10px] font-medium text-teal-800">Native CLI</span>
+            </div>
+            <p className="text-[11px] text-slate-500">Run zero-config LHCI assertions and score gates:</p>
+            <code className="block rounded bg-slate-900 p-2 text-[11px] font-mono text-emerald-400">
+              npx aros lhci --lhr ./report.json
+            </code>
+          </div>
+
+          <div className="rounded-lg border border-slate-100 bg-slate-50 p-3.5 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-900">Chrome DevTools (CDP)</span>
+              <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-800">Inspector</span>
+            </div>
+            <p className="text-[11px] text-slate-500">Export findings to Chrome DevTools Issues schema:</p>
+            <code className="block rounded bg-slate-900 p-2 text-[11px] font-mono text-sky-400">
+              npx aros export --format cdp
+            </code>
+          </div>
+
+          <div className="rounded-lg border border-slate-100 bg-slate-50 p-3.5 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-900">FOSS Pa11y Adapter</span>
+              <span className="rounded bg-purple-100 px-1.5 py-0.5 text-[10px] font-medium text-purple-800">Open-Source</span>
+            </div>
+            <p className="text-[11px] text-slate-500">Cluster Pa11y/HTMLCS violations into root components:</p>
+            <code className="block rounded bg-slate-900 p-2 text-[11px] font-mono text-purple-300">
+              pa11y -r json | aros ingest
+            </code>
+          </div>
+        </div>
       </div>
     </div>
   );

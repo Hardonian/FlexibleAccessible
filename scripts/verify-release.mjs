@@ -42,6 +42,11 @@ const gates = [
     command: "node",
     args: [path.join("scripts", "synthetic-user-flow.mjs")],
   },
+  {
+    name: "Gate 7: Google Lighthouse CI Assertion Audit",
+    command: "node",
+    args: [path.join("scripts", "test-lighthouse-ci.mjs")],
+  },
 ];
 
 let passed = 0;

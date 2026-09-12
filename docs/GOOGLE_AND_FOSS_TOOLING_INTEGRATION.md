@@ -9,6 +9,7 @@ AROS (Accessibility Remediation OS) is designed for immediate, zero-friction ado
 Teams running automated Lighthouse audits in CI/CD pipelines (GitHub Actions, GitLab CI, Vercel Previews) can integrate AROS directly.
 
 ### 1.1 Out-of-the-Box Configuration (`.lighthouserc.json`)
+
 The repository includes a ready-to-use `.lighthouserc.json` asserting strict WCAG 2.2 accessibility thresholds:
 
 ```json
@@ -27,6 +28,7 @@ The repository includes a ready-to-use `.lighthouserc.json` asserting strict WCA
 ```
 
 ### 1.2 Programmatic Lighthouse Ingestion (`@aros/integrations`)
+
 Convert any standard Lighthouse JSON Report (LHR) into AROS canonical findings and 80/20 component clusters:
 
 ```typescript
@@ -47,6 +49,7 @@ console.log(`Lighthouse a11y score: ${assertionResult.score}`);
 AROS findings map 1-to-1 to the Google Chrome DevTools `Audits.InspectorIssue` schema:
 
 ### 2.1 Exporting to Chrome DevTools Inspector Issues
+
 Engineering teams can export issues directly into Chrome DevTools:
 
 ```typescript
@@ -57,6 +60,7 @@ const devToolsIssues = exportToChromeDevToolsIssues(findings);
 ```
 
 ### 2.2 Chrome Accessibility Tree Alignment
+
 AROS DOM selectors and bounding boxes correspond directly to the Chromium Accessibility Object Model (AOM) and Chrome DevTools Accessibility Tree panel.
 
 ---
@@ -66,6 +70,7 @@ AROS DOM selectors and bounding boxes correspond directly to the Chromium Access
 If your organization has legacy scripts using Pa11y or the Axe CLI, AROS ingests them without requiring code changes to your existing test suites.
 
 ### 3.1 Ingesting Pa11y CLI Output
+
 ```typescript
 import { parsePa11yReport } from "@aros/integrations";
 
