@@ -20,9 +20,9 @@ export function generateVPAT(scan: AccessibilityScan): VPATReport {
     vendorName: scan.vendorName || "Unknown Vendor",
     platform: scan.platform || "Web",
 
-    // WCAG 2.1 compliance
-    wcagVersion: '2.1',
-    conformanceLevel: scan.conformanceLevel || 'AA',
+    // WCAG 2.2 / VPAT 2.5 compliance
+    wcagVersion: scan.wcagVersion || "2.2",
+    conformanceLevel: scan.conformanceLevel || "AA",
     
     // Count by severity
     criteria: generateCriteriaReport(scan.findings),
