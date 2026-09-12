@@ -34,7 +34,8 @@
     "verify:release": "npm run verify:core && npm run verify:touched-routes && npm run verify:tenant-boundary && npm run test:launch-critical && npm run test:integration",
     "verify:tenant-boundary": "node scripts/check-tenant-boundary-critical.mjs",
     "test:launch-critical": "npm run test:launch-critical --workspace=apps/web",
-    "verify:touched-routes": "npm run test:launch-critical"
+    "verify:touched-routes": "npm run test:launch-critical",
+    "verify:closure": "node scripts/verify-release.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",
