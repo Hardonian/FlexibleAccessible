@@ -59,7 +59,7 @@
     "hono": "^4.13.5",
     "msgpackr": "2.1.0",
     "next": "^15.5.25",
-    "nodemailer": "^10.0.1"
+    "nodemailer": "^10.0.9"
   },
   "overrides": {
     "@prisma/config": {
