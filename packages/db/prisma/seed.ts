@@ -1,8 +1,10 @@
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
 import { randomBytes, scrypt, createHash } from 'crypto';
 import { promisify } from 'util';
 
-const prisma = new PrismaClient();
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL || 'postgresql://localhost:5432/flexible_accessible' });
+const prisma = new PrismaClient({ adapter });
 const scryptAsync = promisify(scrypt);
 
 async function hashPassword(password: string): Promise<string> {
