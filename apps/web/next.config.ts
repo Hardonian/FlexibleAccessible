@@ -33,6 +33,7 @@ const withPWA = withPWAInit({
 });
 
 const nextConfig: NextConfig = {
+  turbopack: {},
   reactStrictMode: true,
   poweredByHeader: false,
   typedRoutes: true,
