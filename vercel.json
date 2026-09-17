@@ -1,4 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "buildCommand": "npm run build --workspace=apps/web",
+  "installCommand": "npm install --foreground-scripts --legacy-peer-deps"
 }
