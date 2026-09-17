@@ -17,6 +17,17 @@ if (!fs.existsSync(rootClient)) {
 }
 
 fs.mkdirSync(localScope, { recursive: true });
-const relativeTarget = path.relative(localScope, rootClient);
-fs.symlinkSync(relativeTarget, localClient, 'dir');
-console.log(`[db:generate] Linked @prisma/client -> ${relativeTarget}`);
+try {
+  if (process.platform === 'win32') {
+    fs.symlinkSync(rootClient, localClient, 'junction');
+  } else {
+    const relativeTarget = path.relative(localScope, rootClient);
+    fs.symlinkSync(relativeTarget, localClient, 'dir');
+  }
+  console.log(`[db:generate] Linked @prisma/client successfully`);
+} catch (err) {
+  if (err.code !== 'EEXIST') {
+    console.warn(`[db:generate] Symlink note: ${err.message}. Relying on workspace resolution.`);
+  }
+}
+

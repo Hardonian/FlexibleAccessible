@@ -12,6 +12,7 @@ const commands: Record<string, string> = {
   ci: "./commands/ci",
   diff: "./commands/diff",
   watch: "./commands/watch",
+  lhci: "./commands/lhci",
 };
 
 function printHelp() {
@@ -24,6 +25,7 @@ function printHelp() {
   COMMANDS
     scan <url>              Scan a website for accessibility issues
     ci <url>                CI mode: scan and fail on threshold
+    lhci [url]              Google Lighthouse CI mode: assert strict a11y thresholds
     diff <url>              Compare scan against a baseline JSON
     watch <url>             Watch mode: scan at intervals
     fix                     Generate remediation suggestions for open findings
@@ -41,6 +43,7 @@ function printHelp() {
 
   EXAMPLES
     npx aros scan https://example.com
+    npx aros lhci https://example.com
     npx aros scan https://example.com --format csv --output results.csv
     npx aros ci https://example.com --threshold 95 --fail-on critical
     npx aros diff https://example.com --baseline baseline.json

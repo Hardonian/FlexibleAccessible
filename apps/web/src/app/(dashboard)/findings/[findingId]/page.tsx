@@ -35,6 +35,8 @@ import {
   ArrowRight,
   History,
 } from "lucide-react";
+import { FindingActionToolbar } from "@/components/findings/finding-action-toolbar";
+import { FindingCommentsThread } from "@/components/findings/finding-comments-thread";
 
 function isDecisionActive(
   decision: { status: string; expiresAt: Date | null },
@@ -345,18 +347,26 @@ export default async function FindingDetailPage({
 
   return (
     <div className="space-y-6 pb-20">
-      <div className="flex items-center gap-2 text-sm text-slate-500 font-medium tracking-wide mb-2 transition-colors">
-        <Link
-          href="/findings"
-          className="flex items-center gap-1 hover:text-brand-600 focus-visible:outline-brand-600 rounded px-1 -mx-1"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Findings
-        </Link>
-        <span className="text-slate-300">/</span>
-        <span className="text-slate-900 truncate max-w-[200px] sm:max-w-xs">
-          {finding.fingerprint.slice(0, 8)}...
-        </span>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-2">
+        <div className="flex items-center gap-2 text-sm text-slate-500 font-medium tracking-wide transition-colors">
+          <Link
+            href="/findings"
+            className="flex items-center gap-1 hover:text-brand-600 focus-visible:outline-brand-600 rounded px-1 -mx-1"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Findings
+          </Link>
+          <span className="text-slate-300">/</span>
+          <span className="text-slate-900 truncate max-w-[200px] sm:max-w-xs font-mono">
+            {finding.fingerprint.slice(0, 8)}...
+          </span>
+        </div>
+
+        <FindingActionToolbar
+          findingId={finding.id}
+          organizationId={orgRes.organizationId}
+          ruleId={finding.ruleId}
+        />
       </div>
 
       {remediationError && (
@@ -1309,6 +1319,12 @@ export default async function FindingDetailPage({
           )}
         </div>
       </div>
+
+      {/* Collaborative Team Discussion */}
+      <FindingCommentsThread
+        findingId={finding.id}
+        organizationId={orgRes.organizationId}
+      />
     </div>
   );
 }

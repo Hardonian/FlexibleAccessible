@@ -81,6 +81,10 @@ export default function TermsPage() {
           <Link href="/privacy" className="font-medium text-brand-700 hover:underline">
             Privacy overview
           </Link>
+          {" · "}
+          <Link href="/legal/dpa" className="font-medium text-brand-700 hover:underline">
+            Data Processing Agreement (DPA)
+          </Link>
           .
         </p>
       </div>

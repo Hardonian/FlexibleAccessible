@@ -51,11 +51,10 @@ describe('github integrations', () => {
     });
 
     it('should use fallback emoji for invalid or unexpected severity strings', () => {
-      // @ts-expect-error - Intentionally passing an invalid severity string to test the fallback behavior
-      const invalidFinding: AccessibilityFinding = {
+      const invalidFinding = {
         ...baseFinding,
-        severity: 'unknown_severity_level'
-      };
+        severity: 'unknown_severity_level' as any,
+      } as AccessibilityFinding;
       const markdown = formatFindingAsMarkdown(invalidFinding);
       expect(markdown).toContain('⚪ **Severity:** UNKNOWN_SEVERITY_LEVEL');
     });

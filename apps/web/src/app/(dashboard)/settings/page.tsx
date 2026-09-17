@@ -236,7 +236,20 @@ export default async function SettingsPage() {
         <h2 className="text-lg font-semibold text-slate-900 mb-4">
           Management
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Link
+            href="/settings/integrations"
+            className="group flex items-start gap-3 rounded-xl border border-slate-200 p-4 transition-colors hover:border-brand-200 hover:bg-brand-50/30"
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-600 group-hover:bg-brand-100 group-hover:text-brand-600">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+            </div>
+            <div>
+              <h3 className="font-medium text-slate-900 group-hover:text-brand-700">DevOps &amp; Integrations</h3>
+              <p className="mt-1 text-xs text-slate-500">GitHub Actions, deploy webhooks, Slack, and CI/CD gates</p>
+            </div>
+          </Link>
+
           <Link
             href="/settings/identity"
             className="group flex items-start gap-3 rounded-xl border border-slate-200 p-4 transition-colors hover:border-brand-200 hover:bg-brand-50/30"
@@ -501,7 +514,13 @@ export default async function SettingsPage() {
 
       <div className="card">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-slate-900">Integrations</h2>
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">Integrations</h2>
+            <p className="text-xs text-slate-500">Connected CI/CD, webhooks, and communication channels</p>
+          </div>
+          <Link href="/settings/integrations" className="btn-secondary text-xs">
+            Manage Integrations
+          </Link>
         </div>
         {org.integrationConnections.length === 0 ? (
           <p className="text-sm text-slate-500">No integrations connected.</p>

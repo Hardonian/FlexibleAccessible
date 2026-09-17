@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { logoutAction } from './logout-action';
 import type { RoutePlatformTruth } from '@aros/core-services';
 import { MobileNavMenuButton } from './mobile-nav-menu-button';
+import { PlatformTrainingModal } from '@/components/onboarding/platform-training-modal';
 
 interface TopBarProps {
   user: { id: string; email: string; name: string | null };
@@ -61,6 +62,7 @@ export function TopBar({
         )}
       </div>
       <div className="flex min-w-0 shrink-0 items-center gap-2 md:gap-4">
+        <PlatformTrainingModal />
         <span className="hidden max-w-[40vw] truncate text-sm text-slate-500 sm:inline md:max-w-[28vw]">
           {user.name ?? user.email}
         </span>

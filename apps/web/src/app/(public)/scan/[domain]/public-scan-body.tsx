@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { BarChart3, Gauge } from "lucide-react";
 import { SeverityChip, type SeverityLevel } from "@aros/ui";
+import { EmbedBadgeDialog } from "@/components/sites/embed-badge-dialog";
 
 type PublicEvidenceState =
   | "valid"
@@ -154,13 +155,18 @@ export function PublicScanBody({ domain, initialScan }: Props) {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">
-      <div className="mb-8">
-        <p className="text-sm text-slate-500 mb-1">Public sample report</p>
-        <h1 className="text-3xl font-bold text-slate-900">{domain}</h1>
-        {scan?.completedAt && (
-          <p className="mt-1 text-sm text-slate-500">
-            Scanned {new Date(scan.completedAt).toLocaleDateString()}
-          </p>
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <p className="text-sm text-slate-500 mb-1">Public sample report</p>
+          <h1 className="text-3xl font-bold text-slate-900">{domain}</h1>
+          {scan?.completedAt && (
+            <p className="mt-1 text-sm text-slate-500">
+              Scanned {new Date(scan.completedAt).toLocaleDateString()}
+            </p>
+          )}
+        </div>
+        {currentProof && (
+          <EmbedBadgeDialog domain={domain} siteName={domain} />
         )}
       </div>
 

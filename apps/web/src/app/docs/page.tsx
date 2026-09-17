@@ -66,6 +66,12 @@ const docsCards: Array<{
     description: "When to use session routes, API keys, and MCP tooling.",
     state: "implemented",
   },
+  {
+    href: "/docs/google-and-foss" as Route,
+    title: "Google & FOSS Developer Tools",
+    description: "Integrations for Google Lighthouse, Chrome DevTools, and FOSS runners.",
+    state: "implemented",
+  },
 ] as const;
 
 export default function DocsIndexPage() {

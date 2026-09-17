@@ -5,10 +5,37 @@ import { requireSiteAccess } from '@/lib/auth-guard';
 import {
   createScanAuditLog,
   updateCrawlAutomationSettings,
+  upsertGitHubRepoMappingForSite,
 } from '@/lib/dashboard-org-scoped-prisma';
 import { parseSupportedScheduleCron } from '@aros/core-services';
 
 export type AutoScanSettingsState = { ok: true } | { ok: false; error: string };
+
+export async function updateGitHubMappingAction(formData: FormData): Promise<void> {
+  const siteId = formData.get('siteId') as string;
+  const repoOwner = (formData.get('repoOwner') as string)?.trim();
+  const repoName = (formData.get('repoName') as string)?.trim();
+  const defaultBranch = (formData.get('defaultBranch') as string)?.trim() || 'main';
+  const basePath = (formData.get('basePath') as string)?.trim() || '/';
+
+  if (!siteId || !repoOwner || !repoName) {
+    throw new Error('Owner and repository name are required');
+  }
+
+  const ctx = await requireSiteAccess(siteId, 'site:manage', {
+    requirePaid: true,
+  });
+
+  await upsertGitHubRepoMappingForSite(ctx.siteId, {
+    repoOwner,
+    repoName,
+    defaultBranch,
+    basePath,
+  });
+
+  revalidatePath(`/sites/${siteId}`);
+  revalidatePath(`/sites/${siteId}/settings`);
+}
 
 function normalizeScheduleCron(input: FormDataEntryValue | null): string | null {
   const raw = typeof input === 'string' ? input.trim() : '';

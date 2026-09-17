@@ -89,10 +89,14 @@ export default function PrivacyPage() {
           . Also see{" "}
           <Link href="/security" className="font-medium text-brand-700 hover:underline">
             Security &amp; privacy
-          </Link>{" "}
-          and{" "}
+          </Link>
+          {", "}
           <Link href="/legal/terms" className="font-medium text-brand-700 hover:underline">
             Terms of service
+          </Link>
+          {", and "}
+          <Link href="/legal/dpa" className="font-medium text-brand-700 hover:underline">
+            Data Processing Agreement (DPA)
           </Link>
           .
         </p>

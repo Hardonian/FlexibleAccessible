@@ -8,6 +8,7 @@ export interface AccessibilityScan {
   productVersion?: string;
   vendorName?: string;
   platform?: string;
+  wcagVersion?: string;
   conformanceLevel?: ConformanceLevel;
   findings: AccessibilityFinding[];
   remarks?: string;

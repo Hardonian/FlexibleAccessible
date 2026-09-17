@@ -5,6 +5,8 @@ import { getRoutePlatformTruth } from '@/lib/platform-truth-cache';
 import { resolveDashboardOrgMembership, runOrgScopedQuery } from '@/lib/route-data-boundary';
 import { RouteReliabilityNotice } from '@/components/reliability/route-reliability-notice';
 import { hasPermission } from '@aros/config';
+import { getParetoAnalysis } from '@/lib/impact/compute-cluster-impact';
+import { ParetoImpactCard } from '@/components/clusters/pareto-impact-card';
 
 export const metadata = { title: 'Issue Clusters' };
 
@@ -96,7 +98,17 @@ export default async function ClustersPage() {
     );
   }
 
-  const clusters = clustersResult.data as ClusterListItem[];
+  const clusters = clustersResult.data as (ClusterListItem & { siteId?: string })[];
+
+  let paretoAnalysis = { clusters: [] as any[], totalImpact: 0, paretoCut: 0 };
+  const firstSiteId = clusters[0]?.siteId;
+  if (firstSiteId) {
+    try {
+      paretoAnalysis = (await getParetoAnalysis(firstSiteId)) as any;
+    } catch {
+      // Degraded or no data
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -106,6 +118,10 @@ export default async function ClustersPage() {
           Grouped accessibility issues by component pattern. Fix once, resolve everywhere.
         </p>
       </div>
+
+      {paretoAnalysis.clusters.length > 0 && (
+        <ParetoImpactCard analysis={paretoAnalysis} />
+      )}
 
       {clusters.length === 0 ? (
         <div className="card py-10 px-6">

@@ -82,6 +82,11 @@ export const MARKETING_ROUTES: readonly MarketingRoute[] = [
     includeInSitemap: true,
   },
   {
+    href: "/docs/google-and-foss" as Route,
+    label: "Google & FOSS tools",
+    includeInSitemap: true,
+  },
+  {
     href: "/trust",
     label: "Trust",
     includeInPrimaryNav: true,
@@ -116,6 +121,7 @@ export const MARKETING_ROUTES: readonly MarketingRoute[] = [
   {
     href: "/accessibility",
     label: "Accessibility",
+    includeInFooter: true,
     includeInSitemap: true,
   },
   {
@@ -125,8 +131,15 @@ export const MARKETING_ROUTES: readonly MarketingRoute[] = [
     includeInSitemap: true,
   },
   {
+    href: "/legal/dpa" as Route,
+    label: "DPA",
+    includeInFooter: true,
+    includeInSitemap: true,
+  },
+  {
     href: "/legal/subprocessors",
     label: "Subprocessors",
+    includeInFooter: true,
     includeInSitemap: true,
   },
 ] as const;

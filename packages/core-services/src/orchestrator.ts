@@ -7,10 +7,10 @@ import type { CoreServiceRuntimeView, DependencyCheckResult, PlatformHealthRepor
 
 const PLATFORM_ID = 'platform';
 
-function toDependencyCheck(result: { ok: boolean; metadata: { timestamp: string }; error?: { message: string } }): DependencyCheckResult {
+function toDependencyCheck(result: { ok: boolean; metadata?: { timestamp?: string }; checkedAt?: string; error?: { message: string } }): DependencyCheckResult {
   return {
     ok: result.ok,
-    checkedAt: result.metadata.timestamp,
+    checkedAt: result.metadata?.timestamp ?? result.checkedAt ?? new Date().toISOString(),
     message: result.error?.message,
   };
 }
@@ -162,7 +162,9 @@ export async function collectPlatformHealth(prisma: PrismaClient): Promise<Platf
   const workerRunning = installed && redisCheck.ok && !workerStale && platformRow?.workerLastHeartbeatAt != null;
 
   const qPressure =
-    queueResult?.ok === true ? queueFailurePressure(queueResult.data!) : { degraded: false, totalFailed: 0 };
+    queueResult?.ok === true
+      ? queueFailurePressure(queueResult.data ?? (queueResult as any).snapshot)
+      : { degraded: false, totalFailed: 0 };
 
   const sessionOk = dbCheck.ok && envDiag.valid;
 
@@ -316,12 +318,12 @@ export async function collectPlatformHealth(prisma: PrismaClient): Promise<Platf
                   queuesReadable: true,
                   failedJobsTotal: qPressure.totalFailed,
                   waitingTotal:
-                    queueResult.data!.crawl.waiting +
-                    queueResult.data!.scan.waiting +
-                    queueResult.data!.cluster.waiting +
-                    queueResult.data!.remediation.waiting +
-                    queueResult.data!.publicScan.waiting +
-                    queueResult.data!.visualReview.waiting,
+                    ((queueResult.data ?? (queueResult as any).snapshot)?.crawl?.waiting ?? 0) +
+                    ((queueResult.data ?? (queueResult as any).snapshot)?.scan?.waiting ?? 0) +
+                    ((queueResult.data ?? (queueResult as any).snapshot)?.cluster?.waiting ?? 0) +
+                    ((queueResult.data ?? (queueResult as any).snapshot)?.remediation?.waiting ?? 0) +
+                    ((queueResult.data ?? (queueResult as any).snapshot)?.publicScan?.waiting ?? 0) +
+                    ((queueResult.data ?? (queueResult as any).snapshot)?.visualReview?.waiting ?? 0),
                 }
               : { queuesReadable: false },
           healthState: health,
@@ -539,7 +541,10 @@ export async function collectPlatformHealth(prisma: PrismaClient): Promise<Platf
 
   const jobQueueDepths =
     queueResult?.ok === true
-      ? { checkedAt: queueResult.metadata.timestamp, snapshot: queueResult.data! }
+      ? {
+          checkedAt: queueResult.metadata?.timestamp ?? (queueResult as any).checkedAt ?? new Date().toISOString(),
+          snapshot: (queueResult.data ?? (queueResult as any).snapshot)!,
+        }
       : null;
 
   return {

@@ -1,0 +1,65 @@
+# Multi-stage production Dockerfile for @aros/web
+FROM node:22-bookworm-slim AS base
+WORKDIR /app
+ENV NODE_ENV=production
+
+FROM base AS builder
+WORKDIR /app
+ENV BUILD_STANDALONE=true
+
+# Copy monorepo configuration
+COPY package.json package-lock.json* tsconfig.json ./
+COPY apps/web/package.json apps/web/
+COPY apps/worker/package.json apps/worker/
+COPY packages/db/package.json packages/db/
+COPY packages/shared/package.json packages/shared/
+COPY packages/config/package.json packages/config/
+COPY packages/core-services/package.json packages/core-services/
+COPY packages/remediation/package.json packages/remediation/
+COPY packages/clustering/package.json packages/clustering/
+COPY packages/stakeholders/package.json packages/stakeholders/
+COPY packages/integrations/package.json packages/integrations/
+COPY packages/scan-engine/package.json packages/scan-engine/
+COPY packages/ai-review/package.json packages/ai-review/
+COPY packages/agents/package.json packages/agents/
+COPY packages/mcp-server/package.json packages/mcp-server/
+COPY packages/rag/package.json packages/rag/
+COPY packages/cli/package.json packages/cli/
+
+# Install dependencies across workspaces
+RUN npm ci --include=dev
+
+# Copy source trees
+COPY packages/ packages/
+COPY apps/web/ apps/web/
+COPY scripts/ scripts/
+
+# Generate Prisma Client
+RUN npm run db:generate
+
+# Build Next.js application
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN npm run build --workspace=apps/web
+
+# Runner image
+FROM node:22-bookworm-slim AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
+
+COPY --from=builder /app/apps/web/public ./apps/web/public
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
+
+USER nextjs
+
+EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:3000/api/health').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"
+
+CMD ["node", "apps/web/server.js"]
