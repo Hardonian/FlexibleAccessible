@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "buildCommand": "npm run build --workspace=apps/web",
+  "buildCommand": "turbo run build --filter=@aros/web",
   "installCommand": "npm install --foreground-scripts --legacy-peer-deps"
 }
