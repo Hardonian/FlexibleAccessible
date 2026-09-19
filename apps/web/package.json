@@ -28,7 +28,7 @@
     "@aros/shared": "*",
     "@aros/stakeholders": "*",
     "@aros/ui": "*",
-    "autoprefixer": "^10.5.5",
+    "autoprefixer": "^10.6.1",
     "bullmq": "^5.80.2",
     "clsx": "^2.1.0",
     "ioredis": "^5.11.1",
