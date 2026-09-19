@@ -55,7 +55,7 @@
   },
   "dependencies": {
     "@hono/node-server": "^2.1.0",
-    "@prisma/client": "^6.18.0",
+    "@prisma/client": "^7.10.0",
     "hono": "^4.13.5",
     "msgpackr": "2.1.0",
     "next": "^16.3.5",
