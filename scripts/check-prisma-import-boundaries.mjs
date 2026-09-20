@@ -19,7 +19,7 @@ try {
     // Try grep as fallback (ripgrep not installed in CI)
     try {
       output = execSync(
-        'grep -rn "from.*@prisma/client" apps packages --include="*.ts" --include="*.tsx" | grep -v "packages/db/"',
+        'grep -rn --exclude-dir=node_modules "from.*@prisma/client" apps packages --include="*.ts" --include="*.tsx" | grep -v "packages/db/"',
         { encoding: 'utf8' },
       );
     } catch (grepError) {
