@@ -10,7 +10,7 @@ let output = '';
 // Try ripgrep first, fall back to grep if not available
 try {
   output = execSync(
-    'rg -n "from [\\\\"\\'\\]@prisma/client[\\\\"\\'\\]|import\\\\([\\\\"\\'\\]@prisma/client[\\\\"\\'\\]\\\\)" apps packages --glob "*.ts" --glob "*.tsx" --glob "!packages/db/**"',
+    'rg -n "from [\\\"\'\]@prisma/client[\\\"\'\]|import\\([\\\"\'\]@prisma/client[\\\"\'\]\\)" apps packages --glob "*.ts" --glob "*.tsx" --glob "!packages/db/**"',
     { encoding: 'utf8' },
   );
 } catch (error) {
