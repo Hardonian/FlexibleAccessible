@@ -10,7 +10,7 @@ let output = '';
 // Try ripgrep first, fall back to grep if not available
 try {
   output = execSync(
-    'rg -n "from [\\\"\'\]@prisma/client[\\\"\'\]|import\\([\\\"\'\]@prisma/client[\\\"\'\]\\)" apps packages --glob "*.ts" --glob "*.tsx" --glob "!packages/db/**"',
+    'rg -n "from [\\\\"\\'\\]@prisma/client[\\\\"\\'\\]|import\\\\([\\\\"\\'\\]@prisma/client[\\\\"\\'\\]\\\\)" apps packages --glob "*.ts" --glob "*.tsx" --glob "!packages/db/**"',
     { encoding: 'utf8' },
   );
 } catch (error) {
@@ -19,7 +19,7 @@ try {
     // Try grep as fallback (ripgrep not installed in CI)
     try {
       output = execSync(
-        'grep -rn "from.*@prisma/client" apps packages --include="*.ts" --include="*.tsx" | grep -v "packages/db/"',
+        'grep -rn --exclude-dir=node_modules "from.*@prisma/client" apps packages --include="*.ts" --include="*.tsx" | grep -v "packages/db/"',
         { encoding: 'utf8' },
       );
     } catch (grepError) {
