@@ -72,6 +72,14 @@ jobs:
             fi
           done
 
+      - name: Fix npm workspace hoisting gaps
+        run: |
+          # eslint-plugin-react may be hoisted to root while eslint stays nested.
+          # Create symlinks so module resolution works across the workspace boundary.
+          if [ -d apps/web/node_modules/eslint ] && [ ! -e node_modules/eslint ]; then
+            ln -s ../apps/web/node_modules/eslint node_modules/eslint
+          fi
+
       - name: npm audit (actionable high/critical must be zero)
         run: node scripts/audit-gate.cjs
 
