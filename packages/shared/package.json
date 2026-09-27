@@ -18,7 +18,7 @@
   "devDependencies": {
     "@prisma/client": "^7.10.0",
     "@types/node": "^26.2.0",
-    "cac": "^6.7.14",
+    "cac": "^7.0.0",
     "tsup": "^8.0.0",
     "typescript": "^7.0.2",
     "vitest": "^5.0.0"
