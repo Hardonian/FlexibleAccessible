@@ -19,7 +19,7 @@
     "@aros/scan-engine": "*",
     "@aros/shared": "*",
     "bullmq": "^5.80.2",
-    "ioredis": "^5.11.1",
+    "ioredis": "^6.0.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
