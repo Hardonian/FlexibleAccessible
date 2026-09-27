@@ -52,7 +52,7 @@ export async function removeOrganizationMember(membershipId: string) {
     });
 
     revalidatePath('/settings/members');
-    revalidateTag('members-list');
+    revalidateTag('members-list', 'max');
 
     return { success: true };
   } catch (e) {

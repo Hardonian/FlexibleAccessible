@@ -19,7 +19,7 @@ if (process.env.DATABASE_URL) {
   }
 }
 
-const describeDb = databaseReachable ? describe.sequential : describe.skip;
+const describeDb = databaseReachable ? describe : describe.skip;
 
 describeDb("tenant isolation (org-scoped helpers)", () => {
   const suffix = `ti-${Date.now()}`;

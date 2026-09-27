@@ -54,7 +54,7 @@ function subscriptionPayload(opts: {
   };
 }
 
-const describeDb = databaseReachable ? describe.sequential : describe.skip;
+const describeDb = databaseReachable ? describe : describe.skip;
 
 describeDb('Stripe webhook integration', () => {
   let orgId: string;
