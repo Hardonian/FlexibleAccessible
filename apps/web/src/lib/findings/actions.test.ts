@@ -149,6 +149,6 @@ describe('Server Action: removeOrganizationMember', () => {
     // Assert
     expect(result.success).toBe(true);
     expect(revalidatePath).toHaveBeenCalledWith('/settings/members');
-    expect(revalidateTag).toHaveBeenCalledWith('members-list');
+    expect(revalidateTag).toHaveBeenCalledWith('members-list', 'max');
   });
 });

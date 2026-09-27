@@ -51,6 +51,7 @@
     "@eslint/eslintrc": "^3.3.7",
     "@playwright/experimental-ct-react": "^1.62.1",
     "@playwright/test": "^1.63.0",
+    "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^7.0.1",
     "@types/nodemailer": "^8.0.1",
     "@types/react": "^19.3.0",
