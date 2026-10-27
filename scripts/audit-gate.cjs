@@ -9,8 +9,20 @@ let report;
 try {
   report = JSON.parse(execSync('npm audit --json', { encoding: 'utf8' }));
 } catch (e) {
-  // npm audit exits non-zero when vulns exist; the JSON is still on stdout
-  try { report = JSON.parse(e.stdout); } catch { console.error('audit parse failed'); process.exit(1); }
+  // npm audit exits non-zero both when vulns exist AND on real errors
+  // (EUSAGE/EMISSINGTARGET/network). Distinguish them below instead of
+  // assuming the stdout is a vulnerability report.
+  try { report = JSON.parse(e.stdout); }
+  catch { console.error('audit gate FAILED: npm audit produced no parseable JSON'); process.exit(1); }
+}
+
+// A genuine audit report carries a `vulnerabilities` map. npm error payloads
+// (e.g. {"error":{"code":"EMISSINGTARGET"}}) do NOT — previously these were
+// treated as "0 vulns" and the gate silently passed. Fail loudly instead.
+if (!report || report.error || !report.vulnerabilities) {
+  const detail = report && report.error ? `${report.error.code || ''} ${report.error.summary || ''}`.trim() : 'empty report';
+  console.error(`audit gate FAILED: npm audit did not return a vulnerability report (${detail || 'unknown'}).`);
+  process.exit(1);
 }
 
 const vulns = report.vulnerabilities || {};
