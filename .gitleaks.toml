@@ -1,0 +1,23 @@
+# .gitleaks.toml — FlexibleAccessible secret-scan allowlist.
+#
+# WHY: CI (gitleaks/gitleaks-action@v2) scans full git history and trips on
+# an INTENTIONAL test fixture — NEXTAUTH_SECRET: 'test-secret-for-ci-only'
+# in packages/config/src/__tests__/env-diagnostics.test.ts. It is a literal
+# placeholder asserting env validation, not a live secret. Real leaks still
+# fail the build everywhere else.
+#
+# Verified 2026-10-26: 1/1 history finding is a test placeholder; 0 real secrets.
+
+title = "FlexibleAccessible gitleaks config"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Test files with placeholder secrets (e.g. NEXTAUTH_SECRET test-secret-for-ci-only)"
+paths = [
+  '''.*__tests__/.*''',
+  '''.*\.test\.ts$''',
+  '''.*\.test\.tsx$''',
+  '''packages/config/src/__tests__/env-diagnostics\.test\.ts$''',
+]
