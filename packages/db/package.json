@@ -22,7 +22,7 @@
   "devDependencies": {
     "@prisma/debug": "^6.18.0",
     "@types/pg": "^8.23.1",
-    "empathic": "^2.0.1",
+    "empathic": "^2.1.0",
     "exsolve": "^1.1.0",
     "prisma": "^7.10.1",
     "tsx": "^4.23.13",
