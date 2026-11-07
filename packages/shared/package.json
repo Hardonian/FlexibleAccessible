@@ -16,7 +16,7 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@prisma/client": "^7.10.0",
+    "@prisma/client": "^7.10.1",
     "@types/node": "^26.2.0",
     "cac": "^7.0.0",
     "tsup": "^9.0.0",
